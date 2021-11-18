@@ -49,27 +49,14 @@ def test_initialization_with_different_constraints():
     atoms = setup_atoms()
 
     # setup different constraints
-    bond = FixInternals(bonds=[[atoms.get_distance(0, 1), [0, 1]]])
-    angle = FixInternals(angles_deg=[[atoms.get_angle(0, 1, 2), [0, 1, 2]]])
-    dihedral = FixInternals(dihedrals_deg=[[atoms.get_dihedral(0, 1, 2, 3),
-                                            [0, 1, 2, 3]]])
-
+    bond = FixInternals(bonds=[[None, [0, 1]]])
+    angle = FixInternals(angles_deg=[[None, [0, 1, 2]]])
+    dihedral = FixInternals(dihedrals_deg=[[None, [0, 1, 2, 3]]])
     bc = [[0, 4, -1.0], [1, 4, 1.0]]
-    ac = [[0, 1, 2, -1.0], [0, 2, 3, 1.0]]
-    dc = [[0, 1, 2, 3, -1.0], [0, 1, 4, 3, 1.0]]
-
-    value = FixInternals.get_combo(atoms, bc)
-    bondcombo = FixInternals(bondcombos=[[value, bc]])
-
-    value = FixInternals.get_combo(atoms, ac)
-    anglecombo = FixInternals(anglecombos=[[value, ac]])
-
-    value = FixInternals.get_combo(atoms, dc)
-    dihedralcombo = FixInternals(dihedralcombos=[[value, dc]])
+    bondcombo = FixInternals(bondcombos=[[None, bc]])
 
     # test initialization of BFGSClimbFixInternals with different constraints
-    coord = [[0, 1], [0, 1, 2], [0, 1, 2, 3], bc, ac, dc]
-    for i, constr in enumerate([bond, angle, dihedral,
-                                bondcombo, anglecombo, dihedralcombo]):
+    coord = [[0, 1], [0, 1, 2], [0, 1, 2, 3], bc]
+    for i, constr in enumerate([bond, angle, dihedral, bondcombo]):
         atoms.set_constraint(constr)
         BFGSClimbFixInternals(atoms, climb_coordinate=coord[i])

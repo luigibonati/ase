@@ -246,13 +246,13 @@ class Amber(FileIOCalculator):
 
     def read_forces(self, filename='mdfrc'):
         """ read forces from amber file """
-        f = netcdf.netcdf_file(filename, 'r')
+        fd = netcdf.netcdf_file(filename, 'r')
         try:
-            forces = f.variables['forces']
+            forces = fd.variables['forces']
             self.results['forces'] = forces[-1, :, :] \
                 / units.Ang * units.kcal / units.mol
         finally:
-            f.close()
+            fd.close()
 
     def set_charges(self, selection, charges, parmed_filename=None):
         """ Modify amber topology charges to contain the updated

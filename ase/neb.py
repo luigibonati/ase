@@ -19,7 +19,7 @@ from ase.optimize.sciopt import OptimizerConvergenceError
 from ase.geometry import find_mic
 from ase.utils import lazyproperty, deprecated
 from ase.utils.forcecurve import fit_images
-from ase.optimize.precon import PreconImages
+from ase.optimize.precon import Precon, PreconImages
 from ase.optimize.ode import ode12r
 
 
@@ -271,9 +271,15 @@ class BaseNEB:
             if np.any(img.get_atomic_numbers() !=
                       images[0].get_atomic_numbers()):
                 raise ValueError('Images have atoms in different orders')
-            if np.any(np.abs(img.get_cell() - images[0].get_cell()) > 1e-8):
-                raise NotImplementedError("Variable cell NEB is not "
-                                          "implemented yet")
+            # check periodic cell directions
+            cell_ok = True
+            for pbc, vc, vc0 in zip(img.pbc, img.cell, images[0].cell):
+                if pbc and np.any(np.abs(vc - vc0) > 1e-8):
+                    cell_ok = False
+            if not cell_ok:
+                raise NotImplementedError(
+                    "Variable cell in periodic directions "
+                    "is not implemented yet for NEB")
 
         self.emax = np.nan
 
@@ -440,7 +446,8 @@ class BaseNEB:
                 self.world.broadcast(forces[i - 1], root)
                 
         # if this is the first force call, we need to build the preconditioners
-        if self.precon is None or isinstance(self.precon, str):
+        if (self.precon is None or isinstance(self.precon, str) or
+            isinstance(self.precon, Precon)):
             self.precon = PreconImages(self.precon, images)
             
         # apply preconditioners to transform forces

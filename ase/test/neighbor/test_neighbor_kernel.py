@@ -14,7 +14,7 @@ def test_neighbor_kernel():
     tol = 1e-7
 
     # two atoms
-    a = ase.Atoms('CC', positions=[[0.5, 0.5, 0.5], [1,1,1]], cell=[10, 10, 10],
+    a = ase.Atoms('CC', positions=[[0.5, 0.5, 0.5], [1, 1, 1]], cell=[10, 10, 10],
                   pbc=True)
     i, j, d = neighbor_list("ijd", a, 1.1)
     assert (i == np.array([0, 1])).all()
@@ -118,41 +118,41 @@ def test_neighbor_kernel():
     # test_hexagonal_cell
     for sx in range(3):
         a = ase.lattice.hexagonal.Graphite('C', latticeconstant=(2.5, 10.0),
-                                           size=[sx+1,sx+1,1])
+                                           size=[sx+1, sx+1, 1])
         i = neighbor_list("i", a, 1.85)
-        assert np.all(np.bincount(i)==3)
+        assert np.all(np.bincount(i) == 3)
 
     # test_first_neighbors
-    i = [1,1,1,1,3,3,3]
-    assert (first_neighbors(5, i) == np.array([0,0,4,4,7,7])).all()
-    i = [0,1,2,3,4,5]
-    assert (first_neighbors(6, i) == np.array([0,1,2,3,4,5,6])).all()
+    i = [1, 1, 1, 1, 3, 3, 3]
+    assert (first_neighbors(5, i) == np.array([0, 0, 4, 4, 7, 7])).all()
+    i = [0, 1, 2, 3, 4, 5]
+    assert (first_neighbors(6, i) == np.array([0, 1, 2, 3, 4, 5, 6])).all()
 
     # test_multiple_elements
     a = molecule('HCOOH')
     a.center(vacuum=5.0)
     i = neighbor_list("i", a, 1.85)
-    assert (np.bincount(i) == np.array([2,3,1,1,1])).all()
+    assert (np.bincount(i) == np.array([2, 3, 1, 1, 1])).all()
 
     cutoffs = {(1, 6): 1.2}
     i = neighbor_list("i", a, cutoffs)
-    assert (np.bincount(i) == np.array([0,1,0,0,1])).all()
+    assert (np.bincount(i) == np.array([0, 1, 0, 0, 1])).all()
 
     cutoffs = {(6, 8): 1.4}
     i = neighbor_list("i", a, cutoffs)
-    assert (np.bincount(i) == np.array([1,2,1])).all()
+    assert (np.bincount(i) == np.array([1, 2, 1])).all()
 
     cutoffs = {('H', 'C'): 1.2, (6, 8): 1.4}
     i = neighbor_list("i", a, cutoffs)
-    assert (np.bincount(i) == np.array([1,3,1,0,1])).all()
+    assert (np.bincount(i) == np.array([1, 3, 1, 0, 1])).all()
 
     cutoffs = [0.0, 0.9, 0.0, 0.5, 0.5]
     i = neighbor_list("i", a, cutoffs)
-    assert (np.bincount(i) == np.array([0,1,0,0,1])).all()
+    assert (np.bincount(i) == np.array([0, 1, 0, 0, 1])).all()
 
     cutoffs = [0.7, 0.9, 0.7, 0.5, 0.5]
     i = neighbor_list("i", a, cutoffs)
-    assert (np.bincount(i) == np.array([2,3,1,1,1])).all()
+    assert (np.bincount(i) == np.array([2, 3, 1, 1, 1])).all()
 
     # test_noncubic
     a = bulk("Al", cubic=False)
@@ -179,7 +179,7 @@ def test_neighbor_kernel():
                 c2 = np.bincount(i2, minlength=len(atoms))
                 c2.shape = (-1, nat)
                 dd = d.sum() * (p1 + 1) * (p2 + 1) * (p3 + 1) - d2.sum()
-                dr = np.linalg.solve(atoms.cell.T, (atoms.positions[1]-atoms.positions[0]).T).T+np.array([0,0,3])
+                dr = np.linalg.solve(atoms.cell.T, (atoms.positions[1]-atoms.positions[0]).T).T+np.array([0, 0, 3])
                 assert abs(dd) < 1e-10
                 assert not (c2 - c).any()
 

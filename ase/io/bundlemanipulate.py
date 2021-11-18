@@ -58,8 +58,8 @@ def copy_frames(inbundle, outbundle, start=0, end=None, step=1,
 
     # Make the new bundle directory
     os.mkdir(outbundle)
-    with open(os.path.join(outbundle, 'metadata.json'), 'w') as f:
-        json.dump(metadata, f, indent=2)
+    with open(os.path.join(outbundle, 'metadata.json'), 'w') as fd:
+        json.dump(metadata, fd, indent=2)
 
     for nout, nin in enumerate(frames):
         if verbose:

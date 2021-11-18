@@ -23,7 +23,6 @@ def test_turbomole_2h2o():
         properties['c2'] = partition_2.get_charges()
         return properties
 
-
     params = {'esp fit': 'kollman', 'multiplicity': 1}
     dimer = s22['Water_dimer']
 

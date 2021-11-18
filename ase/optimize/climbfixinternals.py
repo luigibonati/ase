@@ -24,7 +24,7 @@ class BFGSClimbFixInternals(BFGS):
 
     Inspired by concepts described by P. N. Plessow. [1]_
 
-    .. [1] P. N. Plessow, Efficient Transition State Optimization of Periodic
+    .. [1] Plessow, P. N., Efficient Transition State Optimization of Periodic
            Structures through Automated Relaxed Potential Energy Surface Scans.
            J. Chem. Theory Comput. 2018, 14 (2), 981–990.
            https://doi.org/10.1021/acs.jctc.7b01070.

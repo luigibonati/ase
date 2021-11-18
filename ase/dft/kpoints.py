@@ -187,6 +187,7 @@ def resolve_custom_points(pathspec, special_points, eps):
     assert last == ','
     return ''.join(labelseq), special_points
 
+
 def normalize_special_points(special_points):
     dct = {}
     for name, value in special_points.items():

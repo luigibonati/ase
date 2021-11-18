@@ -26,6 +26,17 @@ _CHUNK = Sequence[str]
 _RESULT = Dict[str, Any]
 
 
+class NoNonEmptyLines(Exception):
+    """No more non-empty lines were left in the provided chunck"""
+
+
+class UnableToLocateDelimiter(Exception):
+    """Did not find the provided delimiter"""
+    def __init__(self, delimiter, msg):
+        self.delimiter = delimiter
+        super().__init__(msg)
+
+
 def _check_line(line: str) -> str:
     """Auxiliary check line function for OUTCAR numeric formatting.
     See issue #179, https://gitlab.com/ase/ase/issues/179
@@ -34,6 +45,35 @@ def _check_line(line: str) -> str:
     if re.search('[0-9]-[0-9]', line):
         line = re.sub('([0-9])-([0-9])', r'\1 -\2', line)
     return line
+
+
+def find_next_non_empty_line(cursor: _CURSOR, lines: _CHUNK) -> _CURSOR:
+    """Fast-forward the cursor from the current position to the next
+    line which is non-empty.
+    Returns the new cursor position on the next non-empty line.
+    """
+    for line in lines[cursor:]:
+        if line.strip():
+            # Line was non-empty
+            return cursor
+        # Empty line, increment the cursor position
+        cursor += 1
+    # There was no non-empty line
+    raise NoNonEmptyLines("Did not find a next line which was not empty")
+
+
+def search_lines(delim: str, cursor: _CURSOR, lines: _CHUNK) -> _CURSOR:
+    """Search through a chunk of lines starting at the cursor position for
+    a given delimiter. The new position of the cursor is returned."""
+    for line in lines[cursor:]:
+        if delim in line:
+            # The cursor should be on the line with the delimiter now
+            assert delim in lines[cursor]
+            return cursor
+        # We didn't find the delimiter
+        cursor += 1
+    raise UnableToLocateDelimiter(
+        delim, f'Did not find starting point for delimiter {delim}')
 
 
 def convert_vasp_outcar_stress(stress: Sequence):
@@ -163,24 +203,36 @@ class SpeciesTypes(SimpleVaspHeaderParser):
         # We count the number of times we found the line,
         # as we only want to parse every second,
         # due to repeated entries in the OUTCAR
-        self.species_count = 0
         super().__init__(*args, **kwargs)
 
     @property
     def species(self) -> List[str]:
+        """Internal storage of each found line.
+        Will contain the double counting.
+        Use the get_species() method to get the un-doubled list."""
         return self._species
+
+    def get_species(self) -> List[str]:
+        """The OUTCAR will contain two 'POTCAR:' entries per species.
+        This method only returns the first half,
+        effectively removing the double counting.
+        """
+        # Get the index of the first half
+        # In case we have an odd number, we round up (for testing purposes)
+        # Tests like to just add species 1-by-1
+        # Having an odd number should never happen in a real OUTCAR
+        # For even length lists, this is just equivalent to idx = len(self.species) // 2
+        idx = sum(divmod(len(self.species), 2))
+        # Make a copy
+        return list(self.species[:idx])
 
     def _make_returnval(self) -> _RESULT:
         """Construct the return value for the "parse" method"""
-        return {'species': self.species}
+        return {'species': self.get_species()}
 
     def parse(self, cursor: _CURSOR, lines: _CHUNK) -> _RESULT:
         line = lines[cursor].strip()
-        self.species_count += 1
-        if self.species_count % 2 == 0:
-            # the 'POTCAR:' line always appears twice,
-            # so only parse every second occurence
-            return self._make_returnval()
+
         parts = line.split()
         # Determine in what position we'd expect to find the symbol
         if '1/r potential' in line:
@@ -420,10 +472,15 @@ class Kpoints(VaspChunkPropertyParser):
 
         kpts = []
         for spin in range(nspins):
-            # The cursor should be on a "spin componenet" line now
-            assert 'spin component' in lines[cursor]
+            # for Vasp 6, they added some extra information after the spin components.
+            # so we might need to seek the spin component line
+            cursor = search_lines(f'spin component {spin + 1}', cursor, lines)
+
             cursor += 2  # Skip two lines
             for _ in range(nkpts):
+                # Skip empty lines
+                cursor = find_next_non_empty_line(cursor, lines)
+
                 line = self.get_line(cursor, lines)
                 # Example line:
                 # "k-point     1 :       0.0000    0.0000    0.0000"
@@ -448,7 +505,7 @@ class Kpoints(VaspChunkPropertyParser):
                                         eps_n=eigenvalues,
                                         f_n=occupations)
                 kpts.append(kpt)
-                cursor += 1  # shift by 1 more at the end, prepare for next k-point
+
         return {'kpts': kpts}
 
 

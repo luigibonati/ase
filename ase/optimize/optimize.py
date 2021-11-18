@@ -1,22 +1,22 @@
 """Structure optimization. """
 
-import sys
+import collections.abc
 import time
 from math import sqrt
 from os.path import isfile
 
-from ase.io.jsonio import read_json, write_json
 from ase.calculators.calculator import PropertyNotImplementedError
-from ase.parallel import world, barrier
+from ase.io.jsonio import read_json, write_json
 from ase.io.trajectory import Trajectory
-import collections.abc
+from ase.parallel import barrier, world
+from ase.utils import IOContext
 
 
 class RestartError(RuntimeError):
     pass
 
 
-class Dynamics:
+class Dynamics(IOContext):
     """Base-class for all MD and structure optimization classes."""
 
     def __init__(
@@ -50,48 +50,19 @@ class Dynamics:
         """
 
         self.atoms = atoms
-        try:
-            self._files_to_be_closed = []
-            if master is None:
-                master = world.rank == 0
-            if not master:
-                logfile = None
-            elif isinstance(logfile, str):
-                if logfile == "-":
-                    logfile = sys.stdout
-                else:
-                    logfile = self.ensureclose(open(logfile, "a"))
-            self.logfile = logfile
+        self.logfile = self.openfile(logfile, mode='a', comm=world)
+        self.observers = []
+        self.nsteps = 0
+        # maximum number of steps placeholder with maxint
+        self.max_steps = 100000000
 
-            self.observers = []
-            self.nsteps = 0
-            # maximum number of steps placeholder with maxint
-            self.max_steps = 100000000
-
-            if trajectory is not None:
-                if isinstance(trajectory, str):
-                    mode = "a" if append_trajectory else "w"
-                    trajectory = self.ensureclose(Trajectory(
-                        trajectory, mode=mode, atoms=atoms, master=master
-                    ))
-                self.attach(trajectory)
-        except BaseException:
-            self._closefiles()
-            raise
-
-    def ensureclose(self, closeable):
-        self._files_to_be_closed.append(closeable)
-        return closeable
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        self._closefiles()
-
-    def _closefiles(self):
-        for closeable in self._files_to_be_closed:
-            closeable.close()
+        if trajectory is not None:
+            if isinstance(trajectory, str):
+                mode = "a" if append_trajectory else "w"
+                trajectory = self.closelater(Trajectory(
+                    trajectory, mode=mode, atoms=atoms, master=master
+                ))
+            self.attach(trajectory)
 
     def get_number_of_steps(self):
         return self.nsteps
@@ -278,6 +249,10 @@ class Optimizer(Dynamics):
             "type": "optimization",
             "optimizer": self.__class__.__name__,
         }
+        # add custom attributes from subclasses
+        for attr in ('maxstep', 'alpha', 'max_steps', 'restart'):
+            if hasattr(self, attr):
+                description.update({attr: getattr(self, attr)})
         return description
 
     def initialize(self):
@@ -319,16 +294,20 @@ class Optimizer(Dynamics):
             name = self.__class__.__name__
             if self.nsteps == 0:
                 args = (" " * len(name), "Step", "Time", "Energy", "fmax")
-                msg = "%s  %4s %8s %15s %12s\n" % args
+                msg = "%s  %4s %8s %15s  %12s\n" % args
                 self.logfile.write(msg)
 
-                if self.force_consistent:
-                    msg = "*Force-consistent energies used in optimization.\n"
-                    self.logfile.write(msg)
+                # if self.force_consistent:
+                #     msg = "*Force-consistent energies used in optimization.\n"
+                #     self.logfile.write(msg)
 
-            ast = {1: "*", 0: ""}[self.force_consistent]
+            # XXX The "force consistent" handling is really arbitrary.
+            # Let's disable the special printing for now.
+            #
+            # ast = {1: "*", 0: ""}[self.force_consistent]
+            ast = ''
             args = (name, self.nsteps, T[3], T[4], T[5], e, ast, fmax)
-            msg = "%s:  %3d %02d:%02d:%02d %15.6f%1s %12.4f\n" % args
+            msg = "%s:  %3d %02d:%02d:%02d %15.6f%1s %12.5e\n" % args
             self.logfile.write(msg)
 
             self.logfile.flush()

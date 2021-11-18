@@ -50,9 +50,9 @@ def test_optimizer(cls, testdir, atoms, calc):
         opt.run(0.2)
         opt.run(0.1)
 
-    with Trajectory(trajectory) as traj, open(logfile) as f:
-        next(f)
-        for _, (a, line) in enumerate(zip(traj, f)):
+    with Trajectory(trajectory) as traj, open(logfile) as fd:
+        next(fd)
+        for _, (a, line) in enumerate(zip(traj, fd)):
             fmax1 = float(line.split()[-1])
             fmax2 = fmax(a.get_forces())
 

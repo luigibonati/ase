@@ -16,7 +16,6 @@ def test_eon_masses():
     m_Cs = ase.data.atomic_masses[ase.data.atomic_numbers['Cs']]
     m_Cl = ase.data.atomic_masses[ase.data.atomic_numbers['Cl']]
 
-
     con_file = 'pos.con'
     # Write and read the .con file.
     ase.io.write(con_file, data, format='eon')

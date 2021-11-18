@@ -249,7 +249,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
 
 """
 
-    implemented_properties = ['energy', 'forces', 'stress']
+    implemented_properties = ['energy', 'free_energy', 'forces', 'stress']
 
     started = False
     initialized = False
@@ -330,14 +330,17 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
     def set_lammps_pos(self, atoms):
         # Create local copy of positions that are wrapped along any periodic
         # directions
-        pos = wrap_positions(atoms.get_positions(), atoms.get_cell(),
-                             atoms.get_pbc())
-        pos = convert(pos, "distance", "ASE", self.units)
+        cell = convert(atoms.cell, "distance", "ASE", self.units)
+        pos = convert(atoms.positions, "distance", "ASE", self.units)
 
         # If necessary, transform the positions to new coordinate system
         if self.coord_transform is not None:
-            pos = np.dot(self.coord_transform, pos.transpose())
-            pos = pos.transpose()
+            pos = np.dot(pos, self.coord_transform.T)
+            cell = np.dot(cell, self.coord_transform.T)
+
+        # wrap only after scaling and rotating to reduce chances of
+        # lammps neighbor list bugs.
+        pos = wrap_positions(pos, cell, atoms.get_pbc())
 
         # Convert ase position matrix to lammps-style position array
         # contiguous in memory

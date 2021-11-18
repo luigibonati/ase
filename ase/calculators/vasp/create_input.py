@@ -758,6 +758,14 @@ class GenerateVaspInput:
             'pp': 'LDA'
         },
         # GGAs
+        'blyp': {  # https://www.vasp.at/forum/viewtopic.php?p=17234
+            'pp': 'PBE',
+            'gga': 'B5',
+            'aldax': 1.00,
+            'aggax': 1.00,
+            'aggac': 1.00,
+            'aldac': 0.00
+        },
         'pw91': {
             'pp': 'PW91',
             'gga': '91'
@@ -799,6 +807,12 @@ class GenerateVaspInput:
         },
         'scan': {
             'metagga': 'SCAN'
+        },
+        'rscan': {
+            'metagga': 'RSCAN'
+        },
+        'r2scan': {
+            'metagga': 'R2SCAN'
         },
         'scan-rvv10': {
             'metagga': 'SCAN',
@@ -1823,8 +1837,8 @@ class GenerateVaspInput:
 
         # Search for key 'LEXCH' in POTCAR
         xc_flag = None
-        with open(filename, 'r') as f:
-            for line in f:
+        with open(filename, 'r') as fd:
+            for line in fd:
                 key = line.split()[0].upper()
                 if key == 'LEXCH':
                     xc_flag = line.split()[-1].upper()

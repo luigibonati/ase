@@ -4,7 +4,6 @@ def test_rotate():
     from ase import Atoms
     from ase.utils import rotate, irotate
 
-
     def test(xyz):
         a = rotate(xyz)
         ixyz = '%sx,%sy,%sz' % irotate(a)

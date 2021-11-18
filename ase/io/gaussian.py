@@ -230,8 +230,8 @@ def _format_basis_set(basis, basisfile, basis_set):
         if basisfile[0] == '@':
             out.append(basisfile)
         else:
-            with open(basisfile, 'r') as f:
-                out.append(f.read())
+            with open(basisfile, 'r') as fd:
+                out.append(fd.read())
     elif basis_set is not None:
         out.append(basis_set)
     else:
@@ -1236,7 +1236,8 @@ def read_gaussian_out(fd, index=-1):
             break
 
         if (line == 'Input orientation:'
-                or line == 'Z-Matrix orientation:'):
+                or line == 'Z-Matrix orientation:' 
+                or line == "Standard orientation:"):
             if atoms is not None:
                 atoms.calc = SinglePointCalculator(
                     atoms, energy=energy, dipole=dipole, forces=forces,

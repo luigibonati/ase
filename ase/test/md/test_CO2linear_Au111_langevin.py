@@ -15,7 +15,7 @@ def test_CO2linear_Au111_langevin(testdir):
     triatomic molecules"""
 
     rng = np.random.RandomState(0)
-    eref = 3.133526
+    eref = 3.133030
 
     zpos = cos(134.3 / 2.0 * pi / 180.0) * 1.197
     xpos = sin(134.3 / 2.0 * pi / 180.0) * 1.19
@@ -37,12 +37,12 @@ def test_CO2linear_Au111_langevin(testdir):
     slab.set_constraint(constraint)
 
     fr = 0.1
-    dyn = Langevin(slab, 2.0 * units.fs,
-                   temperature_K=300, friction=fr,
-                   trajectory='langevin_%.1f.traj' % fr,
-                   logfile='langevin_%.1f.log' % fr,
-                   loginterval=20, rng=rng)
-    dyn.run(100)
+    with Langevin(slab, 2.0 * units.fs,
+                  temperature_K=300, friction=fr,
+                  trajectory='langevin_%.1f.traj' % fr,
+                  logfile='langevin_%.1f.log' % fr,
+                  loginterval=20, rng=rng) as dyn:
+        dyn.run(100)
 
     # Check that the temperature is within a reasonable range
     T = slab.get_temperature()

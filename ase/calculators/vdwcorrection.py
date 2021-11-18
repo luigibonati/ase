@@ -2,10 +2,11 @@
 import numpy as np
 from ase.units import Bohr, Hartree
 from ase.calculators.calculator import Calculator
-from ase.utils import convert_string_to_fd
+from ase.calculators.polarizability import StaticPolarizabilityCalculator
 from scipy.special import erfinv, erfc
 from ase.neighborlist import neighbor_list
 from ase.parallel import world
+from ase.utils import IOContext
 
 
 # dipole polarizabilities and C6 values from
@@ -138,7 +139,7 @@ def get_logging_file_descriptor(calculator):
         return calculator.txt
 
 
-class vdWTkatchenko09prl(Calculator):
+class vdWTkatchenko09prl(Calculator, IOContext):
     """vdW correction after Tkatchenko and Scheffler PRL 102 (2009) 073005."""
     def __init__(self,
                  hirshfeld=None, vdwradii=None, calculator=None,
@@ -165,7 +166,7 @@ class vdWTkatchenko09prl(Calculator):
             myworld = self.calculator.world
         else:
             myworld = world  # the best we know
-        self.txt = convert_string_to_fd(txt, myworld)
+        self.txt = self.openfile(txt, myworld)
 
         self.vdwradii = vdwradii
         self.vdWDB_alphaC6 = vdWDB_alphaC6
@@ -377,3 +378,41 @@ class vdWTkatchenko09prl(Calculator):
         x = RAB * scale
         chi = np.exp(-d * (x - 1.0))
         return 1.0 / (1.0 + chi), d * scale * chi / (1.0 + chi)**2
+
+
+def calculate_ts09_polarizability(atoms):
+    """Calculate polarizability tensor
+
+    atoms: Atoms object
+    The atoms object must have a vdWTkatchenko90prl calculator attached.
+
+    Returns
+    -------
+      polarizability tensor:
+      Unit (e^2 Angstrom^2 / eV).
+      Multiply with Bohr * Ha to get (Angstrom^3)
+    """
+    calc = atoms.calc
+    assert isinstance(calc, vdWTkatchenko09prl)
+    atoms.get_potential_energy()
+
+    volume_ratios = calc.hirshfeld.get_effective_volume_ratios()
+
+    na = len(atoms)
+    alpha_a = np.empty((na))
+    alpha_eff_a = np.empty((na))
+    for a, atom in enumerate(atoms):
+        # free atom values
+        alpha_a[a], _ = calc.vdWDB_alphaC6[atom.symbol]
+        # effective polarizability assuming linear combination
+        # of atomic polarizability from ts09
+        alpha_eff_a[a] = volume_ratios[a] * alpha_a[a]
+
+    alpha = np.sum(alpha_eff_a) * Bohr**2 / Hartree
+    return np.diag([alpha] * 3)
+
+
+class TS09Polarizability(StaticPolarizabilityCalculator):
+    """Class interface as expected by Displacement"""
+    def __call__(self, atoms):
+        return calculate_ts09_polarizability(atoms)

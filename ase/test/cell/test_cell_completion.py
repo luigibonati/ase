@@ -5,14 +5,12 @@ def test_cell_completion():
     eps = 1E-10
     rng = np.random.RandomState(0)
 
-
     def random_unit_vector():
         while 1:
             v = rng.uniform(-1, 1, 3)
             norm = np.linalg.norm(v)
             if norm > eps:
                 return v / norm
-
 
     for it in range(100):
 

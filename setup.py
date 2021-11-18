@@ -20,9 +20,10 @@ if sys.version_info < python_min_version:
 
 
 install_requires = [
-    'numpy>=1.15.0',  # July 2018
-    'scipy>=1.1.0',  # May 2018
-    'matplotlib>=2.2.0',  # March 2018
+    'numpy>=1.17.0',  # July 2019
+    'scipy>=1.3.1',  # August 2019
+    'matplotlib>=3.1.0',  # May 2019
+    'importlib-metadata>=0.12;python_version<"3.8"'
 ]
 
 

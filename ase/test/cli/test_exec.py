@@ -52,8 +52,8 @@ def fnameimages(images, testdir):
 @pytest.fixture
 def execfilename(testdir):
     filename = 'execcode.py'
-    with open(filename, 'w') as f:
-        f.write('print(len(atoms))')
+    with open(filename, 'w') as fd:
+        fd.write('print(len(atoms))')
     return filename
 
 

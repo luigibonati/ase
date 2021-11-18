@@ -75,7 +75,7 @@ keyword           type     default value            description
 ``basis``         ``str``  ``'aug-cc-pvtz'``        Basis set.
 ``memory``        ``str``  ``500MB``                The amount of memory allocated
                                                     to psi4
-``num_thread``             ``1``                    The number of threads to run
+``num_threads``             ``1``                   The number of threads to run
                                                     psi4 on
 ``symmetry``      ``str``  ``'c1'``                 The symmetry of your system
 ``PSI_SCRATCH``   ``str``  ``/tmp``                 The scratch directory for

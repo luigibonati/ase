@@ -10,7 +10,7 @@ import numpy as np
 from ase.atoms import Atoms
 import ase.units as units
 import ase.io
-from ase.utils import jsonable
+from ase.utils import jsonable, lazymethod
 
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.spectrum.dosdata import RawDOSData
@@ -52,7 +52,7 @@ class VibrationsData:
                  ) -> None:
 
         if indices is None:
-            self._indices = np.array(range(len(atoms)))
+            self._indices = np.arange(len(atoms), dtype=int)
         else:
             self._indices = np.array(indices, dtype=int)
 
@@ -62,9 +62,6 @@ class VibrationsData:
 
         self._hessian2d = (np.asarray(hessian)
                            .reshape(3 * n_atoms, 3 * n_atoms).copy())
-
-        self._energies = None  # type: Union[np.ndarray, None]
-        self._modes = None  # type: Union[np.ndarray, None]
 
     _setter_error = ("VibrationsData properties cannot be modified: construct "
                      "a new VibrationsData with consistent atoms, Hessian and "
@@ -162,8 +159,8 @@ class VibrationsData:
     def get_atoms(self) -> Atoms:
         return self._atoms.copy()
 
-    def get_indices(self) -> Union[None, np.ndarray]:
-        return np.array(self._indices, dtype=int)
+    def get_indices(self) -> np.ndarray:
+        return self._indices.copy()
 
     def get_mask(self) -> np.ndarray:
         """Boolean mask of atoms selected by indices"""
@@ -251,7 +248,8 @@ class VibrationsData:
 
         return cls(data['atoms'], data['hessian'], indices=data['indices'])
 
-    def _calculate_energies_and_modes(self) -> Tuple[np.ndarray, np.ndarray]:
+    @lazymethod
+    def _energies_and_modes(self) -> Tuple[np.ndarray, np.ndarray]:
         """Diagonalise the Hessian to obtain harmonic modes
 
         This method is an internal implementation of get_energies_and_modes(),
@@ -280,11 +278,19 @@ class VibrationsData:
 
         return (energies, modes)
 
-    def get_energies_and_modes(self) -> Tuple[np.ndarray, np.ndarray]:
+    def get_energies_and_modes(self, all_atoms: bool = False
+                               ) -> Tuple[np.ndarray, np.ndarray]:
         """Diagonalise the Hessian to obtain harmonic modes
 
         Results are cached so diagonalization will only be performed once for
         this object instance.
+
+        Args:
+            all_atoms:
+                If True, return modes as (3N, [N + N_frozen], 3) array where
+                the second axis corresponds to the full list of atoms in the
+                attached atoms object. Atoms that were not included in the
+                Hessian will have displacement vectors of (0, 0, 0).
 
         Returns:
             tuple (energies, modes)
@@ -295,27 +301,38 @@ class VibrationsData:
             Modes are given in Cartesian coordinates as a (3N, N, 3) array
             where indices correspond to the (mode_index, atom, direction).
 
-            Note that in this array only the moving atoms are included.
-
         """
-        if self._energies is None or self._modes is None:
-            self._energies, self._modes = self._calculate_energies_and_modes()
-            return self.get_energies_and_modes()
-        else:
-            return (self._energies.copy(), self._modes.copy())
 
-    def get_modes(self) -> np.ndarray:
+        energies, modes_from_hessian = self._energies_and_modes()
+
+        if all_atoms:
+            n_active_atoms = len(self.get_indices())
+            n_all_atoms = len(self._atoms)
+            modes = np.zeros((3 * n_active_atoms, n_all_atoms, 3))
+            modes[:, self.get_mask(), :] = modes_from_hessian
+        else:
+            modes = modes_from_hessian.copy()
+
+        return (energies.copy(), modes)
+
+    def get_modes(self, all_atoms: bool = False) -> np.ndarray:
         """Diagonalise the Hessian to obtain harmonic modes
 
         Results are cached so diagonalization will only be performed once for
         this object instance.
+
+        all_atoms:
+            If True, return modes as (3N, [N + N_frozen], 3) array where
+            the second axis corresponds to the full list of atoms in the
+            attached atoms object. Atoms that were not included in the
+            Hessian will have displacement vectors of (0, 0, 0).
 
         Returns:
             Modes in Cartesian coordinates as a (3N, N, 3) array where indices
             correspond to the (mode_index, atom, direction).
 
         """
-        return self.get_energies_and_modes()[1]
+        return self.get_energies_and_modes(all_atoms=all_atoms)[1]
 
     def get_energies(self) -> np.ndarray:
         """Diagonalise the Hessian to obtain eigenvalues
@@ -361,19 +378,16 @@ class VibrationsData:
         return 0.5 * np.asarray(energies).real.sum()
 
     def tabulate(self, im_tol: float = 1e-8) -> str:
-        """Print a summary of the vibrational frequencies.
+        """Get a summary of the vibrational frequencies.
 
         Args:
-            logfile: if specified, write output to this destination. This can
-                be an object with a write() method or the name of a file to
-                create. Otherwise, summary is returned as a string.
             im_tol:
                 Tolerance for imaginary frequency in eV. If frequency has a
                 larger imaginary component than im_tol, the imaginary component
                 is shown in the summary table.
 
         Returns:
-            Summary text, if no output was set.
+            Summary table as formatted text
         """
 
         energies = self.get_energies()
@@ -422,13 +436,12 @@ class VibrationsData:
 
         """
 
-        mode = (self.get_modes()[mode_index]
+        mode = (self.get_modes(all_atoms=True)[mode_index]
                 * sqrt(temperature / abs(self.get_energies()[mode_index])))
 
         for phase in np.linspace(0, 2 * pi, frames, endpoint=False):
             atoms = self.get_atoms()
-            atoms.positions[self.get_mask()] = (
-                atoms.positions[self.get_mask()] + sin(phase) * mode)
+            atoms.positions += sin(phase) * mode
 
             yield atoms
 
@@ -450,7 +463,7 @@ class VibrationsData:
         """
 
         atoms = self.get_atoms()
-        mode = self.get_modes()[mode] * len(atoms) * 3 * scale
+        mode = self.get_modes(all_atoms=True)[mode] * len(atoms) * 3 * scale
         atoms.calc = SinglePointCalculator(atoms, forces=mode)
         if show:
             atoms.edit()
@@ -470,29 +483,62 @@ class VibrationsData:
 
         Args:
             filename: Path for output file
-            energies_and_modes: Use pre-computed eigenvalue/eigenvector data if
-                available; otherwise it will be recalculated from the Hessian.
             ir_intensities: If available, IR intensities can be included in the
                 header lines. This does not affect the visualisation, but may
                 be convenient when comparing to experimental data.
         """
 
-        energies_and_modes = self.get_energies_and_modes()
+        all_images = list(self._get_jmol_images(atoms=self.get_atoms(),
+                                                energies=self.get_energies(),
+                                                modes=self.get_modes(all_atoms=True),
+                                                ir_intensities=ir_intensities))
+        ase.io.write(filename, all_images, format='extxyz')
 
-        all_images = []
-        for i, (energy, mode) in enumerate(zip(*energies_and_modes)):
+    @staticmethod
+    def _get_jmol_images(atoms: Atoms,
+                         energies: np.ndarray,
+                         modes: np.ndarray,
+                         ir_intensities:
+                             Union[Sequence[float], np.ndarray] = None
+                         ) -> Iterator[Atoms]:
+        """Get vibrational modes as a series of Atoms with attached data
+
+        For each image (Atoms object):
+
+            - eigenvalues are attached to image.arrays['mode']
+            - "mode#" and "frequency_cm-1" are set in image.info
+            - "IR_intensity" is set if provided in ir_intensities
+            - "masses" is removed
+
+        This is intended to set up the object for JMOL-compatible export using
+        ase.io.extxyz.
+
+
+        Args:
+            atoms: The base atoms object; all images have the same positions
+            energies: Complex vibrational energies in eV
+            modes: Eigenvectors array corresponding to atoms and energies. This
+                should cover the full set of atoms (i.e. modes =
+                vib.get_modes(all_atoms=True)).
+            ir_intensities: If available, IR intensities can be included in the
+                header lines. This does not affect the visualisation, but may
+                be convenient when comparing to experimental data.
+        Returns:
+            Iterator of Atoms objects
+
+        """
+        for i, (energy, mode) in enumerate(zip(energies, modes)):
             # write imaginary frequencies as negative numbers
             if energy.imag > energy.real:
                 energy = float(-energy.imag)
             else:
                 energy = energy.real
 
-            image = self.get_atoms()
+            image = atoms.copy()
             image.info.update({'mode#': str(i),
                                'frequency_cm-1': energy / units.invcm,
                                })
-            image.arrays['mode'] = np.zeros_like(image.positions)
-            image.arrays['mode'][self.get_mask()] = mode
+            image.arrays['mode'] = mode
 
             # Custom masses are quite useful in vibration analysis, but will
             # show up in the xyz file unless we remove them
@@ -502,8 +548,7 @@ class VibrationsData:
             if ir_intensities is not None:
                 image.info['IR_intensity'] = float(ir_intensities[i])
 
-            all_images.append(image)
-        ase.io.write(filename, all_images, format='extxyz')
+            yield image
 
     def get_dos(self) -> RawDOSData:
         """Total phonon DOS"""

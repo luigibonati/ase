@@ -283,7 +283,7 @@ class SparsePrecon(Precon):
     def solve(self, x):
         start_time = time.time()
         if self.use_pyamg and have_pyamg:
-            y = self.ml.solve(x, x0=self.rng.rand(self.P.shape[0]),
+            y = self.ml.solve(x, x0=self.rng.random(self.P.shape[0]),
                               tol=self.solve_tol,
                               accel='cg',
                               maxiter=300,
@@ -534,7 +534,7 @@ class SparseCoeffPrecon(SparsePrecon):
         if self.apply_positions:
             # compute neighbour list
             i, j, rij, fixed_atoms = get_neighbours(atoms, self.r_cut,
-                                            neighbor_list=self.neighbor_list)
+                                                    neighbor_list=self.neighbor_list)
             logfile.write('--- neighbour list created in %s s --- \n' %
                           (time.time() - start_time))
 
@@ -1424,5 +1424,3 @@ class PreconImages:
         self._old_s = s
         self._old_x = x
         return self._spline
-    
-    

@@ -51,8 +51,8 @@ class BasinHopping(Dynamics):
         self.optimizer_logfile = optimizer_logfile
         self.lm_trajectory = local_minima_trajectory
         if isinstance(local_minima_trajectory, str):
-            self.lm_trajectory = Trajectory(local_minima_trajectory,
-                                            'w', atoms)
+            self.lm_trajectory = self.closelater(
+                Trajectory(local_minima_trajectory, 'w', atoms))
 
         Dynamics.__init__(self, atoms, logfile, trajectory)
         self.initialize()
@@ -133,9 +133,9 @@ class BasinHopping(Dynamics):
             self.positions = positions
             self.atoms.set_positions(positions)
 
-            opt = self.optimizer(self.atoms,
-                                 logfile=self.optimizer_logfile)
-            opt.run(fmax=self.fmax)
+            with self.optimizer(self.atoms,
+                                logfile=self.optimizer_logfile) as opt:
+                opt.run(fmax=self.fmax)
             if self.lm_trajectory is not None:
                 self.lm_trajectory.write(self.atoms)
 

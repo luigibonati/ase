@@ -55,12 +55,6 @@ class BFGS(Optimizer):
 
         Optimizer.__init__(self, atoms, restart, logfile, trajectory, master)
 
-    def todict(self):
-        d = Optimizer.todict(self)
-        if hasattr(self, 'maxstep'):
-            d.update(maxstep=self.maxstep)
-        return d
-
     def initialize(self):
         # initial hessian
         self.H0 = np.eye(3 * len(self.atoms)) * self.alpha

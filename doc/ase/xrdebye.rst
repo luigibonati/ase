@@ -52,6 +52,7 @@ The considered system is a nanoparticle of silver which is built using
 selected to produce approximately 2 nm sized particle::
 
   from ase.cluster.cubic import FaceCenteredCubic
+  from ase.utils.xrdebye import XrDebye
   import numpy as np
 
   surfaces = [(1, 0, 0), (1, 1, 0), (1, 1, 1)]

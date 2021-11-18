@@ -32,19 +32,19 @@ def test_curvature1(testdir):
     atoms.set_constraint(FixAtoms(indices=[0]))
     atoms.set_velocities([[0, 0, 0], [0, 1, 0]])
 
-    dyn = ContourExploration(atoms,
-                             maxstep=1.5,
-                             parallel_drift=0.0,
-                             angle_limit=30,
-                             trajectory=name + '.traj',
-                             logfile=name + '.log',
-                             )
-
-    print("Target Radius (1/curvature) {: .6f} Ang".format(radius))
-    for i in range(5):
-        dyn.run(30)
-        print('Radius (1/curvature) {: .6f} Ang'.format(1 / dyn.curvature))
-        assert radius == pytest.approx(1.0 / dyn.curvature, abs=2e-3)
+    with ContourExploration(
+            atoms,
+            maxstep=1.5,
+            parallel_drift=0.0,
+            angle_limit=30,
+            trajectory=name + '.traj',
+            logfile=name + '.log',
+    ) as dyn:
+        print("Target Radius (1/curvature) {: .6f} Ang".format(radius))
+        for i in range(5):
+            dyn.run(30)
+            print('Radius (1/curvature) {: .6f} Ang'.format(1 / dyn.curvature))
+            assert radius == pytest.approx(1.0 / dyn.curvature, abs=2e-3)
 
 
 def test_curvature2(testdir):
@@ -58,16 +58,16 @@ def test_curvature2(testdir):
 
     atoms.set_velocities([[0, -1, 0], [0, 1, 0]])
 
-    dyn = ContourExploration(atoms,
-                             maxstep=1.0,
-                             parallel_drift=0.0,
-                             angle_limit=30,
-                             trajectory=name + '.traj',
-                             logfile=name + '.log',
-                             )
-
-    print("Target Radius (1/curvature) {: .6f} Ang".format(radius))
-    for i in range(5):
-        dyn.run(30)
-        print('Radius (1/curvature) {: .6f} Ang'.format(1 / dyn.curvature))
-        assert radius == pytest.approx(1.0 / dyn.curvature, abs=2e-3)
+    with ContourExploration(
+            atoms,
+            maxstep=1.0,
+            parallel_drift=0.0,
+            angle_limit=30,
+            trajectory=name + '.traj',
+            logfile=name + '.log',
+    ) as dyn:
+        print("Target Radius (1/curvature) {: .6f} Ang".format(radius))
+        for i in range(5):
+            dyn.run(30)
+            print('Radius (1/curvature) {: .6f} Ang'.format(1 / dyn.curvature))
+            assert radius == pytest.approx(1.0 / dyn.curvature, abs=2e-3)

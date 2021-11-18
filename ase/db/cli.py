@@ -120,6 +120,18 @@ class CLICommand:
         main(args)
 
 
+def count_keys(db, query):
+    keys = defaultdict(int)
+    for row in db.select(query):
+        for key in row._keys:
+            keys[key] += 1
+
+    n = max(len(key) for key in keys) + 1
+    for key, number in keys.items():
+        print('{:{}} {}'.format(key + ':', n, number))
+    return
+
+
 def main(args):
     verbosity = 1 - args.quiet + args.verbose
     query = ','.join(args.query)
@@ -153,14 +165,7 @@ def main(args):
         return
 
     if args.show_keys:
-        keys = defaultdict(int)
-        for row in db.select(query):
-            for key in row._keys:
-                keys[key] += 1
-
-        n = max(len(key) for key in keys) + 1
-        for key, number in keys.items():
-            print('{:{}} {}'.format(key + ':', n, number))
+        count_keys(db, query)
         return
 
     if args.show_values:
@@ -317,7 +322,7 @@ def main(args):
                 plots[name].append([x] + [row.get(key) for key in keys[1:]])
         import matplotlib.pyplot as plt
         for name, plot in plots.items():
-            xyy = zip(*plot)
+            xyy = list(zip(*plot))
             x = xyy[0]
             for y, key in zip(xyy[1:], keys[1:]):
                 plt.plot(x, y, label=name + ':' + key)

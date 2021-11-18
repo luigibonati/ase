@@ -58,10 +58,10 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     # XXX below stuff only valid for TDDFT excitation stuff
     def save_ov_nn(self, ov_nn):
-        np.save(self.name + '.ov', ov_nn)
+        np.save(Path(self.vib.exname) / (self.name + '.ov'), ov_nn)
 
     def load_ov_nn(self):
-        return np.load(self.name + '.ov.npy')
+        return np.load(Path(self.vib.exname) / (self.name + '.ov.npy'))
 
     @property
     def _exname(self):
@@ -69,7 +69,7 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     def calculate_and_save_static_polarizability(self, atoms):
         exobj = self.vib._new_exobj()
-        excitation_data = exobj.calculate(atoms)
+        excitation_data = exobj(atoms)
         np.savetxt(self._exname, excitation_data)
 
     def load_static_polarizability(self):
@@ -421,14 +421,13 @@ Please remove them and recalculate or run \
             energies = self.get_energies(method=method, direction=direction)
 
         summary_lines = VibrationsData._tabulate_from_energies(energies)
+        log_text = '\n'.join(summary_lines) + '\n'
 
-        if log is not None:
-            for line in summary_lines:
-                print(line, file=log)
-
-        elif isinstance(log, str):
+        if isinstance(log, str):
             with paropen(log, 'a') as log_file:
-                log_file.write('\n'.join(summary_lines) + '\n')
+                log_file.write(log_text)
+        else:
+            log.write(log_text)
 
     def get_zero_point_energy(self, freq=None):
         if freq:
@@ -437,7 +436,7 @@ Please remove them and recalculate or run \
 
     def get_mode(self, n):
         """Get mode number ."""
-        return self.get_vibrations().get_modes()[n]
+        return self.get_vibrations().get_modes(all_atoms=True)[n]
 
     def write_mode(self, n=None, kT=units.kB * 300, nimages=30):
         """Write mode number n to trajectory file. If n is not specified,
@@ -449,7 +448,7 @@ Please remove them and recalculate or run \
             return
 
         else:
-            n = n % len(self.get_energies())
+            n %= len(self.get_energies())
 
         with ase.io.Trajectory('%s.%d.traj' % (self.name, n), 'w') as traj:
             for image in (self.get_vibrations()

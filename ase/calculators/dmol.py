@@ -131,20 +131,20 @@ class DMol3(FileIOCalculator):
         with open(self.label + '.input', 'w') as fd:
             self._write_input_file(fd)
 
-    def _write_input_file(self, f):
-        f.write('%-32s %s\n' % ('calculate', 'gradient'))
+    def _write_input_file(self, fd):
+        fd.write('%-32s %s\n' % ('calculate', 'gradient'))
 
         # if no key about eigs
-        f.write('%-32s %s\n' % ('print', 'eigval_last_it'))
+        fd.write('%-32s %s\n' % ('print', 'eigval_last_it'))
 
         for key, value in self.parameters.items():
             if isinstance(value, str):
-                f.write('%-32s %s\n' % (key, value))
+                fd.write('%-32s %s\n' % (key, value))
             elif isinstance(value, (list, tuple)):
                 for val in value:
-                    f.write('%-32s %s\n' % (key, val))
+                    fd.write('%-32s %s\n' % (key, val))
             else:
-                f.write('%-32s %r\n' % (key, value))
+                fd.write('%-32s %r\n' % (key, value))
 
     def read(self, label):
         FileIOCalculator.read(self, label)

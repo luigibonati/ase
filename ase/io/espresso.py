@@ -319,7 +319,12 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
 
         for bands_index in indexes[_PW_BANDS] + indexes[_PW_BANDSTRUCTURE]:
             if image_index < bands_index < next_index:
-                bands_index += 2
+                bands_index += 1
+                # skip over the lines with DFT+U occupation matrices
+                if 'enter write_ns' in pwo_lines[bands_index]:
+                    while 'exit write_ns' not in pwo_lines[bands_index]:
+                        bands_index += 1
+                bands_index += 1
 
                 if pwo_lines[bands_index].strip() == kpoints_warning:
                     continue
@@ -1528,6 +1533,10 @@ def kspacing_to_grid(atoms, spacing, calculated_spacing=None):
     kpoint_grid = [int(r_x / spacing) + 1,
                    int(r_y / spacing) + 1,
                    int(r_z / spacing) + 1]
+
+    for i, _ in enumerate(kpoint_grid):
+        if not atoms.pbc[i]:
+            kpoint_grid[i] = 1
 
     if calculated_spacing is not None:
         calculated_spacing[:] = [r_x / kpoint_grid[0],
