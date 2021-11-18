@@ -131,12 +131,12 @@ class BFGSClimbFixInternals(BFGS):
                    self.targetvalue))
 
     def setup_optB(self):
-        #if self.autolog:
-        #    logfilename = '/optB_{}.log'.format(self.targetvalue)
-        #    self.optB_kwargs['logfile'] = logfilename
-        #if self.autotraj:
-        #    trajfilename = '/optB_{}.traj'.format(self.targetvalue)
-        #    self.optB_kwargs['trajectory'] = trajfilename
+        if self.autolog:
+            logfilename = f'optB_{self.targetvalue}.log'
+            self.optB_kwargs['logfile'] = logfilename
+        if self.autotraj:
+            trajfilename = f'optB_{self.targetvalue}.traj'
+            self.optB_kwargs['trajectory'] = trajfilename
         optB = self.optB(self.atoms, **self.optB_kwargs)
         return optB
 
