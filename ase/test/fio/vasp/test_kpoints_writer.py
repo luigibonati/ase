@@ -12,27 +12,39 @@ def check_write_kpoints_file(parameters, expected_output):
 
 
 def test_kpoints_fully_automatic_mode():
-    parameters = {"Auto": 10}
     expected_output = """KPOINTS created by Atomic Simulation Environment
 0
 Auto
 10"""
+    parameters = {"Auto": 10}
+    check_write_kpoints_file(parameters, expected_output)
+    parameters = {"AUTO": 10}
+    check_write_kpoints_file(parameters, expected_output)
+    parameters = {"auto": 10}
     check_write_kpoints_file(parameters, expected_output)
 
 
 def test_kpoints_fully_automatic_mode():
-    parameters = {"Gamma": [4, 4, 4]}
     expected_output = """KPOINTS created by Atomic Simulation Environment
 0
 Gamma
 4 4 4"""
+    parameters = {"Gamma": [4, 4, 4]}
+    check_write_kpoints_file(parameters, expected_output)
+    parameters = {"gamma": [4, 4, 4]}
+    check_write_kpoints_file(parameters, expected_output)
+    parameters = {"GAMMA": [4, 4, 4]}
     check_write_kpoints_file(parameters, expected_output)
 
 
 def test_kpoints_fully_automatic_mode():
-    parameters = {"Monkhorst": [4, 4, 4]}
     expected_output = """KPOINTS created by Atomic Simulation Environment
 0
 Monkhorst
 4 4 4"""
+    parameters = {"Monkhorst": [4, 4, 4]}
+    check_write_kpoints_file(parameters, expected_output)
+    parameters = {"monkhorst": [4, 4, 4]}
+    check_write_kpoints_file(parameters, expected_output)
+    parameters = {"MONKHORST": [4, 4, 4]}
     check_write_kpoints_file(parameters, expected_output)
