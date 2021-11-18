@@ -1,13 +1,46 @@
-def test_orca():
-    from ase.optimize import BFGS
-    from ase.atoms import Atoms
-    from ase.calculators.orca import ORCA
+import pytest
+import re
+from ase.atoms import Atoms
+from ase.optimize import BFGS
 
+calc = pytest.mark.calculator
+
+# put the unit tests here
+
+
+@pytest.fixture
+def txt1():
+    return '               Program Version 4.1.2  - RELEASE  -'
+
+
+@pytest.fixture
+def ref1():
+    return '4.1.2'
+
+
+def test_orca_version_from_string(txt1, ref1):
+    from ase.calculators.orca import get_version_from_orca_header
+
+    version = get_version_from_orca_header(txt1)
+    assert version == ref1
+
+
+def test_orca_version_from_executable():
+    from ase.calculators.orca import orca_version_from_executable
+
+    # only check the format to be compatible with future versions
+    version_regexp = re.compile(r'\d+.\d+.\d+')
+    version = orca_version_from_executable("orca")
+
+    assert version_regexp.match(version)
+
+
+@calc('orca')
+def test_ohh(factory):
     atoms = Atoms('OHH',
                   positions=[(0, 0, 0), (1, 0, 0), (0, 1, 0)])
 
-    atoms.calc = ORCA(label='water',
-                      orcasimpleinput='BLYP def2-SVP')
+    atoms.calc = factory.calc(label='water', orcasimpleinput='BLYP def2-SVP')
 
     with BFGS(atoms) as opt:
         opt.run(fmax=0.05)

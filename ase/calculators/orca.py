@@ -8,6 +8,17 @@ from ase.io.orca import write_orca
 from ase.calculators.calculator import FileIOCalculator, Parameters, ReadError
 
 
+def get_version_from_orca_header(orca_header):
+    match = re.search(r'Program Version (\S+)', orca_header, re.M)
+    return match.group(1)
+
+
+def orca_version_from_executable(executable):
+    from ase.calculators.genericfileio import read_stdout
+    stdout = read_stdout([executable, "does_not_exist"])
+    return get_version_from_orca_header(stdout)
+
+
 class ORCA(FileIOCalculator):
     implemented_properties = ['energy', 'forces']
 
