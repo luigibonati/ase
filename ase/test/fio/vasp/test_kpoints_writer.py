@@ -61,8 +61,17 @@ Reciprocal
 0.5 0.75 0.25
 0.5 0.75 0.25
 0 0 0"""
-    parameters = {"Line": 40,
-                  "reciprocal" :[[0, 0, 0,],[0.5, 0.5, 0],[0.5, 0.5, 0,],[0.5, 0.75, 0.25],[0.5, 0.75, 0.25],[0, 0, 0]] }
+    parameters = {
+        "Line": 40,
+        "reciprocal": [
+            [0, 0, 0],
+            [0.5, 0.5, 0],
+            [0.5, 0.5, 0],
+            [0.5, 0.75, 0.25],
+            [0.5, 0.75, 0.25],
+            [0, 0, 0],
+        ],
+    }
     check_write_kpoints_file(parameters, expected_output)
 
 
@@ -77,6 +86,41 @@ Cartesian
 0.5 0.75 0.25
 0.5 0.75 0.25
 0 0 0"""
-    parameters = {"Line": 40,
-                  "CaRTESIAN" :[[0, 0, 0,],[0.5, 0.5, 0],[0.5, 0.5, 0,],[0.5, 0.75, 0.25],[0.5, 0.75, 0.25],[0, 0, 0]] }
+    parameters = {
+        "Line": 40,
+        "CaRTESIAN": [
+            [0, 0, 0],
+            [0.5, 0.5, 0],
+            [0.5, 0.5, 0],
+            [0.5, 0.75, 0.25],
+            [0.5, 0.75, 0.25],
+            [0, 0, 0],
+        ],
+    }
+    check_write_kpoints_file(parameters, expected_output)
+
+
+def test_kpoints_explicit_reciprocal_mode():
+    expected_output = """KPOINTS created by Atomic Simulation Environment
+4
+Reciprocal
+0 0 0
+0 0 0.5
+0 0.5 0.5
+0.5 0.5 0.5"""
+    coordinates = [[0, 0, 0], [0, 0, 0.5], [0, 0.5, 0.5], [0.5, 0.5, 0.5]]
+    parameters = {"Reciprocal": coordinates}
+    check_write_kpoints_file(parameters, expected_output)
+
+
+def test_kpoints_explicit_cartesian_mode():
+    expected_output = """KPOINTS created by Atomic Simulation Environment
+4
+Cartesian
+0 0 0
+0 0 0.5
+0 0.5 0.5
+0.5 0.5 0.5"""
+    coordinates = [[0, 0, 0], [0, 0, 0.5], [0, 0.5, 0.5], [0.5, 0.5, 0.5]]
+    parameters = {"Cartesian": coordinates}
     check_write_kpoints_file(parameters, expected_output)

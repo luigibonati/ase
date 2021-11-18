@@ -1,20 +1,20 @@
 def write_kpoints(parameters):
+    num_kpoints = 0
     for mode, value in parameters.items():
         mode = mode.capitalize()
         if mode == "Auto":
-            num_kpoints = 0
             kpoints = value
         elif mode in ("Gamma", "Monkhorst"):
-            num_kpoints = 0
             kpoints = " ".join(str(x) for x in value)
-        elif mode == 'Line':
+        elif mode == "Line":
             num_kpoints = value
         elif mode in ("Reciprocal", "Cartesian"):
-            kpoints = []
-            for x in value:
-                kpoints.append(" ".join(str(y) for y in x))
+            if num_kpoints == 0:
+                num_kpoints = len(value)
+            else:
+                mode = "Line\n" + mode
+            kpoints = [" ".join(str(x) for x in kpt) for kpt in value]
             kpoints = "\n".join(x for x in kpoints)
-            mode = "Line\n" + mode
         else:
             raise NotImplementedError
     kpoints_string = f"""KPOINTS created by Atomic Simulation Environment
