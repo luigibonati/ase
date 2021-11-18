@@ -10,12 +10,15 @@ class _State:
 
 
 def write_kpoints(parameters):
-    state = _State()
-    for item in parameters.items():
-        state = update_state(state, *item)
-    kpoint_lines = list(prepare_lines(state))
+    if isinstance(parameters,str):
+        kpoints_str = parameters
+    else:
+        state = _State()
+        for item in parameters.items():
+            state = update_state(state, *item)
+        kpoints_str = "\n".join(prepare_lines(state))
     with open("KPOINTS", "w") as kpoints:
-        kpoints.write("\n".join(kpoint_lines))
+        kpoints.write(kpoints_str)
 
 
 def update_state(state, key, value):

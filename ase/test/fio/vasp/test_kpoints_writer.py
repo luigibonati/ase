@@ -150,3 +150,19 @@ Cartesian
     coordinates = [[0, 0, 0], [0, 0, 0.5], [0, 0.5, 0.5], [0.5, 0.5, 0.5]]
     parameters = {"Cartesian": coordinates}
     check_write_kpoints_file(parameters, expected_output)
+
+
+def test_kpoints_explicit_str_file():
+    expected_output = """KPOINTS created by Atomic Simulation Environment
+4
+Cartesian
+0 0 0
+0 0 0.5
+0 0.5 0.5
+0.5 0.5 0.5"""
+    check_write_kpoints_file(expected_output, expected_output)
+
+
+
+
+
