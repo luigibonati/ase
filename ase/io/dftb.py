@@ -356,8 +356,7 @@ def read_eigenvalues(lines):
     return eigenvalues
 
 def read_stress(lines):
-    """DOC"""
-    # stress stuff begins
+    """Read stress from dftb output file (results.tag)."""
     sstring = 'stress'
     have_stress = False
     stress = list()
