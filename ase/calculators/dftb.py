@@ -59,7 +59,9 @@ class DftbTemplate(CalculatorTemplate):
             io.prepare_dftb_input(
                 outfile=infile,
                 directory=directory,
-                atoms=atoms, parameters=parameters)
+                atoms=atoms,
+                properties=properties,
+                parameters=parameters)
 
     def read_results(self, directory):
         return io.read_dftb_outputs(directory, self._label)

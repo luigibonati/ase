@@ -5,7 +5,7 @@ from ase.utils import reader, writer
 from ase.units import Hartree, Bohr
 
 
-def prepare_dftb_input(outfile, atoms, parameters, directory):
+def prepare_dftb_input(outfile, atoms, parameters, properties, directory):
     """ Write the innput file for the dftb+ calculation.
         Geometry is taken always from the file 'geo_end.gen'.
     """
@@ -22,7 +22,10 @@ def prepare_dftb_input(outfile, atoms, parameters, directory):
     params = parameters.copy()
     slako_dir = params.pop('slako_dir') if 'slako_dir' in params else ''
     pcpot = params.pop('pcpot') if 'pcpot' in params else None
-    do_forces = params.pop('do_forces') if 'do_forces' in params else True  # TODO: currently do_forces is basically hardcoded to True!
+    do_forces = False
+    if properties is not None:
+        if 'forces' in properties or 'stress' in properties:
+            do_forces = True
     kpts = params.pop('kpts') if 'kpts' in params else None
     comamnd = params.pop('command') # TODO: where does 'command' actually come from
     params.update(dict(
