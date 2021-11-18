@@ -10,9 +10,18 @@ def check_write_kpoints_file(parameters,expected_output):
         kpoints.write.assert_called_once_with(expected_output)
  
 def test_kpoints_fully_automatic_mode():
-    parameters = {"kpoints" : 10}
+    parameters = {"Auto" : 10}
     expected_output = """KPOINTS created by Atomic Simulation Environment
 0
 Auto
 10"""
+    check_write_kpoints_file(parameters,expected_output) 
+
+
+def test_kpoints_fully_automatic_mode():
+    parameters = {"Gamma" : [4,4,4]}
+    expected_output = """KPOINTS created by Atomic Simulation Environment
+0
+Gamma
+4 4 4"""
     check_write_kpoints_file(parameters,expected_output) 
