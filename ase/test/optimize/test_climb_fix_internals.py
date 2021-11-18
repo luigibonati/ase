@@ -1,9 +1,9 @@
+import numpy as np
 from ase.build import fcc100, add_adsorbate
 from ase.constraints import FixAtoms, FixInternals
 from ase.calculators.emt import EMT
 from ase.optimize.climbfixinternals import BFGSClimbFixInternals
 from ase.vibrations import Vibrations
-import numpy as np
 
 
 def setup_atoms():
@@ -15,7 +15,7 @@ def setup_atoms():
     return atoms
 
 
-def test_climb_fix_internals():
+def test_climb_fix_internals(testdir):
     """Climb along the constrained bondcombo coordinate while optimizing the
     remaining degrees of freedom after each climbing step.
     For the definition of constrained internal coordinates see the
@@ -30,13 +30,13 @@ def test_climb_fix_internals():
     atoms.set_constraint([FixInternals(bondcombos=[bondcombo])] + atoms.constraints)
 
     # Optimizer for transition state search along reaction coordinate
-    with BFGSClimbFixInternals(atoms, climb_coordinate=reaction_coord) as opt:
-        opt.run(fmax=0.05)  # Converge to a saddle point
+    opt = BFGSClimbFixInternals(atoms, climb_coordinate=reaction_coord)
+    opt.run(fmax=0.05)  # Converge to a saddle point
 
     # Validate transition state by one imaginary vibrational mode
-    with Vibrations(atoms, indices=[4]) as vib:
-        vib.run()
-        assert ((np.imag(vib.get_energies()) > 0) == [True, False, False]).all()
+    vib = Vibrations(atoms, indices=[4])
+    vib.run()
+    assert ((np.imag(vib.get_energies()) > 0) == [True, False, False]).all()
 # end example for documentation
 
 
