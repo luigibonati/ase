@@ -6,7 +6,6 @@ POSCAR, CONTCAR
 """
 import numpy as np
 import re
-import numpy as np
 from ase import Atoms
 from ase.utils import reader, writer
 from ase.io import ParseError
@@ -29,6 +28,11 @@ def read_vasp_structure(filename='CONTCAR'):
     from ase.data import chemical_symbols
 
     fd = filename
+    
+    fillist = fd.readlines()
+    
+    fd.seek(0)
+    
     # The first line is in principle a comment line, however in VASP
     # 4.x a common convention is to have it contain the atom symbols,
     # eg. "Ag Ge" in the same order as later in the file (and POTCAR
@@ -36,8 +40,9 @@ def read_vasp_structure(filename='CONTCAR'):
     # is found on the fifth line. Thus we save the first line and use
     # it in case we later detect that we're reading a VASP 4.x format
     # file.
+    
     line1 = fd.readline()
-
+    
     lattice_constant = float(fd.readline().split()[0])
 
     # Now the lattice vectors
@@ -87,14 +92,27 @@ def read_vasp_structure(filename='CONTCAR'):
                 pass
         # Now the list of chemical symbols atomtypes must be formed.
         # For example: atomtypes = ['Pd', 'C', 'O']
-
+        
         numsyms = len(numofatoms)
         if len(atomtypes) < numsyms:
             # First line in POSCAR/CONTCAR didn't contain enough symbols.
-
+            
+            #Check for AFLOW style POSCAR file.
+            
+            if len(fillist[7].split())==4:   
+                try:
+                    atomtypes=[]
+                    for i in range(7, len(fillist)):
+                        atomtypes.extend(list(Formula(fillist[i].split()[3])))
+                    atomtypes = list(dict.fromkeys(atomtypes))
+                except ValueError:
+                    # print(atomtype, e, 'is comment')
+                    pass
+                
+            
             # Sometimes the first line in POSCAR/CONTCAR is of the form
             # "CoP3_In-3.pos". Check for this case and extract atom types
-            if len(atomtypes) == 1 and '_' in atomtypes[0]:
+            elif len(atomtypes) == 1 and '_' in atomtypes[0]:
                 atomtypes = get_atomtypes_from_formula(atomtypes[0])
             else:
                 atomtypes = atomtypes_outpot(fd.name, numsyms)
@@ -247,7 +265,7 @@ def get_atomtypes_from_formula(formula):
 def write_vasp_structure(filename,
                          atoms,
                          direct=False,
-                         sort=None,
+                         sort=True,
                          symbol_count=None,
                          vasp5=True,
                          ignore_constraints=False,

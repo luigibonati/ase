@@ -4,7 +4,7 @@ from ase.build import bulk
 from ase.calculators.calculator import compare_atoms
 from ase.io.vasp_parsers.vasp_structure_io import (read_vasp_structure,
                                                    write_vasp_structure)
-
+import itertools
 @pytest.fixture
 def atoms():
     _atoms = bulk('NaCl', crystalstructure='rocksalt', a=4.1, cubic=True)
@@ -32,9 +32,8 @@ def test_write_vasp5(atoms, filename, kwargs):
     # Test the 5th line, which should be the symbols
     assert lines[5].strip().split() == list(atoms.symbols)
 
-
 @pytest.mark.parametrize('filename', ['POSCAR', 'CONTCAR'])
-@pytest.mark.parametrize('kwargs', [{'direct':[True, False]}, {'sort':[True,False]}, {'vasp5': True}, {'ignore_constraints':[True, False]},{'wrap': [True, False]}])
+@pytest.mark.parametrize('kwargs', [{}, {'vasp5': True}])
 def test_write_poscar(atoms, filename, kwargs):
     write_vasp_structure(filename, atoms=atoms, **kwargs)
     res = ['Cl Na\n',
@@ -57,7 +56,4 @@ def test_write_poscar(atoms, filename, kwargs):
         for i, line in enumerate(fil.readlines()):
             for j, elem in enumerate(line.split()):
                 assert elem == res[i].split()[j]
-    with open(filename) as fil:
-        pass
-        #assert fil.read() == res
     read_vasp_structure(filename)
