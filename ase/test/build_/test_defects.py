@@ -1,3 +1,5 @@
+### TODO: test interstitial creation and adsorption site creation
+
 def test_spg():
     from ase.build import bulk
     from ase.build.defects import get_spg_cell
@@ -73,3 +75,18 @@ def test_create_substitutional():
             for sym in symbols:
                 assert sym in element_list
 
+
+def test_create_interstitials():
+    from ase.build import mx2
+    from ase.build.defects import DefectBuilder
+
+    MoS2 = mx2(formula='MoS2', kind='2H', vacuum=10)
+    builder = DefectBuilder(MoS2)
+
+    unique, equivalent = builder.create_interstitials()
+    counter = 0
+    for symbol in unique.get_chemical_symbols():
+        if symbol == 'X':
+            counter += 1
+
+    assert counter == 11
