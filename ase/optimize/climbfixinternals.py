@@ -120,25 +120,13 @@ class BFGSClimbFixInternals(BFGS):
          self.targetvalue) = self.load()
 
     def step(self):
-        optB = self.setup_optB()
-
-        self.relax_remaining_dof(optB)  # optimization with optimizer 'B'
+        self.relax_remaining_dof()  # optimization with optimizer 'B'
 
         pos, dpos = self.pretend2climb()  # with optimizer 'A'
         self.update_positions_and_targetvalue(pos, dpos)  # obey other constr.
 
         self.dump((self.H, self.pos0, self.forces0, self.maxstep,
                    self.targetvalue))
-
-    def setup_optB(self):
-        if self.autolog:
-            logfilename = f'optB_{self.targetvalue}.log'
-            self.optB_kwargs['logfile'] = logfilename
-        if self.autotraj:
-            trajfilename = f'optB_{self.targetvalue}.traj'
-            self.optB_kwargs['trajectory'] = trajfilename
-        optB = self.optB(self.atoms, **self.optB_kwargs)
-        return optB
 
     def pretend2climb(self):
         """Get directions for climbing and climb with optimizer 'A'."""
@@ -155,12 +143,18 @@ class BFGSClimbFixInternals(BFGS):
         self.constr2climb.targetvalue = self.targetvalue     # adjust positions
         self.atoms.set_positions(self.atoms.get_positions())   # to targetvalue
 
-    def relax_remaining_dof(self, optB):
+    def relax_remaining_dof(self):
         """Optimize remaining degrees of freedom with optimizer 'B'."""
+        if self.autolog:
+            self.optB_kwargs['logfile'] = f'optB_{self.targetvalue}.log'
+        if self.autotraj:
+            self.optB_kwargs['trajectory'] = f'optB_{self.targetvalue}.traj'
         fmax = self.get_scaled_fmax()
-        optB.run(fmax)  # optimize with scaled fmax
-        if self.converged() and fmax > self.optB_fmax:
-            optB.run(self.optB_fmax)  # (final) optimization with desired fmax
+        with self.optB(self.atoms, **self.optB_kwargs) as opt:
+            opt.run(fmax)  # optimize with scaled fmax
+#        optB.logfile.close()
+            if self.converged() and fmax > self.optB_fmax:
+                opt.run(self.optB_fmax)  # (final) optimization with desired fmax
 
     def get_scaled_fmax(self):
         """Return the adaptive 'fmax' based on the estimated distance to the
