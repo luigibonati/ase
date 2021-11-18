@@ -1,5 +1,6 @@
 from ase.io.vasp_parsers.kpoints_writer import write_kpoints
 from unittest.mock import mock_open, patch
+from collections import OrderedDict
 
 
 def check_write_kpoints_file(parameters, expected_output):
@@ -96,6 +97,31 @@ Cartesian
             [0.5, 0.75, 0.25],
             [0, 0, 0],
         ],
+    }
+    check_write_kpoints_file(parameters, expected_output)
+
+
+def test_kpoints_Line_mode_incorrect_order():
+    expected_output = """KPOINTS created by Atomic Simulation Environment
+40
+Line
+Reciprocal
+0 0 0
+0.5 0.5 0
+0.5 0.5 0
+0.5 0.75 0.25
+0.5 0.75 0.25
+0 0 0"""
+    parameters = {
+        "reciprocal": [
+            [0, 0, 0],
+            [0.5, 0.5, 0],
+            [0.5, 0.5, 0],
+            [0.5, 0.75, 0.25],
+            [0.5, 0.75, 0.25],
+            [0, 0, 0],
+        ],
+        "Line": 40,
     }
     check_write_kpoints_file(parameters, expected_output)
 
