@@ -27,6 +27,20 @@ def get_spg_cell(atoms):
             atoms.get_atomic_numbers())
 
 
+def has_same_kind(struc_1, struc_2):
+    element_list_1 = struc_1.get_chemical_symbols()
+    element_list_1.sort()
+    element_list_2 = struc_2.get_chemical_symbols()
+    element_list_2.sort()
+    if len(element_list_1) != len(element_list_2):
+        return False
+    for i, element in enumerate(element_list_1):
+        if element_list_1[i] != element_list_2[i]:
+            return False
+
+    return True
+
+
 def get_equivalent_atoms(spg_cell):
     dataset = spg.get_symmetry_dataset(spg_cell)
 
@@ -336,18 +350,24 @@ class DefectBuilder():
         return new_struc
 
 
-    def get_top_layer(self):
+    def get_layer(self, kind='top'):
         atoms = self.get_primitive_structure()
         zs = []
         for i in range(len(atoms)):
             zs.append(atoms.get_positions()[i][2])
-        tops = []
+
+        if kind == 'top':
+            value = max(zs)
+        elif kind == 'bottom':
+            value = min(zs)
+
+        layer = []
         for i in range(len(zs)):
-            if zs[i] == max(zs):
-                tops.append(i)
-        positions = np.empty((len(tops), 3))
+            if zs[i] == value:
+                layer.append(i)
+        positions = np.empty((len(layer), 3))
         symbols = []
-        for j, i in enumerate(tops):
+        for j, i in enumerate(layer):
             symbol = atoms.get_chemical_symbols()[i]
             positions[j] = atoms.get_positions()[i]
             symbols.append(symbol)
@@ -370,10 +390,14 @@ class DefectBuilder():
         return un, struc
 
 
-    def create_adsorption_sites(self):
+    def create_adsorption_sites(self, layer='top'):
         assert self.get_dimension() == 2, "Adsorption site creation only for 2D materials"
 
-        atoms = self.get_top_layer()
+        atoms = self.get_layer(layer)
+        if layer == 'top':
+            z = 2
+        elif layer == 'bottom':
+            z = -2
         un, struc = self.create_interstitials(atoms)
         prim = self.get_primitive_structure()
         positions = prim.get_positions()
@@ -382,7 +406,7 @@ class DefectBuilder():
         for i, pos in enumerate(atoms.get_positions()):
             kind = atoms.get_chemical_symbols()[i]
             if not kind in occ_sites:
-                positions = np.append(positions, [pos + [0, 0, 2]], axis=0)
+                positions = np.append(positions, [pos + [0, 0, z]], axis=0)
                 symbols.append('X')
                 occ_sites.append(kind)
         cell = prim.get_cell()
@@ -403,7 +427,7 @@ class DefectBuilder():
             if un.get_chemical_symbols()[i] == 'X':
                 pos = un.get_positions()[i]
                 if j == index:
-                    positions = np.append(positions, [pos + [0, 0, 2]], axis=0)
+                    positions = np.append(positions, [pos + [0, 0, z]], axis=0)
                     symbols.append('X')
                 j += 1
 
@@ -427,29 +451,39 @@ class DefectBuilder():
     def get_adsorbate_structures(self, atoms=None, kindlist=None,
                                  sc=3, mechanism='chemisorption'):
         if atoms is None:
-            atoms = self.create_adsorption_sites()
+            atoms_top = self.create_adsorption_sites('top')
+            atoms_bottom = self.create_adsorption_sites('bottom')
+            if not has_same_kind(self.get_layer('top'),
+                                 self.get_layer('bottom')):
+                atoms_list = [atoms_top, atoms_bottom]
+                z_ranges = [np.arange(-2, 6, 0.1),
+                            np.arange(2, -6, -0.1)]
+            else:
+                atoms_list = [atoms_top]
+                z_ranges = [np.arange(-2, 6, 0.1)]
         if kindlist is None:
             kindlist = self.get_intrinsic_types()
 
         structures = []
-        primitive = self.get_primitive_structure()
-        for i in range(len(atoms)):
-            if atoms.get_chemical_symbols()[i] == 'X':
-                for kind in kindlist:
-                    structure = primitive.repeat((sc, sc, 1))
-                    positions = structure.get_positions()
-                    symbols = structure.get_chemical_symbols()
-                    cell = structure.get_cell()
-                    for z in np.arange(-2, 6, 0.1):
-                        pos = atoms.get_positions()[i] + [0, 0, z]
-                        if self.check_distance(primitive, pos, kind, mechanism):
-                            positions = np.append(positions, [pos], axis=0)
-                            symbols.append(kind)
-                            structures.append(Atoms(symbols=symbols,
-                                                    positions=positions,
-                                                    cell=cell,
-                                                    pbc=structure.get_pbc()))
-                            break
+        for j, atoms in enumerate(atoms_list):
+            primitive = self.get_primitive_structure()
+            for i in range(len(atoms)):
+                if atoms.get_chemical_symbols()[i] == 'X':
+                    for kind in kindlist:
+                        structure = primitive.repeat((sc, sc, 1))
+                        positions = structure.get_positions()
+                        symbols = structure.get_chemical_symbols()
+                        cell = structure.get_cell()
+                        for z in z_ranges[j]:
+                            pos = atoms.get_positions()[i] + [0, 0, z]
+                            if self.check_distance(primitive, pos, kind, mechanism):
+                                positions = np.append(positions, [pos], axis=0)
+                                symbols.append(kind)
+                                structures.append(Atoms(symbols=symbols,
+                                                        positions=positions,
+                                                        cell=cell,
+                                                        pbc=structure.get_pbc()))
+                                break
 
         return structures
 
