@@ -36,7 +36,7 @@ def test_write_vasp5(atoms, filename, kwargs):
 @pytest.mark.parametrize('filename', ['POSCAR', 'CONTCAR'])
 @pytest.mark.parametrize('kwargs', [{'direct':[True, False]}, {'sort':[True,False]}, {'vasp5': True}, {'ignore_constraints':[True, False]},{'wrap': [True, False]}])
 def test_write_poscar(atoms, filename, kwargs):
-    write_vasp_structure(filename, atoms=atoms, label=None, **kwargs)
+    write_vasp_structure(filename, atoms=atoms, **kwargs)
     res = ['Cl Na\n',
            '  1.0000000000000000\n',
            '    4.0999999999999996    0.0000000000000000    0.0000000000000000\n',
