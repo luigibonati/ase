@@ -152,7 +152,7 @@ class DefectBuilder():
 
 
     def get_kindlist(self, intrinsic=True, extrinsic=None):
-        atoms = self.get_input_structure().copy
+        atoms = self.get_input_structure().copy()
         defect_list = []
         if intrinsic:
             for i in range(len(atoms)):
@@ -167,7 +167,7 @@ class DefectBuilder():
         return defect_list
 
 
-    def create_antisites(self, intrinsic=True, extrinsic=None):
+    def create_substitutions(self, intrinsic=True, extrinsic=None):
         atoms = self.get_input_structure().copy()
         spg_host = self.setup_spg_cell()
         eq_pos = get_equivalent_atoms(spg_host)
@@ -249,8 +249,6 @@ class DefectBuilder():
         dataset = spg.get_symmetry_dataset(spg_cell, symprec=1e-2)
 
         return dataset
-
-
 
 
     def is_mapped(self, scaled_position, coordinate):
