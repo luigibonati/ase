@@ -42,7 +42,9 @@ class VaspTemplate(CalculatorTemplate):
         profile.run(directory, None, self.output_file)
 
     def read_results(self, directory) -> Mapping[str, Any]:
-        raise NotImplementedError
+        import py4vasp
+
+        calc = py4vasp.Calculation.from_path(directory)
 
 
 class Vasp(GenericFileIOCalculator):

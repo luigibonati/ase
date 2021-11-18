@@ -37,3 +37,11 @@ def test_execute():
     profile = MagicMock()
     template.execute("directory", profile)
     profile.run.assert_called_once_with("directory", None, "vasp.log")
+
+
+def test_read_results_from_p4vasp():
+    py4vasp = MagicMock()
+    with patch.dict("sys.modules", py4vasp=py4vasp):
+        template = VaspTemplate()
+        template.read_results("directory")
+        py4vasp.Calculation.from_path.assert_called_once_with("directory")
