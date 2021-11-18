@@ -11,7 +11,7 @@ def check_write_kpoints_file(parameters, expected_output):
         kpoints.write.assert_called_once_with(expected_output)
 
 
-def test_kpoints_fully_automatic_mode():
+def test_kpoints_Auto_mode():
     expected_output = """KPOINTS created by Atomic Simulation Environment
 0
 Auto
@@ -24,7 +24,7 @@ Auto
     check_write_kpoints_file(parameters, expected_output)
 
 
-def test_kpoints_fully_automatic_mode():
+def test_kpoints_Gamma_mode():
     expected_output = """KPOINTS created by Atomic Simulation Environment
 0
 Gamma
@@ -37,7 +37,7 @@ Gamma
     check_write_kpoints_file(parameters, expected_output)
 
 
-def test_kpoints_fully_automatic_mode():
+def test_kpoints_Monkhorst_mode():
     expected_output = """KPOINTS created by Atomic Simulation Environment
 0
 Monkhorst
