@@ -1,15 +1,10 @@
 """
 ASE Calculator for the exciting DFT code
 
-# TODO(Alex) File name is a place-holder
-# Profile = all things configurable on a machine basis
-# Query the version of exciting
-# Add the species default path
-# TODO(Alex) Extend, by adding path to species =>
-# Either need to copy them OR specify in input.xml
+TODO(Alex) File name is a place-holder
 """
 import ase
-from typing import Union, List, Optional
+from typing import Union, List
 from pathlib import Path
 
 from ase.calculators.genericfileio import (GenericFileIOCalculator, CalculatorTemplate)
@@ -23,57 +18,82 @@ class ExcitingInput:
     pass
 
 
+def query_exciting_version(query_exciting_version):
+    # TODO. Implement me
+    return 'None'
+
+
+class ExcitingProfile:
+    """
+    A profile defines all quantities that are configurable (variable)
+    for a given machine or platform.
+
+    TODO(Alex) Considered inheriting a runner but decided against it
+    TODO(Alex) USE THIS IN CALCULATOR
+    """
+    def __init__(self, exciting_root, species_path):
+        self.species_path = species_path
+        self.version = query_exciting_version(exciting_root)
+
+
 class ExcitingGroundStateTemplate(CalculatorTemplate):
     """
-    Template for Ground State Exciting Calculator
+    Template for Ground State Exciting Calculator,
+    requiring implementations for the methods defined in CalculatorTemplate.
     """
 
-    # TODO(Alex) Consider injecting our parsers here else use existing routines
-    name = 'exciting'
+    program_name = 'exciting'
+    # TODO(Alex) Add parser here
     parser = {'info.xml': lambda file_name: {}}
     output_names = list(parser)
     implemented_properties = ['energy', 'forces']
 
     def __init__(self):
-        # Pass some stuff I'm not convinced we need but maintain the API
-        super().__init__(self.name, self.implemented_properties)
+        """
+        Initialise with constant class attributes.
+        """
+        super().__init__(self.program_name, self.implemented_properties)
+        self.results = {}
 
     def write_input(self,
                     directory: Path,
                     atoms: ase.Atoms,
                     input_parameters: Union[dict, ExcitingInput],
-                    properties):
+                    properties: List[str]):
         """
-        TODO Compose this around free functions
-        TODO(Alex) Note, no idea what properties are.
+        TODO Implement
+
+        :param Path directory: Directory in which to run calculator.
+        :param ase.Atoms atoms: ASE atoms object.
+        :param Union[dict, ExcitingInput] input_parameters: exciting groundstate input parameters
+        :param List[str] properties: List of output properties.
         """
-        directory.mkdir(exist_ok=True, parents=True)
+        # directory.mkdir(exist_ok=True, parents=True)
         # Convert exciting inputs and ase.Atoms into an xml string
-        input_xml = 'Add functions to compose and return me'
+        # input_xml = 'Add functions to compose and return me'
         # Write the XML string to file
         return
 
-    # TODO(Alex) The generic calculate method call to execute should return SubprocessRunResults,
-    #            such that one can a) capture stdout cleanly and b) capture stderr, such that it can be
-    #            returned in results
-    @staticmethod
-    def execute(directory: str, exciting_calculation: ExcitingRunner) -> SubprocessRunResults:
+    def execute(self, directory, exciting_calculation: ExcitingRunner) -> SubprocessRunResults:
         """
         Given an exciting calculation profile, execute the calculation.
+        Method could be static, but maintaining API consistent with CalculatorTemplate
 
+        :param directory: Directory in which to execute the calculator
+        :param ExcitingRunner exciting_calculation: Generic `execute` expects a profile, however
+         it is simply used to execute the program, therefore we just pass an ExcitingRunner.
         :return SubprocessRunResults: Results of subprocess.run
         """
         return exciting_calculation.run(directory)
 
-    def read_results(self, directory: Path) -> dict:
+    def read_results(self, directory: Path):
         """
         Parse results from each ground state output file
         """
-        results = {}
         for file_name in self.output_names:
             full_file_path = directory / file_name
             result: dict = self.parser[file_name](full_file_path)
-            results.update(result)
+            self.results.update(result)
 
 
 class Exciting(GenericFileIOCalculator):
@@ -83,82 +103,64 @@ class Exciting(GenericFileIOCalculator):
     Only need to initialise, as the base class implements the calculate method.
 
     Must supply to the constructor:
-        * Calculator Template - Fine, just write wrappers over this
+        * template: CalculatorTemplate
+          Should write specialisation for each exciting method.
            i.e. class ExcitingGroundState(Exciting)
-               init(...atoms=None,..)
                  self.template = ExcitingGroundStateTemplate()
-                 self.atoms = atoms
-        * Runner: I think this should always be required
-        * exciting input parameters (minus structure/atoms)
-        * Run directory
 
-    To the calculate method:
-        * atoms (annoyingly cannot supply when initialising - see solution above)
-        * exciting_input_parameters via self
-        * profile (Binary runner) via self
-        * properties = None
-        * directory via self
+        * runner: ExcitingRunner: This should be a `profile` which is the machine-specific
+          settings (run command, species paths, etc), however in exciting's case, this doesn't
+          make sense. The species path is specified in the input file, and should therefore be
+          an attribute of ExcitingInput. The only other machine-specific setting is the BinaryRunner.
+          Furthermore, in GenericFileIOCalculator.calculate, profile is only used to provide a
+          run method. We therefore pass the BinaryRunner in the place of a profile.
+
+        * exciting_input ExcitingInput: exciting input parameters, including the species path
+          BUT minus the structure, which is defined in ASE's Atoms object.
+
+        * directory: Directory in which to run/execute the job.
+
+    To the calculate method args:
+        * atoms           ASE atoms object
+        * properties      Output properties, as defined in a CalculatorTemplate
+        * system_changes  ?
+
+    via self:
+        * directory      Directory in which to run/execute the job.
+        * template       Specialised exciting template, containing write_input, execute and read_results methods
+        * parameters     exciting_input. Can be defined as a class or Object. Responsibility
+                         of the specialised write method.
+
+    TODO(Alex) What methods do we need from our old calculator, and what exist in the base classes?
     """
 
     def __init__(self, *,
                  template: CalculatorTemplate,
                  runner: ExcitingRunner,
-                 parameters: ExcitingInput,
+                 exciting_input: ExcitingInput,
                  directory='./'):
+
         super().__init__(profile=runner,
                          template=template,
-                         parameters=parameters,
+                         parameters=exciting_input,
                          directory=directory
                          )
 
 
-
-inputs = {'rgkmax': 8, "kpts": (1,1,1)}
-runner = ExcitingRunner(['mpirun', '-np', '2'], 'exciting_binary')
-
-# Just conform to this
-# exciting_calc = ExcitingGroundState(inputs, runner)
-# exciting_calc.calculate(atoms)
-
-# results: dict = exciting_calc.results
-# forces = results['forces']
-# forces = exciting_calc.get_forces()
-
-
-# See what the atoms object contains:
-# exciting_calc.update_atoms(atoms)
-
-#
-
-
-
 class ExcitingGroundState(Exciting):
+    """
+    Exciting Ground State Calculator Class.
+    """
     def __init__(self,
                  runner: ExcitingRunner,
                  parameters: ExcitingInput,
                  directory='./'):
 
         template = ExcitingGroundStateTemplate()
-        super().__init__(template,
+        # TODO(Alex) What is the complaint here?
+        super().__init__(
+                         template,
                          runner,
                          parameters,
                          directory=directory)
-
-
-
-
-
-
-
-
-
-# How I envision it being called
-# run_settings = ExcitingRunner('exciting_mpiandsmp',
-#                               run_cmd = ['mpirun', '-np', '2'],
-#                               omp_num_threads = 2,
-#                               directory: './')
-#
-# gs_input = ExcitingInput(stuff, fill_defaults=False)
-# exciting_calculator = ExcitingGroundState(run_settings, gs_input, atoms=atoms)
-# results = exciting_calculator.calculate()
 
