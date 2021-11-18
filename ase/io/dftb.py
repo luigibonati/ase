@@ -19,13 +19,11 @@ def prepare_dftb_input(outfile, atoms, parameters, properties, directory):
     outfile.write('} \n')
     outfile.write(' \n')
 
-    # TODO: this is just a hack. Need to be cleaned up!
     params = parameters.copy()
 
     assert 'skt_path' in params.keys()
     slako_dir = params.pop('skt_path')
-
-    pcpot = params.pop('pcpot') if 'pcpot' in params else None  # TODO: What does this do, needed?
+    pcpot = params.pop('pcpot', None)
 
     do_forces = False
     if properties is not None:
