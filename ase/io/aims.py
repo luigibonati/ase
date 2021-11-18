@@ -3,11 +3,342 @@ import warnings
 
 import numpy as np
 
+from ase import Atoms, Atom
+from ase.calculators.singlepoint import SinglePointDFTCalculator
+from ase.constraints import FixAtoms, FixCartesian
 from ase.units import Ang, fs
 from ase.utils import reader, writer
 
 
 v_unit = Ang / (1000.0 * fs)
+
+
+class AimsOutError(IOError):
+    pass
+
+
+class AimsOutChunk:
+    def __init__(self, lines, n_atoms=None, constraints=None):
+        self.lines = lines
+        self._n_atoms = n_atoms
+        self.constraints = constraints
+        self._atoms = None
+        self._forces = None
+        self._stresses = None
+        self._stress = None
+        self._energy = None
+        self._free_energy = None
+        self._n_iter = None
+        self._magmom = None
+        self._E_f = None
+        self._dipole = None
+        self._is_md = None
+
+    def get_line_start(self, keys, line_start=0):
+        for line in self.lines:
+            line_start += 1
+            if any([key in line for key in keys]):
+                break
+        return line_start
+
+    def _parse_initial_atoms(self):
+        line_start = self.get_line_start(["| Number of atoms"]) - 1
+        self._n_atoms = int(self.lines[line_start].split()[5])
+
+        line_start = self.get_line_start(["| Unit cell:"])
+        if line_start < len(self.lines):
+            cell = [
+                [float(inp) for inp in line.split()[-3:]]
+                for line in self.lines[line_start : line_start + 3]
+            ]
+        else:
+            cell = None
+
+        atoms = Atoms()
+        line_start = self.get_line_start(["Atomic structure:"]) + 1
+        for line in self.lines[line_start : line_start + self._n_atoms]:
+            inp = line.split()
+            atoms.append(Atom(inp[3], (float(inp[4]), float(inp[5]), float(inp[6]))))
+
+        assert len(atoms) == self._n_atoms
+        line_start = self.get_line_start(["Found relaxation constraint for atom"])
+        fix = []
+        fix_cart = []
+        for line in self.lines[line_start:]:
+            xyz = [0, 0, 0]
+            ind = int(line.split()[5][:-1]) - 1
+            if "All coordinates fixed" in line:
+                if ind not in fix:
+                    fix.append(ind)
+            if "coordinate fixed" in line:
+                coord = line.split()[6]
+                if coord == "x":
+                    xyz[0] = 1
+                elif coord == "y":
+                    xyz[1] = 1
+                elif coord == "z":
+                    xyz[2] = 1
+                keep = True
+                for n, c in enumerate(fix_cart):
+                    if ind == c.a:
+                        keep = False
+                if keep:
+                    fix_cart.append(FixCartesian(ind, xyz))
+                else:
+                    fix_cart[n].mask[xyz.index(1)] = 0
+        if len(fix_cart) + len(fix) > 0:
+            if len(fix) > 0:
+                fix_cart.append(FixAtoms(indices=fix))
+
+            atoms.set_constraint(fix_cart)
+
+        # Get the initial geometries
+        self._is_md = len(self.lines) > self.get_line_start(
+            ["Complete information for previous time-step:"]
+        )
+        if self._is_md:
+            self._parse_atoms()
+        self._atoms = atoms
+
+    def _parse_atoms(self):
+
+        """parse structure information from aims output to Atoms object"""
+
+        start_keys = [
+            "Atomic structure (and velocities) as used in the preceding time step",
+            "Updated atomic structure",
+            "Final atomic structure",
+            "Atomic structure that was used in the preceding time step of the wrapper",
+        ]
+        line_start = self.get_line_start(start_keys)
+        cell = []
+        velocities = []
+        atoms = Atoms()
+        for line in self.lines[line_start:]:
+            if "lattice_vector   " in line:
+                cell.append([float(inp) for inp in line.split()[1:]])
+            elif "atom   " in line:
+                line_split = line.split()
+                atoms.append(
+                    Atom(line_split[4], tuple([float(inp) for inp in line_split[1:4]]))
+                )
+            elif "velocity   " in line:
+                velocities.append([float(inp) for inp in line.split()[1:]])
+
+        assert len(atoms) == self._n_atoms
+        assert (len(velocities) == self._n_atoms) or (len(velocities) == 0)
+        if len(cell) > 0:
+            atoms.set_cell(np.array(cell))
+        if len(velocities) > 0:
+            atoms.set_velocities(np.array(velocities))
+        atoms.set_constraint(self.constraints)
+
+        self._atoms = atoms
+
+    def _parse_forces(self):
+        """Parse the the forces from the output"""
+        line_start = self.get_line_start(["Total atomic forces"])
+        if line_start == len(self.lines):
+            return
+
+        self._forces = [
+            [float(inp) for inp in line.split()[-3:]]
+            for line in self.lines[line_start : line_start + self._n_atoms]
+        ]
+
+    def _parse_stresses(self):
+        """Parse the  the stresses from the output"""
+        line_start = self.get_line_start(
+            ["Per atom stress (eV) used for heat flux calculation"]
+        )
+        if line_start == len(self.lines):
+            return
+
+        line_start = self.get_line_start(["-------------"], line_start)
+        self._stresses = []
+        for line in self.lines[line_start : line_start + self._n_atoms]:
+            xx, yy, zz, xy, xz, yz = [float(d) for d in line.split()[2:8]]
+            self._stresses.append([xx, yy, zz, yz, xz, xy])
+
+        self._stresses = np.array(self._stresses)
+
+    def _parse_stress(self):
+        """Parse the  the stress from the output"""
+        from ase.stress import full_3x3_to_voigt_6_stress
+
+        line_start = self.get_line_start(
+            ["Analytical stress tensor - Symmetrized"]
+        )  # Offest to relevant lines
+        if line_start == len(self.lines):
+            return
+
+        self._stress = [
+            [float(inp) for inp in line.split()[2:5]]
+            for line in self.lines[line_start + 4 : line_start + 7]
+        ]
+        self._stress = full_3x3_to_voigt_6_stress(self._stress)
+
+    def _parse_energy(self):
+        """Parse the  the energy from the output"""
+        if np.any(self._atoms.pbc):
+            line = self.lines[-1 + self.get_line_start(["Total energy uncorrected"])]
+        else:
+            line = self.lines[-1 + self.get_line_start(["Total energy corrected"])]
+        self._energy = float(line.split()[5])
+
+    def _parse_free_energy(self):
+        """Parse the  the free_energy from the output"""
+        line = self.lines[
+            2 + self.get_line_start(["Energy and forces in a compact form"])
+        ]
+        self._free_energy = float(line.split()[5])
+
+    def _parse_number_of_iterations(self):
+        """Parse the  the number_of_iterations from the output"""
+        line = self.lines[
+            -1 + self.get_line_start(["| Number of self-consistency cycles"])
+        ]
+        self._n_iter = int(line.split(":")[-1].strip())
+
+    def _parse_magnetic_moment(self):
+        """Parse the  the magnetic_moment from the output"""
+        line_start = self.get_line_start(["N_up - N_down"])
+        if line_start == len(self.lines):
+            self._magmom = None
+        else:
+            line = self.lines[line_start - 1]
+            self._magmom = float(line.split(":")[-1].strip())
+
+    def _parse_fermi_level(self):
+        """Parse the  the fermi_level from the output"""
+        line_start = self.get_line_start(["| Chemical potential (Fermi level) in eV"])
+        if line_start == len(self.lines):
+            self._E_f = None
+        else:
+            line = self.lines[line_start - 1]
+            self._E_f = float(line.split(":")[-1].strip())
+
+    def _parse_dipole(self):
+        """Method that reads the electric dipole moment from the output file."""
+        line_start = self.get_line_start("Total dipole moment [eAng]")
+        if line_start == len(self.lines):
+            return
+
+        line = self.lines[line_start - 1]
+        self._dipole = np.array([float(inp) for inp in line.split()[6:9]])
+
+    @property
+    def atoms(self):
+        """Convert AimsOutChunk to Atoms object"""
+        if self._n_atoms is None and self._atoms is None:
+            self._parse_initial_atoms()
+        elif self._atoms is None:
+            self._parse_atoms()
+
+        self._atoms.calc = SinglePointDFTCalculator(
+            self._atoms,
+            energy=self.energy,
+            free_energy=self.free_energy,
+            forces=self.forces,
+            stress=self.stress,
+            stresses=self.stresses,
+            magmom=self.magmom,
+            dipole=self._dipole,
+        )
+        return self._atoms
+
+    @property
+    def results(self):
+        return {
+            "energy": self.energy,
+            "free_energy": self.free_energy,
+            "forces": self.forces,
+            "stress": self.stress,
+            "stresses": self.stresses,
+            "magmom": self.magmom,
+            "dipole": self._dipole,
+            "fermi_energy": self._E_f,
+            "n_iter": self.n_iter,
+        }
+
+    @property
+    def forces(self):
+        if self._forces is None:
+            self._parse_forces()
+        return self._forces
+
+    @property
+    def stresses(self):
+        if self._stresses is None:
+            self._parse_stresses()
+        return self._stresses
+
+    @property
+    def stress(self):
+        if self._stress is None:
+            self._parse_stress()
+        return self._stress
+
+    @property
+    def energy(self):
+        if self._energy is None:
+            self._parse_energy()
+        return self._energy
+
+    @property
+    def free_energy(self):
+        if self._free_energy is None:
+            self._parse_free_energy()
+        return self._free_energy
+
+    @property
+    def n_iter(self):
+        if self._n_iter is None:
+            self._parse_number_of_iterations()
+        return self._n_iter
+
+    @property
+    def magmom(self):
+        if self._magmom is None:
+            self._parse_magnetic_moment()
+        return self._magmom
+
+    @property
+    def E_f(self):
+        if self._E_f is None:
+            self._parse_E_f()
+        return self._E_f
+
+    @property
+    def dipole(self):
+        if self._dipole is None:
+            self._parse_dipole()
+        return self._dipole
+
+    @property
+    def n_atoms(self):
+        if self._n_atoms is None:
+            self._parse_initial_atoms()
+        return self._n_atoms
+
+
+def get_aims_out_chunks(fd, n_atoms=None, constraints=None):
+    """Yield unprocessed chunks (header, lines) for each xyz image."""
+    while True:
+        try:
+            line = next(fd).strip()  # Raises StopIteration on empty file
+        except StopIteration:
+            break
+
+        lines = []
+        while "Begin self-consistency loop: Re-initialization" not in line:
+            lines.append(line)
+            try:
+                line = next(fd).strip()
+            except StopIteration:
+                break
+
+        yield AimsOutChunk(lines, n_atoms, constraints)
 
 
 @reader
@@ -119,17 +450,13 @@ def parse_geometry_lines(lines, apply_constraints=True):
             "Cartesian and fractional coordinates"
         )
     elif scaled_positions and periodic.any():
-        atoms = Atoms(
-            symbols, scaled_positions=positions, cell=cell, pbc=periodic
-        )
+        atoms = Atoms(symbols, scaled_positions=positions, cell=cell, pbc=periodic)
     else:
         atoms = Atoms(symbols, positions)
 
     if len(velocities) > 0:
         if len(velocities) != len(positions):
-            raise Exception(
-                "Number of positions and velocities have to coincide."
-            )
+            raise Exception("Number of positions and velocities have to coincide.")
         atoms.set_velocities(velocities)
 
     fix_params = []
@@ -234,7 +561,7 @@ def write_aims(
             scaled = True
 
     fd.write("#=======================================================\n")
-    if hasattr(fd, 'name'):
+    if hasattr(fd, "name"):
         fd.write("# FHI-aims file: " + fd.name + "\n")
     fd.write("# Created using the Atomic Simulation Environment (ASE)\n")
     fd.write("# " + time.asctime() + "\n")
@@ -388,9 +715,7 @@ def get_sym_block(atoms):
 
     cell_inds = np.where(lv_param_constr == "")[0]
     for ind in cell_inds:
-        lv_param_constr[ind] = "{:.16f}, {:.16f}, {:.16f}".format(
-            *atoms.cell[ind]
-        )
+        lv_param_constr[ind] = "{:.16f}, {:.16f}, {:.16f}".format(*atoms.cell[ind])
 
     n_atomic_params = len(atomic_sym_params)
     n_lv_params = len(lv_sym_params)
@@ -398,17 +723,16 @@ def get_sym_block(atoms):
 
     sym_block = []
     if n_total_params > 0:
-        sym_block.append("#" + "="*55 + "\n")
+        sym_block.append("#" + "=" * 55 + "\n")
         sym_block.append("# Parametric constraints\n")
-        sym_block.append("#" + "="*55 + "\n")
+        sym_block.append("#" + "=" * 55 + "\n")
         sym_block.append(
             "symmetry_n_params {:d} {:d} {:d}\n".format(
                 n_total_params, n_lv_params, n_atomic_params
             )
         )
         sym_block.append(
-            "symmetry_params %s\n"
-            % " ".join(lv_sym_params + atomic_sym_params)
+            "symmetry_params %s\n" % " ".join(lv_sym_params + atomic_sym_params)
         )
 
         for constr in lv_param_constr:
@@ -419,202 +743,23 @@ def get_sym_block(atoms):
     return sym_block
 
 
-def _parse_atoms(fd, n_atoms, molecular_dynamics=False):
-    """parse structure information from aims output to Atoms object"""
-    from ase import Atoms, Atom
-
-    next(fd)
-    atoms = Atoms()
-    for i in range(n_atoms):
-        inp = next(fd).split()
-        if "lattice_vector" in inp[0]:
-            cell = []
-            for i in range(3):
-                cell += [[float(inp[1]), float(inp[2]), float(inp[3])]]
-                inp = next(fd).split()
-            atoms.set_cell(cell)
-            inp = next(fd).split()
-        atoms.append(Atom(inp[4], (inp[1], inp[2], inp[3])))
-        if molecular_dynamics:
-            inp = next(fd).split()
-
-    return atoms
-
-
 @reader
 def read_aims_output(fd, index=-1):
     """Import FHI-aims output files with all data available, i.e.
     relaxations, MD information, force information etc etc etc."""
-    from ase import Atoms, Atom
-    from ase.calculators.singlepoint import SinglePointDFTCalculator
-    from ase.constraints import FixAtoms, FixCartesian
+    chunks = get_aims_out_chunks(fd)
+    initial_chunk = next(chunks)
+    chunks = [initial_chunk] + list(
+        get_aims_out_chunks(fd, initial_chunk.n_atoms, initial_chunk.constraints)
+    )
+    return chunks[index].atoms
 
-    molecular_dynamics = False
-    cell = []
-    images = []
-    fix = []
-    fix_cart = []
-    f = None
-    pbc = False
-    found_aims_calculator = False
-    stress = None
-    for line in fd:
-        # if "List of parameters used to initialize the calculator:" in line:
-        #     next(fd)
-        #     calc = read_aims_calculator(fd)
-        #     calc.out = filename
-        #     found_aims_calculator = True
-        if "| Number of atoms                   :" in line:
-            inp = line.split()
-            n_atoms = int(inp[5])
-        if "| Unit cell:" in line:
-            if not pbc:
-                pbc = True
-                for i in range(3):
-                    inp = next(fd).split()
-                    cell.append([inp[1], inp[2], inp[3]])
-        if "Found relaxation constraint for atom" in line:
-            xyz = [0, 0, 0]
-            ind = int(line.split()[5][:-1]) - 1
-            if "All coordinates fixed" in line:
-                if ind not in fix:
-                    fix.append(ind)
-            if "coordinate fixed" in line:
-                coord = line.split()[6]
-                if coord == "x":
-                    xyz[0] = 1
-                elif coord == "y":
-                    xyz[1] = 1
-                elif coord == "z":
-                    xyz[2] = 1
-                keep = True
-                for n, c in enumerate(fix_cart):
-                    if ind == c.a:
-                        keep = False
-                if keep:
-                    fix_cart.append(FixCartesian(ind, xyz))
-                else:
-                    fix_cart[n].mask[xyz.index(1)] = 0
 
-        if "Atomic structure:" in line and not molecular_dynamics:
-            next(fd)
-            atoms = Atoms()
-            for _ in range(n_atoms):
-                inp = next(fd).split()
-                atoms.append(Atom(inp[3], (inp[4], inp[5], inp[6])))
-
-        if "Complete information for previous time-step:" in line:
-            molecular_dynamics = True
-
-        if "Updated atomic structure:" in line and not molecular_dynamics:
-            atoms = _parse_atoms(fd, n_atoms=n_atoms)
-        elif "Atomic structure (and velocities)" in line:
-            next(fd)
-            atoms = Atoms()
-            velocities = []
-            for i in range(n_atoms):
-                inp = next(fd).split()
-                atoms.append(Atom(inp[4], (inp[1], inp[2], inp[3])))
-                inp = next(fd).split()
-                floatvect = [v_unit * float(l) for l in inp[1:4]]
-                velocities.append(floatvect)
-            atoms.set_velocities(velocities)
-            if len(fix):
-                atoms.set_constraint([FixAtoms(indices=fix)] + fix_cart)
-            else:
-                atoms.set_constraint(fix_cart)
-            images.append(atoms)
-
-        # if we enter here, the SocketIO/PIMD Wrapper was used
-        elif (
-            "Atomic structure that "
-            "was used in the preceding time step of the wrapper"
-        ) in line:
-            # parse atoms and add calculator information, i.e., the energies
-            # and forces that were already collected
-            atoms = _parse_atoms(fd, n_atoms=n_atoms)
-            results = images[-1].calc.results
-            atoms.calc = SinglePointDFTCalculator(atoms, **results)
-
-            # replace last image with updated atoms
-            images[-1] = atoms
-
-            # make sure `atoms` does not point to `images[-1` later on
-            atoms = atoms.copy()
-
-        # FlK: add analytical stress and replace stress=None
-        if "Analytical stress tensor - Symmetrized" in line:
-            # scroll to significant lines
-            for _ in range(4):
-                next(fd)
-            stress = []
-            for _ in range(3):
-                inp = next(fd)
-                stress.append([float(i) for i in inp.split()[2:5]])
-
-            from ase.stress import full_3x3_to_voigt_6_stress
-            stress = full_3x3_to_voigt_6_stress(stress)
-
-        if "Total atomic forces" in line:
-            f = []
-            for i in range(n_atoms):
-                inp = next(fd).split()
-                # FlK: use inp[-3:] instead of inp[1:4] to make sure this works
-                # when atom number is not preceded by a space.
-                f.append([float(i) for i in inp[-3:]])
-            if not found_aims_calculator:
-                e = images[-1].get_potential_energy()
-                # FlK: Add the stress if it has been computed
-                if stress is None:
-                    calc = SinglePointDFTCalculator(atoms, energy=e, forces=f)
-                else:
-                    calc = SinglePointDFTCalculator(
-                        atoms, energy=e, forces=f, stress=stress
-                    )
-                images[-1].calc = calc
-            e = None
-            f = None
-
-        if "Total energy corrected" in line:
-            e = float(line.split()[5])
-            if pbc:
-                atoms.set_cell(cell)
-                atoms.pbc = True
-            if not found_aims_calculator:
-                atoms.calc = SinglePointDFTCalculator(atoms, energy=e)
-            if not molecular_dynamics:
-                if len(fix):
-                    atoms.set_constraint([FixAtoms(indices=fix)] + fix_cart)
-                else:
-                    atoms.set_constraint(fix_cart)
-                images.append(atoms)
-            e = None
-            # if found_aims_calculator:
-            # calc.set_results(images[-1])
-            # images[-1].calc = calc
-
-        # FlK: add stress per atom
-        if "Per atom stress (eV) used for heat flux calculation" in line:
-            # scroll to boundary
-            next(l for l in fd if "-------------" in l)
-
-            stresses = []
-            for l in [next(fd) for _ in range(n_atoms)]:
-                # Read stresses
-                xx, yy, zz, xy, xz, yz = [float(d) for d in l.split()[2:8]]
-                stresses.append([[xx, xy, xz], [xy, yy, yz], [xz, yz, zz]])
-
-            if not found_aims_calculator:
-                e = images[-1].get_potential_energy()
-                f = images[-1].get_forces()
-                stress = images[-1].get_stress(voigt=False)
-
-                calc = SinglePointDFTCalculator(
-                    atoms, energy=e, forces=f, stress=stress, stresses=stresses
-                )
-                images[-1].calc = calc
-
-    if molecular_dynamics:
-        images = images[1:]
-
-    return images[index]
+@reader
+def read_aims_results(fd, index=-1):
+    chunks = get_aims_out_chunks(fd)
+    initial_chunk = next(chunks)
+    chunks = [initial_chunk] + list(
+        get_aims_out_chunks(fd, initial_chunk.n_atoms, initial_chunk.constraints)
+    )
+    return chunks[index].results
