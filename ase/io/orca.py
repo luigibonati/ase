@@ -107,7 +107,7 @@ def read_orca_out(label):
 def read_orca_outputs(directory, label):
     label = label
     directory = Path(directory)
-    textfilename = directory / f'{label}.out'
+    #textfilename = directory / f'{label}.out'
     results = {}
     # with open(textfilename) as fd:
     dct = read_orca_out(label)
