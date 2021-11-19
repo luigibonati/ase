@@ -2,45 +2,13 @@
 import pytest
 import tempfile  # Used to create temporary directories for tests.
 import unittest
-
-import ase
-import ase.io.exciting
-from ase.build import bulk
-from ase.io import read, write
-from ase.units import Bohr
+import io
 import numpy as np
 import xml.etree.ElementTree as ET
 
-'''
-def test_exciting_io():
-    """Old test that should be depracated."""
-    atoms = ase.Atoms('N3O',
-                  cell=[3, 4, 5],
-                  positions=[(0, 0, 0), (1, 0, 0),
-                             (0, 0, 1), (0.5, 0.5, 0.5)],
-                  pbc=True)
-
-    write('input.xml', atoms)
-    atoms2 = read('input.xml')
-
-    assert all(atoms.symbols == atoms2.symbols)
-    assert atoms.cell[:] == pytest.approx(atoms2.cell[:])
-    assert atoms.positions == pytest.approx(atoms2.positions)
-
-
-def test_write(self, calculator):
-    """Test the write method if it has to create a directory."""
-    atoms = ase.Atoms('N3O',
-                      cell=[3, 4, 5],
-                      positions=[(0, 0, 0), (1, 0, 0),
-                                 (0, 0, 1), (0.5, 0.5, 0.5)],
-                      pbc=True)
-    calculator.dir = calculator.dir + '/test'
-    expected_output_file_path = calculator.dir + '/input.xml'
-    calculator.paramdict = {'number': '2'}
-    calculator.write_input(bulk('Fe'))
-    assert expected_output_file_path == output_file_path
-'''
+import ase
+import ase.io.exciting
+from ase.units import Bohr
 
 
 def test_atoms_to_etree(nitrogen_trioxide_atoms):
@@ -55,19 +23,19 @@ def test_atoms_to_etree(nitrogen_trioxide_atoms):
     for i in range(len(basis_vector_list)):
         float_vector = [float(x) for x in basis_vector_list[i].text.split()]
         assert len(float_vector) == len(expected_vectors[i])
-        assert all([np.round(a-b, 14) == 0 for a, b in zip(float_vector, expected_vectors[i])])
+        assert all([np.round(a - b, 14) == 0 for a, b in zip(float_vector, expected_vectors[i])])
 
     expected_chemical_symbols = ['N', 'O']
     species = element_tree.findall('./structure/species')
     for i in range(len(species)):
         assert species[i].get('chemicalSymbol') == expected_chemical_symbols[i]
 
-    expected_coords = [[0, 0, 0], [0.5, 0.75, 0], [0, 0, 1/6], [0.25, 0, 1/12]]
+    expected_coords = [[0, 0, 0], [0.5, 0.5, 0], [0, 0, 1 / 6], [0.25, 0, 1 / 12]]
     coords_list = element_tree.findall('./structure/species/atom')
     for i in range(len(coords_list)):
         float_vector = [float(x) for x in coords_list[i].get('coord').split()]
         assert len(float_vector) == len(expected_coords[i])
-        assert all([np.round(a-b, 14) == 0 for a, b in zip(float_vector, expected_coords[i])])
+        assert all([np.round(a - b, 14) == 0 for a, b in zip(float_vector, expected_coords[i])])
 
 
 def test_dict_to_xml_adding_text():
@@ -145,6 +113,46 @@ def test_add_attributes_to_element_tree(nitrogen_trioxide_atoms):
 def nitrogen_trioxide_atoms():
     return ase.Atoms('NO3',
                      cell=[[2, 2, 0], [0, 4, 0], [0, 0, 6]],
-                     positions=[(0, 0, 0), (1, 0, 0),
+                     positions=[(0, 0, 0), (1, 3, 0),
                                 (0, 0, 1), (0.5, 0.5, 0.5)],
                      pbc=True)
+
+
+def test_read_exciting_file_does_not_exist():
+    """Tests read method if info.xml does not exist."""
+    with pytest.raises(FileNotFoundError):
+        ase.io.exciting.read_exciting('input_not_exist.xml')
+
+
+def test_read_exciting():
+    input_string = """<?xml version="1.0" ?>
+<input xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation=
+"http://xml.exciting-code.org/excitinginput.xsd">
+    <title/>
+    <structure>
+        <crystal>
+            <basevect>3.77945225167386 3.77945225167386 0.00000000000000</basevect>
+            <basevect>0.00000000000000 7.55890450334771 0.00000000000000</basevect>
+            <basevect>0.00000000000000 0.00000000000000 11.33835675502157</basevect>
+        </crystal>
+        <species speciesfile="N.xml" chemicalSymbol="N">
+            <atom coord="0.00000000000000 0.00000000000000 0.00000000000000"/>
+        </species>
+        <species speciesfile="O.xml" chemicalSymbol="O">
+            <atom coord="0.50000000000000 0.50000000000000 0.00000000000000"/>
+            <atom coord="0.00000000000000 0.00000000000000 0.16666666666667"/>
+            <atom coord="0.25000000000000 0.00000000000000 0.08333333333333"/>
+        </species>
+    </structure>
+</input>"""
+
+    fileobj = io.StringIO(input_string)
+    atoms = ase.io.exciting.read_exciting(fileobj)
+    expected_cell = [[2, 2, 0], [0, 4, 0], [0, 0, 6]]
+    assert np.allclose(atoms.get_cell().array, expected_cell)
+    expected_positions = [(0, 0, 0), (1, 3, 0), (0, 0, 1), (0.5, 0.5, 0.5)]
+    # potential problem with the atoms outside the unit cell. get_scaled_positions is mapped in the unit cell and
+    # get_positions is not. So maybe wrap() before?
+    assert np.allclose(atoms.get_positions(), expected_positions)
+    expected_symbols = ['N', 'O', 'O', 'O']
+    assert atoms.get_chemical_symbols() == expected_symbols
