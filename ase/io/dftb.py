@@ -28,7 +28,11 @@ def prepare_dftb_parameters(outfile, atoms, parameters, properties, directory):
     params = parameters.copy()
 
     assert 'skt_path' in params.keys()
-    slako_dir = params.pop('skt_path')
+    slako_dir = params.pop('skt_path', None)
+    if slako_dir is None:
+        slako_dir = os.environ.get('DFTB_PREFIX', './')
+        if not slako_dir.endswith('/'):
+            slako_dir += '/'
     pcpot = params.pop('pcpot', None)
 
     do_forces = False
