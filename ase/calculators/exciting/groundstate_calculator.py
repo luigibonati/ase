@@ -7,7 +7,7 @@ from pathlib import Path
 import ase
 from ase.calculators.genericfileio import (GenericFileIOCalculator, CalculatorTemplate)
 from ase.calculators.exciting.runner import ExcitingRunner, SubprocessRunResults
-from ase.calculators.calculator import InputError
+from ase.calculators.calculator import InputError, PropertyNotImplementedError
 
 # TODO Move me
 class ExcitingInput:
@@ -128,10 +128,32 @@ class ExcitingGroundStateResults:
         self.converged = self.calculation_converged()
 
     def calculation_completed(self) -> bool:
+        # TODO(Alex) This will be returned by the runner object - need to propagate the result to here
         return False
 
     def calculation_converged(self) -> bool:
+        # TODO(Alex) This needs to parsed from INFO.OUT (or info.xml?)
+        #  First check is that this file is written
         return False
+
+    def potential_energy(self) -> float:
+        """
+        Return potential energy (be more specific)
+        """
+        # TODO(Alex) We should a common list of keys somewhere
+        # such that parser -> results -> getters are consistent
+        return self.results['potential_energy'].copy()
+
+    def forces(self):
+        """
+        Return forces
+        """
+        # TODO(Alex) We should a common list of keys somewhere
+        return self.results['forces'].copy()
+
+    def stress(self):
+        raise PropertyNotImplementedError
+
 
 
 class ExcitingGroundState(GenericFileIOCalculator):
@@ -165,7 +187,6 @@ class ExcitingGroundState(GenericFileIOCalculator):
                          of the specialised write method.
 
     TODO(Alex) What methods do we need from our old calculator, and what exist in the base classes?
-     Things to get results, based on properties
 
      TODO(Alex) We could support a specific set of keyword args, then use either a) Input dict/object
       or b) keywords
@@ -208,4 +229,12 @@ class ExcitingGroundState(GenericFileIOCalculator):
             properties = self.template.implemented_properties
         super().calculate(atoms, properties, system_changes)
         return ExcitingGroundStateResults(self.results)
+
+    # TODO(Alex) Note to remove once confirmed.
+    # update method not copied. Calculator class stores atoms in the BaseCalculator
+    # but we don't need any API to interact with this.
+    # One can just pass an updated atoms object to .calculate(atoms)
+    #
+    # initialize not needed. atoms object injected into XML via the template's write
+    # function
 
