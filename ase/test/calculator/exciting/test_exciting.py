@@ -277,7 +277,6 @@ class TestPytestExciting:
         atoms = ase.Atoms("H")
         root = ase.calculators.exciting.atoms_to_etree([atoms])
 
-
     def test_atoms_to_etree_rmt(self):
         """Tests assigning rmt values in atoms_to_etree_method."""
         atoms = ase.Atoms("CO2")
