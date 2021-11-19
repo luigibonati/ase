@@ -1,20 +1,27 @@
 """
 ASE Calculator for the ground state exciting DFT code
 """
-from typing import Union, List
+from typing import Union, List, Optional
 from pathlib import Path
 
 import ase
 from ase.calculators.genericfileio import (GenericFileIOCalculator, CalculatorTemplate)
 from ase.calculators.exciting.runner import ExcitingRunner, SubprocessRunResults
-
+from ase.calculators.calculator import InputError
 
 # TODO Move me
 class ExcitingInput:
     """
     Base class for exciting inputs
     """
-    pass
+
+    # TODO(Alex) Strip all entries apart from attributes from dictionary
+    def attributes_to_dict(self) -> dict:
+        dictionary = self.__dict__
+        return dictionary
+
+
+
 
 
 # TODO. Implement me and move me
@@ -99,6 +106,34 @@ class ExcitingGroundStateTemplate(CalculatorTemplate):
         return results
 
 
+def check_key_present(key, exciting_input: Union[ExcitingInput, dict]) -> bool:
+    """
+    Check species path is specified in the exciting_input
+    """
+    if isinstance(exciting_input, ExcitingInput):
+        keys = ExcitingInput.__dict__
+    else:
+        keys = list(exciting_input)
+
+    return key in keys
+
+
+class ExcitingGroundStateResults:
+    """
+    Exciting Ground State Results
+    """
+    def __init__(self, results: dict) -> None:
+        self.results = results
+        self.completed = self.calculation_completed()
+        self.converged = self.calculation_converged()
+
+    def calculation_completed(self) -> bool:
+        return False
+
+    def calculation_converged(self) -> bool:
+        return False
+
+
 class ExcitingGroundState(GenericFileIOCalculator):
     """
     Exciting Ground StateCalculator Class.
@@ -131,16 +166,46 @@ class ExcitingGroundState(GenericFileIOCalculator):
 
     TODO(Alex) What methods do we need from our old calculator, and what exist in the base classes?
      Things to get results, based on properties
+
+     TODO(Alex) We could support a specific set of keyword args, then use either a) Input dict/object
+      or b) keywords
+      List of keyword inputs from the old calculator:
+        species_path, kpts, autormt, tshift
     """
+
+    # Input options that must be present in the exciting_input
+    required_inputs = ['species_path']
+
     def __init__(self, *,
                  runner: ExcitingRunner,
                  exciting_input: Union[ExcitingInput, dict],
                  directory='./'):
 
-        template = ExcitingGroundStateTemplate()
+        self.runner = runner
+        self.exciting_input = exciting_input
+        self.directory = directory
+        self.template = ExcitingGroundStateTemplate()
+
+        for key in self.required_inputs:
+            if not check_key_present(key, self.exciting_input):
+                raise InputError(f'Key missing from exciting input: {key}')
 
         super().__init__(profile=runner,
-                         template=template,
+                         template=self.template,
                          parameters=exciting_input,
                          directory=directory
                          )
+
+    # TODO(Alex) Would rather remove properties from our calculate API
+    def calculate(self,
+                  atoms: ase.Atoms,
+                  properties: Optional[List[str]] = None,
+                  system_changes=None) -> ExcitingGroundStateResults:
+        """
+        Run an exciting calculation and capture the results in ExcitingGroundStateResults object.
+        """
+        if properties is None:
+            properties = self.template.implemented_properties
+        super().calculate(atoms, properties, system_changes)
+        return ExcitingGroundStateResults(self.results)
+
