@@ -8,18 +8,15 @@ from ase.units import Hartree, Bohr
 
 
 def prepare_dftb_input(outfile, atoms, parameters, properties, directory):
-    """ Write the innput file for the dftb+ calculation.
+    """ Write the input file for the dftb+ calculation.
         Geometry is taken always from the file 'geo_end.gen'.
     """
     # Write geometry information
-    prepare_dftb_geometry(f'{directory}/geo_end.gen', atoms)
+    write_dftb(f'{directory}/geo_end.gen', atoms)
 
     # Write parameter information
     prepare_dftb_parameters(outfile, atoms, parameters, properties, directory)
 
-def prepare_dftb_geometry(path_geo, atoms):
-    """Write DFTB+ geometry input file."""
-    ase.io.write(path_geo, atoms)
 
 def prepare_dftb_parameters(outfile, atoms, parameters, properties, directory):
     """Write DFTB+ *.hsd input file."""
@@ -178,7 +175,6 @@ def prepare_dftb_parameters(outfile, atoms, parameters, properties, directory):
         outfile.write('} \n')
 
 
-
 def read_dftb_outputs(directory, label):
     """ all results are read from results.tag file
         It will be destroyed after it is read to avoid
@@ -210,7 +206,6 @@ def read_dftb_outputs(directory, label):
     stress = read_stress(lines)
     if stress is not None:
         results['stress'] = stress
-
 
     # eigenvalues and fermi levels
     fermi_levels = read_fermi_levels(lines)
@@ -287,7 +282,7 @@ def read_charges_energy_dipole(directory, num_atoms):
 
     return np.array(qm_charges), energy, dipole
 
-def read_forces(lines):  # TODO: pass lines (?), as self.lines is not available
+def read_forces(lines):
     """Read Forces from dftb output file (results.tag)."""
     from ase.units import Hartree, Bohr
 
@@ -386,24 +381,6 @@ def read_stress(lines):
         return stress.flat[[0, 4, 8, 5, 2, 1]]
     else:
         return None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 @reader

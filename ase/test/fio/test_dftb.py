@@ -6,7 +6,7 @@ from ase.atoms import Atoms
 from ase.units import AUT, Bohr, second
 from ase.io.dftb import (read_dftb, read_dftb_lattice,
                          read_dftb_velocities, write_dftb_velocities,
-                         prepare_dftb_geometry, prepare_dftb_parameters)
+                         write_dftb, prepare_dftb_parameters)
 
 
 # test ase.io.dftb.read_dftb
@@ -194,7 +194,7 @@ def test_write_dftb_velocities():
 
 
 # test ase.io.dftb.prepare_dftb_geometry
-def test_prepare_dftb_geometry():
+def test_write_dftb():
     positions = [[-0.740273308080763, 0.666649653991325, 0.159416494587587],
                  [0.006891486298212, -0.006206095648781, -0.531735097642277],
                  [0.697047663527725, 0.447111938577178, -1.264187748314973],
@@ -204,7 +204,7 @@ def test_prepare_dftb_geometry():
 
     atoms.set_pbc(True)
 
-    prepare_dftb_geometry('geo_end.gen', atoms)
+    write_dftb('geo_end.gen', atoms)
     atoms_new = ase.io.read('geo_end.gen')
     assert np.all(atoms_new.numbers == atoms.numbers)
     assert np.allclose(atoms_new.positions, atoms.positions)
@@ -212,7 +212,7 @@ def test_prepare_dftb_geometry():
     assert np.allclose(atoms_new.cell, atoms.cell)
 
     atoms.set_pbc(False)
-    prepare_dftb_geometry('geo_end.gen', atoms)
+    write_dftb('geo_end.gen', atoms)
     atoms_new = ase.io.read('geo_end.gen')
     assert np.all(atoms_new.numbers == atoms.numbers)
     assert np.allclose(atoms_new.positions, atoms.positions)
