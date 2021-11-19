@@ -379,15 +379,49 @@ class DefectBuilder():
                      pbc=atoms.get_pbc())
 
 
-    def create_interstitials(self, atoms=None):
-        if atoms is None:
-            atoms = self.get_primitive_structure()
+    def create_interstitials(self):
+        atoms = self.get_primitive_structure()
         sym = self.get_host_symmetry()
         wyck = get_wyckoff_data(sym['number'])
         un, struc = self.map_positions(wyck,
                                        structure=atoms)
 
         return un, struc
+
+
+    def get_interstitial_structures(self,
+                                    kindlist=None,
+                                    sc=3,
+                                    size=None):
+        atoms, _ = self.create_interstitials()
+        dim = self.get_dimension()
+        if kindlist is None:
+            kindlist = self.get_intrinsic_types()
+        if not size is None:
+            assert size > 0, 'Choose size larger than zero!'
+            sc = self.get_supercell_repitition(size, dim=dim)
+            if dim == 3:
+                sc_tuple = (sc, sc, sc)
+            elif dim == 2:
+                sc_tuple = (sc, sc, 1)
+        primitive = self.get_primitive_structure()
+        structures = []
+        for i in range(len(atoms)):
+            if atoms.get_chemical_symbols()[i] == 'X':
+                for kind in kindlist:
+                    structure = primitive.repeat(sc_tuple)
+                    positions = structure.get_positions()
+                    symbols = structure.get_chemical_symbols()
+                    cell = structure.get_cell()
+                    pos = atoms.get_positions()[i]
+                    positions = np.append(positions, [pos], axis=0)
+                    symbols.append(kind)
+                    structures.append(Atoms(symbols=symbols,
+                                            positions=positions,
+                                            cell=cell,
+                                            pbc=structure.get_pbc()))
+
+        return structures
 
 
     def create_adsorption_sites(self, layer='top'):
@@ -448,14 +482,21 @@ class DefectBuilder():
         return symbols
 
 
-    def get_supercell_repitition(self, size):
+    def get_supercell_repitition(self, size, dim):
         prim = self.get_primitive_structure()
         cell = prim.get_cell()
-        min_length = min(cell.lengths()[:2])
+        if dim == 3:
+            min_length = min(cell.lengths())
+        elif dim == 2:
+            min_length = min(cell.lengths()[:2])
         for N in range(1, 50, 1):
             tmp = N * min_length
             if tmp > size:
-                print(f'Set supercell extension to {N}x{N}x1 '
+                if dim == 2:
+                    mesg = f'{N}x{N}x1'
+                elif dim == 3:
+                    mesg = f'{N}x{N}x{N}'
+                print(f'Set supercell extension to {mesg} '
                       f'(corresponds to {tmp:.2f} Ang) based '
                       f'on the input supercell size of {size} Ang.')
                 return N
@@ -483,7 +524,7 @@ class DefectBuilder():
 
         if not size is None:
             assert size > 0, 'Choose size larger than zero!'
-            sc = self.get_supercell_repitition(size)
+            sc = self.get_supercell_repitition(size, dim=2)
 
         structures = []
         for j, atoms in enumerate(atoms_list):
