@@ -363,7 +363,7 @@ class DefectBuilder():
 
         layer = []
         for i in range(len(zs)):
-            if zs[i] == value:
+            if np.isclose(zs[i], value):
                 layer.append(i)
         positions = np.empty((len(layer), 3))
         symbols = []
@@ -379,8 +379,9 @@ class DefectBuilder():
                      pbc=atoms.get_pbc())
 
 
-    def create_interstitials(self):
-        atoms = self.get_primitive_structure()
+    def create_interstitials(self, atoms=None):
+        if atoms is None:
+            atoms = self.get_primitive_structure()
         sym = self.get_host_symmetry()
         wyck = get_wyckoff_data(sym['number'])
         un, struc = self.map_positions(wyck,
@@ -482,7 +483,7 @@ class DefectBuilder():
         return symbols
 
 
-    def get_supercell_repitition(self, size, dim):
+    def get_supercell_repitition(self, size, dim, txt=False):
         prim = self.get_primitive_structure()
         cell = prim.get_cell()
         if dim == 3:
@@ -496,9 +497,10 @@ class DefectBuilder():
                     mesg = f'{N}x{N}x1'
                 elif dim == 3:
                     mesg = f'{N}x{N}x{N}'
-                print(f'Set supercell extension to {mesg} '
-                      f'(corresponds to {tmp:.2f} Ang) based '
-                      f'on the input supercell size of {size} Ang.')
+                if txt:
+                    print(f'Set supercell extension to {mesg} '
+                          f'(corresponds to {tmp:.2f} Ang) based '
+                          f'on the input supercell size of {size} Ang.')
                 return N
         raise ValueError('Only works for repetitions smaller '
                          'than 50! Input smaller physical '
