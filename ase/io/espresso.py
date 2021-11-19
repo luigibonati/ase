@@ -1825,52 +1825,54 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
     fd.write(''.join(pwi))
 
 
-def prepare_structure_input(atoms: Atoms, cell = None, spin: int=None,crystal_coordinates: bool=None) -> dict:
-#    pass
-#    ...    # another way of passing
-    
+def prepare_structure_input(atoms: Atoms,
+                            cell=None,
+                            spin: int = None,
+                            crystal_coordinates: bool = None) -> dict:
+    #    pass
+    #    ...    # another way of passing
+
     #ATOMIC‌ POSITIONS
-    
+
     atomic_positions_str = []
-    atomic_pos_unit=''
+    atomic_pos_unit = ''
     if crystal_coordinates:
-        atomic_pos_unit='crystal'
+        atomic_pos_unit = 'crystal'
     else:
-       atomic_pos_unit='angstrom'
-    atomic_pos = {'ATOMIC_POSITIONS':(atomic_pos_unit, atomic_positions_str)} #add unit
-         
+        atomic_pos_unit = 'angstrom'
+    atomic_pos = {
+        'ATOMIC_POSITIONS': (atomic_pos_unit, atomic_positions_str)
+    }  #add unit
+
     for atom in atoms:
-        coords=atom.position
-        final_coords=[]         
+        coords = atom.position
+        final_coords = []
         for i in coords:
             final_coords.append(i)
         final_coords.insert(0, atom.symbol)
 
         atomic_positions_str.append(final_coords)
-       
-    
-
 
     #CELL PARAMETERS
-    
+
     cell_unit = ''
     if crystal_coordinates:
-        cell_unit='crystal'
+        cell_unit = 'crystal'
     else:
-        cell_unit='angstrom'
-    cell_info={}
-    cell_params=atoms.get_cell().tolist()# if cell is not defined, will return zero
+        cell_unit = 'angstrom'
+    cell_info = {}
+    cell_params = atoms.get_cell().tolist(
+    )  # if cell is not defined, will return zero
     # all_zero=np.all(cell_params==0.0)
     # print(all_zero)
     for row in cell_params:
-        all_zero=np.all((row==0.0))
+        all_zero = np.all((row == 0.0))
         if all_zero:
-            raise KeyError('cell is not defined')### keyerror??
+            raise KeyError('cell is not defined')  ### keyerror??
         else:
-            cell_info={'CELL_PARAMETERS': (cell_unit, cell_params[:])}
-  
-    final_structure={}
+            cell_info = {'CELL_PARAMETERS': (cell_unit, cell_params[:])}
+
+    final_structure = {}
     for dct in (atomic_pos, cell_info):
         final_structure.update(dct)
     return final_structure
-
