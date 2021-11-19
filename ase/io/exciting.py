@@ -14,18 +14,14 @@ from xml.dom import minidom
 from typing import Optional, Dict
 
 
-def read_exciting(fileobj, index=-1):
-    """Reads structure from exiting xml file.
+def read_exciting(fileobj):
+    """Reads structure from exiting xml input file.
 
     Parameters
     ----------
     fileobj: file object
         File handle from which data should be read.
 
-    Other parameters
-    ----------------
-    index: integer -1
-        Not used in this implementation.
     """
 
     # Parse file into element tree
@@ -35,7 +31,6 @@ def read_exciting(fileobj, index=-1):
     symbols = []
     positions = []
     basevects = []
-    atoms = None
     # Collect data from tree
     for speciesnode in speciesnodes:
         symbol = speciesnode.get('speciesfile').split('.')[0]
@@ -75,29 +70,7 @@ def read_exciting(fileobj, index=-1):
 
 
 @writer
-def write_exciting_old(fileobj, images):
-    """writes exciting input structure in XML
-
-    Parameters
-    ----------
-    filename : str
-        Name of file to which data should be written.
-    images : Atom Object or List of Atoms objects
-        This function will write the first Atoms object to file.
-
-    Returns
-    -------
-    """
-    root = atoms_to_etree(images)
-    # The rest of this is the prettify function.
-    rough_string = ET.tostring(root, 'utf-8')
-    reparsed = minidom.parseString(rough_string)
-    pretty = reparsed.toprettyxml(indent="\t")
-    fileobj.write(pretty)
-
-
-@writer
-def write_exciting(fileobj, images, autormt, species_path, tshift, param_dict, groundstate_attributes):
+def write_exciting(fileobj, images, autormt, species_path, tshift, param_dict):
     """writes exciting input structure in XML
 
     Parameters
