@@ -1,10 +1,12 @@
 # additional tests of the dftb I/O
 import numpy as np
 from io import StringIO
+import ase.io
 from ase.atoms import Atoms
 from ase.units import AUT, Bohr, second
 from ase.io.dftb import (read_dftb, read_dftb_lattice,
-                         read_dftb_velocities, write_dftb_velocities)
+                         read_dftb_velocities, write_dftb_velocities,
+                         prepare_dftb_geometry, prepare_dftb_parameters)
 
 
 # test ase.io.dftb.read_dftb
@@ -189,3 +191,88 @@ def test_write_dftb_velocities():
 
     velocities = np.loadtxt('velocities.txt') * Bohr / AUT
     assert np.allclose(velocities, atoms.get_velocities())
+
+
+# test ase.io.dftb.prepare_dftb_geometry
+def test_prepare_dftb_geometry():
+    positions = [[-0.740273308080763, 0.666649653991325, 0.159416494587587],
+                 [0.006891486298212, -0.006206095648781, -0.531735097642277],
+                 [0.697047663527725, 0.447111938577178, -1.264187748314973],
+                 [0.036334158254826, -1.107555496919721, -0.464934648630337]]
+    cell = [[3.75, 0., 0.], [1.5, 4.5, 0.], [0.45, 1.05, 3.75]]
+    atoms = Atoms('OCH2', cell=cell, positions=positions)
+
+    atoms.set_pbc(True)
+
+    prepare_dftb_geometry('geo_end.gen', atoms)
+    atoms_new = ase.io.read('geo_end.gen')
+    assert np.all(atoms_new.numbers == atoms.numbers)
+    assert np.allclose(atoms_new.positions, atoms.positions)
+    assert np.all(atoms_new.pbc == atoms.pbc)
+    assert np.allclose(atoms_new.cell, atoms.cell)
+
+    atoms.set_pbc(False)
+    prepare_dftb_geometry('geo_end.gen', atoms)
+    atoms_new = ase.io.read('geo_end.gen')
+    assert np.all(atoms_new.numbers == atoms.numbers)
+    assert np.allclose(atoms_new.positions, atoms.positions)
+    assert np.all(atoms_new.pbc == atoms.pbc)
+    assert np.allclose(atoms_new.cell, 0.)
+
+
+# test ase.io.dftb.prepare_dftb_parameters
+fcontent_dftb_in_nonperiodic = """
+Geometry = GenFormat {
+    <<< "geo_end.gen"
+}
+
+Driver = ConjugateGradient{
+   MaxForceComponent = 1.00E-008
+   MaxSteps = 1000
+   }
+Hamiltonian = DFTB{
+   MaxAngularMomentum = {
+      H = "s"
+      O = "p"
+   }
+   SCC = Yes
+   SCCTolerance = 1.00E-010
+   SlaterKosterFiles = Type2FileNames{
+      Prefix = PATH/TO/SLAKO
+      Separator = "-"
+      Suffix = ".skf"
+      }
+   }
+Options {
+   WriteResultsTag = Yes
+}
+ParserOptions {
+   IgnoreUnprocessedNodes = Yes
+}
+"""[1:-1]
+
+def test_prepare_dftb_parameters():
+    positions = [[0.00000000000E+00, -0.10000000000E+01,   0.00000000000E+00],
+                 [0.00000000000E+00,  0.00000000000E+00,   0.78306400000E+00],
+                 [0.00000000000E+00,  0.00000000000E+00,  -0.78306400000E+00]]
+    atoms = Atoms('OHH', positions=positions)
+    parameters = dict(Hamiltonian_SCC='Yes',
+                      Hamiltonian_SCCTolerance='1.00E-010',
+                      Driver_='ConjugateGradient',
+                      Driver_MaxForceComponent='1.00E-008',
+                      Driver_MaxSteps=1000,
+                      Hamiltonian_MaxAngularMomentum_='',
+                      Hamiltonian_MaxAngularMomentum_O='"p"',
+                      Hamiltonian_MaxAngularMomentum_H='"s"',
+                      skt_path='PATH/TO/SLAKO')
+    properties = []
+    directory = '.'
+
+    with open('dftb_in.hsd', 'w') as outfile:
+        prepare_dftb_parameters(outfile, atoms, parameters, properties, directory)
+
+    # compare writen dftb_in.hsd with reference string-by-string (ignoring newlines and whitespaces)
+    strings_ref = [wij for li in fcontent_dftb_in_nonperiodic.split('\n') for wij in li.split()]
+    with open('dftb_in.hsd', 'r') as fd:
+        strings = [wij for li in fd.readlines() for wij in li.split()]
+        assert strings_ref == strings
