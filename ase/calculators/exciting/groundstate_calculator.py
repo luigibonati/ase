@@ -9,24 +9,7 @@ from ase.calculators.genericfileio import (GenericFileIOCalculator, CalculatorTe
 from ase.calculators.exciting.runner import ExcitingRunner, SubprocessRunResults
 from ase.calculators.calculator import InputError, PropertyNotImplementedError
 
-# TODO Move me
-class ExcitingInput:
-    """
-    Base class for exciting inputs
-    """
-
-    # TODO(Alex) Strip all entries apart from attributes from dictionary
-    def attributes_to_dict(self) -> dict:
-        dictionary = self.__dict__
-        return dictionary
-
-
-
-
-
-# TODO. Implement me and move me
-def query_exciting_version():
-    return 'None'
+from ase.calculators.exciting.input import query_exciting_version, ExcitingInput
 
 
 class ExcitingProfile:
@@ -34,8 +17,10 @@ class ExcitingProfile:
     A profile defines all quantities that are configurable (variable)
     for a given machine or platform.
 
-    Considered inheriting a runner but decided against it
-    This is not used by
+    This follows the generic pattern BUT currently not used by our calculator as:
+       * species_path is part of the input file in exciting
+       * Only part of the profiled used in the base class is the run method,
+         which is part of the BinaryRunner class
     """
     def __init__(self, exciting_root, species_path):
         self.species_path = species_path

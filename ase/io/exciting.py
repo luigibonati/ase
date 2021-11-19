@@ -5,17 +5,18 @@ The functions are called with read write using the format "exciting"
 """
 
 import numpy as np
+from typing import Dict
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
+
 import ase
 from ase.atoms import Atoms
 from ase.units import Bohr
 from ase.utils import writer
-from xml.dom import minidom
-from typing import Optional, Dict
 
 
 def read_exciting(fileobj):
-    """Reads structure from exiting xml input file.
+    """Reads structure from input.xml file.
 
     Parameters
     ----------
