@@ -12,8 +12,17 @@ def prepare_dftb_input(outfile, atoms, parameters, properties, directory):
         Geometry is taken always from the file 'geo_end.gen'.
     """
     # Write geometry information
-    ase.io.write(f'{directory}/geo_end.gen', atoms)
+    prepare_dftb_geo(f'{directory}/geo_end.gen', atoms)
 
+    # Write parameter information
+    prepare_dftb_parameters(outfile, atoms, parameters, properties, directory)
+
+def prepare_dftb_geometry(path_geo, atoms):
+    """Write DFTB+ geometry input file."""
+    ase.io.write(path_geo, atoms)
+
+def prepare_dftb_parameters(outfile, atoms, parameters, properties, directory):
+    """Write DFTB+ *.hsd input file."""
     outfile.write('Geometry = GenFormat { \n')
     outfile.write('    <<< "geo_end.gen" \n')
     outfile.write('} \n')
@@ -167,6 +176,8 @@ def prepare_dftb_input(outfile, atoms, parameters, properties, directory):
         outfile.write('Analysis { \n')
         outfile.write('   CalculateForces = Yes  \n')
         outfile.write('} \n')
+
+
 
 def read_dftb_outputs(directory, label):
     """ all results are read from results.tag file
