@@ -22,6 +22,7 @@ def test_orca_version_from_string(txt1, ref1):
     version = get_version_from_orca_header(txt1)
     assert version == ref1
 
+
 @calc('orca')
 def test_orca_version_from_executable(factory):
     from ase.calculators.orca import orca_version_from_executable

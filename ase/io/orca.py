@@ -65,7 +65,8 @@ def write_orca(atoms, **params):
                      str(atom.position[1]) + ' ' +
                      str(atom.position[2]) + '\n')
         fd.write('*\n')
-        
+
+
 def read_orca_out(label):
     results = {}
     """Read Energy from ORCA output file."""
@@ -77,8 +78,7 @@ def read_orca_out(label):
     found_line = re_energy.search(text)
     if found_line and not re_not_converged.search(found_line.group()):
         results['energy'] = float(found_line.group().split()[-1]) * Hartree
-    
-    
+
     """Read Forces from ORCA output file."""
     with open(f'{label}.engrad', 'r') as fd:
         lines = fd.readlines()
@@ -105,7 +105,7 @@ def read_orca_out(label):
 
 
 def read_orca_outputs(directory, label):
-    label=label
+    label = label
     directory = Path(directory)
     textfilename = directory / f'{label}.out'
     results = {}
