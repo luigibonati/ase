@@ -251,3 +251,46 @@ def atoms_to_etree(ase_atoms_obj) -> ET.Element:
                                     f'{atoms.get_array("momenta")[aindex][2]:.14f}')
 
     return root
+
+
+# TODO(Fab) REFACTOR
+def parse_info_out_xml(self):
+    """ Read total energy and forces from the info.xml output file."""
+    # Define where to find output file which is called
+    # info.xml in exciting.
+    output_file = self.dir + '/info.xml'
+    # Try to open the output file.
+    try:
+        with open(output_file, 'r') as outfile:
+            # Parse the XML output.
+            parsed_output = ET.parse(outfile)
+    except IOError:
+        raise RuntimeError(
+            "Output file %s doesn't exist" % output_file)
+
+    # Find the last istance of 'totalEnergy'.
+    self.energy = float(parsed_output.findall(
+        'groundstate/scl/iter/energies')[-1].attrib[
+                            'totalEnergy']) * Hartree
+    # Initialize forces list.
+    forces = []
+    # final all instances of 'totalforce'.
+    forcesnodes = parsed_output.findall(
+        'groundstate/scl/structure')[-1].findall(
+        'species/atom/forces/totalforce')
+    # Go through each force in the found instances of 'total force'.
+    for force in forcesnodes:
+        # Append the total force to the forces list.
+        forces.append(np.array(list(force.attrib.values())).astype(float))
+    # Reshape forces so we get three columns (x,y,z) and scale units.
+    self.forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
+    # Check if the calculation converged.
+    if str(parsed_output.find('groundstate').attrib[
+               'status']) == 'finished':
+        self.converged = True
+    else:
+        # BAD - return the status as 'finished': False
+        # or converged: False
+        # or it's simply not the reson
+        # and the caller can decide how to handle the errors
+        raise RuntimeError('Calculation did not converge.')
