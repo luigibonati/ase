@@ -49,16 +49,19 @@ class AimsOutChunk:
         if line_start < len(self.lines):
             cell = [
                 [float(inp) for inp in line.split()[-3:]]
-                for line in self.lines[line_start : line_start + 3]
+                for line in self.lines[line_start:line_start + 3]
             ]
         else:
             cell = None
 
         atoms = Atoms()
         line_start = self.get_line_start(["Atomic structure:"]) + 1
-        for line in self.lines[line_start : line_start + self._n_atoms]:
+        for line in self.lines[line_start:line_start + self._n_atoms]:
             inp = line.split()
             atoms.append(Atom(inp[3], (float(inp[4]), float(inp[5]), float(inp[6]))))
+
+        if cell:
+            atoms.set_cell(cell)
 
         assert len(atoms) == self._n_atoms
         line_start = self.get_line_start(["Found relaxation constraint for atom"])
@@ -143,7 +146,7 @@ class AimsOutChunk:
 
         self._forces = [
             [float(inp) for inp in line.split()[-3:]]
-            for line in self.lines[line_start : line_start + self._n_atoms]
+            for line in self.lines[line_start:line_start + self._n_atoms]
         ]
 
     def _parse_stresses(self):
@@ -155,7 +158,7 @@ class AimsOutChunk:
             return
         line_start = self.get_line_start(["-------------"], line_start)
         self._stresses = []
-        for line in self.lines[line_start : line_start + self._n_atoms]:
+        for line in self.lines[line_start:line_start + self._n_atoms]:
             xx, yy, zz, xy, xz, yz = [float(d) for d in line.split()[2:8]]
             self._stresses.append([xx, yy, zz, yz, xz, xy])
 
@@ -173,7 +176,7 @@ class AimsOutChunk:
 
         self._stress = [
             [float(inp) for inp in line.split()[2:5]]
-            for line in self.lines[line_start + 4 : line_start + 7]
+            for line in self.lines[line_start + 4:line_start + 7]
         ]
         self._stress = full_3x3_to_voigt_6_stress(self._stress)
 
