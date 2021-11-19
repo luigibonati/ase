@@ -49,6 +49,12 @@ class SimpleBinaryRunner:
         self.args = args
         self.time_out = time_out
 
+        # TODO(Alex)
+        #   Need to pass full binary path, then split the get the binary name
+        #   when accessing defaults
+        # TODO(Alex)
+        #   Check binary exists
+
         assert omp_num_threads > 0, "Number of OMP threads must be > 0"
 
         try:
