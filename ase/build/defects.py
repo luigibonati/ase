@@ -448,8 +448,25 @@ class DefectBuilder():
         return symbols
 
 
+    def get_supercell_repitition(self, size):
+        prim = self.get_primitive_structure()
+        cell = prim.get_cell()
+        min_length = min(cell.lengths()[:2])
+        for N in range(1, 50, 1):
+            tmp = N * min_length
+            if tmp > size:
+                print(f'Set supercell extension to {N}x{N}x1 '
+                      f'(corresponds to {tmp:.2f} Ang) based '
+                      f'on the input supercell size of {size} Ang.')
+                return N
+        raise ValueError('Only works for repetitions smaller '
+                         'than 50! Input smaller physical '
+                         'supercell size.')
+
+
     def get_adsorbate_structures(self, atoms=None, kindlist=None,
-                                 sc=3, mechanism='chemisorption'):
+                                 sc=3, mechanism='chemisorption',
+                                 size=None):
         if atoms is None:
             atoms_top = self.create_adsorption_sites('top')
             atoms_bottom = self.create_adsorption_sites('bottom')
@@ -463,6 +480,10 @@ class DefectBuilder():
                 z_ranges = [np.arange(-2, 6, 0.1)]
         if kindlist is None:
             kindlist = self.get_intrinsic_types()
+
+        if not size is None:
+            assert size > 0, 'Choose size larger than zero!'
+            sc = self.get_supercell_repitition(size)
 
         structures = []
         for j, atoms in enumerate(atoms_list):
