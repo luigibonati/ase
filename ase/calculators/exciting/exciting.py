@@ -16,80 +16,6 @@ from ase.calculators.calculator import PropertyNotImplementedError
 
 
 class Exciting:
-    """Class for doing exciting calculations.
-
-    You can find lots of information regarding the XML schema for exciting
-    in the appendix of this thesis:
-    https://pure.unileoben.ac.at/portal/files/1842879/AC08976214n01vt.pdf
-    """
-
-    def __init__(
-            self,
-            dir: str = 'calc', param_dict: Optional[Dict] = None,
-            species_path: Optional[str] = None,
-            exciting_binary='excitingser', kpts=(1, 1, 1),
-            autormt=False, tshift=True, **kwargs):
-        """Construct exciting-calculator object.
-
-        Args:
-            dir: directory in which to execute exciting.
-            param_dict: Dictionary containing XML parameters. String
-                values are translated to attributes, nested dictionaries are
-                translated to sub elements. A list of dictionaries is
-                translated to a  list of sub elements named after the key
-                of which the list is the value. The keys of the dict should
-                be a list of strings not floats.
-            species_path: Directory or URL to look up species files folder.
-            exciting_binary: Path to executable of exciting code.
-                Default: 'excitingser'
-            kpts: Number of k-points. List len should be 3.
-            autormt: Assign the autormt boolean. If true the muffin tin
-                radius is set automatically by rmtapm.
-            kwargs: List of key, value pairs to be
-                converted into groundstate attributes.
-        """
-        # Assign member variables using constructor arguments.
-        self.dir = dir
-        self.energy = None
-        self.param_dict = param_dict
-        # If the speciespath is not given, try to locate it.
-        if species_path is None:
-            try:  # TODO: check whether this dir exists.
-                species_path = os.environ['EXCITINGROOT'] + '/species'
-            except KeyError:
-                raise RuntimeError(
-                    'No species path given and no EXCITINGROOT '
-                    'local var found')
-        else:  # Try to see if the species path directory actually exists.
-            try:
-                assert os.path.isdir(species_path)
-            except AssertionError:
-                raise RuntimeError(
-                    'Species path given: %s, '
-                    'does not exist as a directory' % species_path)
-        self.species_path = species_path
-        # We initialize our _calc.s+caconverged flag indicating
-        # whether the calculation is finished to False.
-        self.converged = False
-        self.exciting_binary = exciting_binary
-        # If true, the radius of the muffin tin is set automatically.
-        self.autormt = autormt
-        # If tshift is "true", the crystal is shifted such that the atom
-        # closest to the origin is exactly at the origin.
-        self.tshift = tshift
-        # Instead of defining param_dict you can also define
-        # kwargs seperately._calc.ss+ca
-        self.groundstate_attributes = kwargs
-        # If we can't find ngrik in kwargs and param_dict=None
-        if ('ngridk' not in kwargs.keys() and not (self.param_dict)):
-            # Set the groundstate attributes ngridk value
-            # using the kpts constructor param. The join and map
-            # convert [2, 2, 2] into '2 2 2'.
-            self.groundstate_attributes[
-                'ngridk'] = ' '.join(map(str, kpts))
-        # Initialize other attributes
-        self.numbers = []
-        self.cell = None
 
     def update(self, atoms: ase.Atoms):
         """Initialize calc if needed then run exciting calc.
@@ -169,6 +95,7 @@ class Exciting:
         """
         raise PropertyNotImplementedError
 
+    # TODO Delete
     def calculate(self, atoms: ase.Atoms):
         """Run exciting calculation.
 
@@ -203,97 +130,8 @@ class Exciting:
         # Read the results of the calculation.
         self.read()
 
-    def add_attributes_to_element_tree(self, atoms: ase.Atoms):
-        """Adds attributes to the element tree.
 
-        The element tree created with ase.io.exciting.atoms_to_tree
-        is missing a few attributes that are specified in the __init__()
-        method of this class. We add them to our element tree.
-
-        Args:
-            atoms: Holds geometry and atomic information of the unit cell.
-
-        Returns:
-            An xml element tree.
-        """
-        # Create an XML Document Object Model (DOM) where we can
-        # then assign different attributes of the DOM. `root` holds the root
-        # of the element tree that is populated with basis vectors, chemical
-        # symbols and the like.
-        root = atoms_to_etree(atoms)
-        # We have to add a few more attributes to the element tree before
-        # writing the xml input file. Assign the species path.
-        root.find('structure').attrib['speciespath'] = self.species_path
-        # Assign the autormt boolean.
-        root.find('structure').attrib['autormt'] = str(
-            self.autormt).lower()
-        # Assign the tshift bool. If true crystal is shifted so
-        # closest atom to origin is now at origin.
-        root.find('structure').attrib['tshift'] = str(
-            self.tshift).lower()
-        # Check if param_dict is not None.
-        if self.param_dict:
-            # Assign dict key values to XML dom object root.
-            self.dict_to_xml(self.param_dict, root)
-        else:  # For an undefined param_dict.
-            groundstate = ET.SubElement(root, 'groundstate', tforce='true')
-            for key, value in self.groundstate_attributes.items():
-                if key == 'title':
-                    root.findall('title')[0].text = value
-                else:
-                    groundstate.attrib[key] = str(value)
-        return root
-
-    def write_input(self, atoms: ase.Atoms) -> str:
-        """Write atomic info inputs to an xml.
-
-        Write input parameters into an xml file that will be used by the
-        exciting binary to run a calculation.
-
-        Args:
-            atoms: Holds geometry and atomic information of the unit cell.
-        Returns:
-            Returns the output file path name.
-        """
-        # Check if the directory where we want to save our file exists.
-        # If not, create the directory.
-        if not os.path.isdir(self.dir):
-            os.mkdir(self.dir)
-        root = self.add_attributes_to_element_tree(atoms=atoms)
-        output_file_path = os.path.join(self.dir, 'input.xml')
-        with open(output_file_path, 'w') as fd:
-            # Prettify makes the output a lot nicer to read.
-            fd.write(prettify(root))
-        return output_file_path
-
-    def dict_to_xml(self, pdict: Dict, element):
-        """Write dictionary k,v paris to XML DOM object.
-
-        Args:
-            pdict: k,v pairs that go into the xml like file.
-            element: The XML object (XML DOM object) that we want to modify
-                using dictionary's k,v pairs.
-        """
-        for key, value in pdict.items():
-            if (isinstance(value, str) and key == 'text()'):
-                element.text = value
-            elif (isinstance(value, str)):
-                element.attrib[key] = value
-            # if the value is a list, recursively call this
-            # method to add each member of the list with the
-            # same key for all of them.
-            elif (isinstance(value, list)):
-                for item in value:
-                    self.dict_to_xml(item, ET.SubElement(element, key))
-            # Otherwise if the value is a dictionary.
-            elif (isinstance(value, dict)):
-                if (element.findall(key) == []):
-                    self.dict_to_xml(value, ET.SubElement(element, key))
-                else:
-                    self.dict_to_xml(value, element.findall(key)[0])
-            else:
-                raise TypeError(f'cannot deal with key: {key}, val: {value}')
-
+    # TODO(Fab) Move to IO/ Use the one from inside out parsers
     def read(self):
         """ Read total energy and forces from the info.xml output file."""
         # Define where to find output file which is called
