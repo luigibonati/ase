@@ -35,7 +35,7 @@ class AimsOutChunk:
         self._is_md = None
 
     def get_line_start(self, keys, line_start=0):
-        for line in self.lines:
+        for line in self.lines[line_start:]:
             line_start += 1
             if any([key in line for key in keys]):
                 break
@@ -153,7 +153,6 @@ class AimsOutChunk:
         )
         if line_start == len(self.lines):
             return
-
         line_start = self.get_line_start(["-------------"], line_start)
         self._stresses = []
         for line in self.lines[line_start : line_start + self._n_atoms]:
@@ -752,7 +751,6 @@ def read_aims_output(fd, index=-1):
     chunks = [initial_chunk] + list(
         get_aims_out_chunks(fd, initial_chunk.n_atoms, initial_chunk.constraints)
     )
-    print(chunks)
     images = [chunk.atoms for chunk in chunks]
     return images[index]
 
