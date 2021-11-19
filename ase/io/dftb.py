@@ -12,7 +12,7 @@ def prepare_dftb_input(outfile, atoms, parameters, properties, directory):
         Geometry is taken always from the file 'geo_end.gen'.
     """
     # Write geometry information
-    prepare_dftb_geo(f'{directory}/geo_end.gen', atoms)
+    prepare_dftb_geometry(f'{directory}/geo_end.gen', atoms)
 
     # Write parameter information
     prepare_dftb_parameters(outfile, atoms, parameters, properties, directory)
