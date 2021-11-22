@@ -1,4 +1,3 @@
-
 def test_input_structure():
     from ase.build import bulk, mx2
     from ase.build.defects import DefectBuilder
@@ -132,6 +131,48 @@ def test_create_adsorption():
             symbols = ad.get_chemical_symbols()
             for sym in symbols:
                 assert sym in ['Mo', 'S', 'Se', 'H', 'He']
+
+
+def test_get_layer():
+    from ase.build import mx2
+    from ase.build.defects import (DefectBuilder,
+                                   has_same_kind)
+    structures = [mx2(formula='MoS2'),
+                  mx2(formula='WSSe')]
+    lengths = [(3, 1), (3, 1)]
+    same_kind = [True, False]
+
+    for i, structure in enumerate(structures):
+        builder = DefectBuilder(structure)
+        top_bot = []
+        for loc in ['top', 'bottom']:
+            layer = builder.get_layer(kind=loc)
+            top_bot.append(layer)
+            assert len(structure) == lengths[i][0]
+            assert len(layer) == lengths[i][1]
+        assert has_same_kind(top_bot[0],
+                             top_bot[1]) == same_kind[i]
+
+
+def test_true_interstitial():
+    from ase.build import mx2
+    import numpy as np
+    from ase.build.defects import DefectBuilder
+
+    vacs = np.arange(5, 20, 1)
+    position = [0, 0, 7]
+    for vac in vacs:
+        structure = mx2(formula='WS2', vacuum=vac)
+        boundaries = ((vac) / structure.get_cell()[2, 2],
+                      (vac + 2 * 1.595) / structure.get_cell()[2, 2])
+        rel_pos = position / structure.get_cell()[2, 2]
+        if (rel_pos[2] > boundaries[0]
+           and rel_pos[2] < boundaries[1]):
+            ref = True
+        else:
+            ref = False
+        builder = DefectBuilder(structure)
+        assert builder.is_true_interstitial(rel_pos) == ref
 
 
 def test_intrinsic_types():
