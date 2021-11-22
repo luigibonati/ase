@@ -39,6 +39,11 @@ Git master branch
 
 Calculators:
 
+* Created new module :mod:`ase.calculators.harmonic` with the
+  :class:`ase.calculators.harmonic.HarmonicCalculator`
+  for calculations with a Hessian-based harmonic force field. Can be used to
+  compute Anharmonic Corrections to the Harmonic Approximation.
+
 * Created new :class:`ase.calculators.plumed.Plumed` that is an interface
   between ASE and Plumed_ for carrying out enhanced sampling methods and MD
   postprocessing.
