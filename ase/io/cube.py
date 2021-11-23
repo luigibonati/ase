@@ -88,6 +88,7 @@ def read_cube(fileobj, read_data=True, program=None, verbose=False):
     * 'atoms': Atoms object
     * 'data' : (Nx, Ny, Nz) ndarray
     * 'origin': (3,) ndarray, specifying the cube_data origin.
+    * 'voxels': (3, 3) ndarray, representing voxel size
     """
 
     readline = fileobj.readline
@@ -118,6 +119,7 @@ def read_cube(fileobj, read_data=True, program=None, verbose=False):
 
     cell = np.empty((3, 3))
     shape = []
+    voxel_size = []
 
     # the upcoming three lines contain the cell information
     for i in range(3):
@@ -129,6 +131,7 @@ def read_cube(fileobj, read_data=True, program=None, verbose=False):
         if program == 'castep':
             n -= 1
         cell[i] = n * Bohr * np.array([x, y, z])
+        voxel_size.append(np.array([x, y, z]))
 
     numbers = np.empty(natoms, int)
     positions = np.empty((natoms, 3))
@@ -161,6 +164,7 @@ def read_cube(fileobj, read_data=True, program=None, verbose=False):
 
         dct['data'] = data
         dct['origin'] = origin
+        dct['voxels'] = voxel_size
 
     return dct
 
