@@ -717,7 +717,7 @@ def write_aims(
     from ase.constraints import FixAtoms, FixCartesian
 
     if geo_constrain:
-        if not scaled:
+        if not scaled and np.all(atoms.pbc):
             warnings.warn(
                 "Setting scaled to True because a symmetry_block is detected."
             )
@@ -749,10 +749,6 @@ def write_aims(
             fd.write("\n")
     fix_cart = np.zeros([len(atoms), 3])
 
-    # else aims crashes anyways
-    # better be more explicit
-    # write_magmoms = np.any([a.magmom for a in atoms])
-
     if atoms.constraints:
         for constr in atoms.constraints:
             if isinstance(constr, FixAtoms):
@@ -765,9 +761,7 @@ def write_aims(
     else:
         assert len(ghosts) == len(atoms)
 
-    if geo_constrain:
-        wrap = False
-    scaled_positions = atoms.get_scaled_positions(wrap=wrap)
+    scaled_positions = atoms.get_scaled_positions(wrap=(not geo_constrain))
 
     for i, atom in enumerate(atoms):
         if ghosts[i] == 1:
