@@ -4,7 +4,9 @@ from ase.utils import search_current_git_hash
 
 
 def format_dependency(modname: str) -> Tuple[str, str]:
-    """Return (name, path) for given module."""
+    """Return (name, info) for given module.
+
+    If possible, info is the path to the module's package."""
     try:
         module = importlib.import_module(modname)
     except ImportError:
@@ -18,7 +20,12 @@ def format_dependency(modname: str) -> Tuple[str, str]:
             name += '-{:.10}'.format(githash)
 
     # (only packages have __path__, but we are importing packages.)
-    return name, str(module.__path__[0])  # type: ignore
+    paths = getattr(module, '__path__', [])
+    if paths:
+        info = paths[0]
+    else:
+        info = 'module has no path'
+    return name, info
 
 
 def all_dependencies() -> List[Tuple[str, str]]:
