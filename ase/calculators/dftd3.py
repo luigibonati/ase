@@ -17,7 +17,8 @@ class DFTD3(FileIOCalculator):
 
     name = 'DFTD3'
     command = 'dftd3'
-    dftd3_implemented_properties = ['energy', 'forces', 'stress']
+    dftd3_implemented_properties = ['energy', 'free_energy',
+                                    'forces', 'stress']
 
     damping_methods = ['zero', 'bj', 'zerom', 'bjm']
 
@@ -83,9 +84,11 @@ class DFTD3(FileIOCalculator):
             if dft is not self.dft:
                 changed_parameters['dft'] = dft
             if dft is None:
-                self.implemented_properties = self.dftd3_implemented_properties
+                names = self.dftd3_implemented_properties
             else:
-                self.implemented_properties = dft.implemented_properties
+                names = dft.implemented_properties
+
+            self.implemented_properties = list(names)
             self.dft = dft
 
         # If the user did not supply an XC functional, but did attach a

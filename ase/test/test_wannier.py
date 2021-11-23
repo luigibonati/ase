@@ -1,17 +1,23 @@
 import pytest
 import numpy as np
+from functools import partial
+from ase import Atoms
 from ase.transport.tools import dagger, normalize
 from ase.dft.kpoints import monkhorst_pack
-from ase.build import molecule
+from ase.build import molecule, bulk
 from ase.io.cube import read_cube
 from ase.lattice import CUB, FCC, BCC, TET, BCT, ORC, ORCF, ORCI, ORCC, HEX, \
     RHL, MCL, MCLC, TRI, OBL, HEX2D, RECT, CRECT, SQR, LINE
-from ase.dft.wannier import gram_schmidt, lowdin, random_orthogonal_matrix, \
+from ase.dft.wannier import gram_schmidt, lowdin, \
     neighbor_k_search, calculate_weights, steepest_descent, md_min, \
-    rotation_from_projection, Wannier
+    rotation_from_projection, init_orbitals, scdm, Wannier, \
+    search_for_gamma_point, arbitrary_s_orbitals
+from ase.dft.wannierstate import random_orthogonal_matrix
 
 
 calc = pytest.mark.calculator
+Nk = 2
+gpts = (8, 8, 8)
 
 
 @pytest.fixture()
@@ -20,59 +26,143 @@ def rng():
 
 
 @pytest.fixture(scope='module')
-def _std_calculator_gpwfile(tmp_path_factory, factories):
-    factories.require('gpaw')
-    import gpaw
+def _base_calculator_gpwfile(tmp_path_factory, factories):
+    """
+    Generic method to cache calculator in a file on disk.
+    """
+    def __base_calculator_gpwfile(atoms, filename,
+                                  nbands, gpts=gpts,
+                                  kpts=(Nk, Nk, Nk)):
+        factories.require('gpaw')
+        import gpaw
+        gpw_path = tmp_path_factory.mktemp('sub') / filename
+        calc = gpaw.GPAW(
+            gpts=gpts,
+            nbands=nbands,
+            kpts={'size': kpts, 'gamma': True},
+            symmetry='off',
+            txt=None)
+        atoms.calc = calc
+        atoms.get_potential_energy()
+        calc.write(gpw_path, mode='all')
+        return gpw_path
+    return __base_calculator_gpwfile
+
+
+@pytest.fixture(scope='module')
+def _h2_calculator_gpwfile(_base_calculator_gpwfile):
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
-    gpw_path = tmp_path_factory.mktemp('sub') / 'dumpfile.gpw'
-    calc = gpaw.GPAW(gpts=(8, 8, 8), nbands=4, kpts=(2, 2, 2),
-                     symmetry='off', txt=None)
-    atoms.calc = calc
-    atoms.get_potential_energy()
-    calc.write(gpw_path, mode='all')
+    gpw_path = _base_calculator_gpwfile(
+        atoms=atoms,
+        filename='wan_h2.gpw',
+        nbands=4
+    )
     return gpw_path
 
 
 @pytest.fixture(scope='module')
-def std_calculator(_std_calculator_gpwfile):
+def h2_calculator(_h2_calculator_gpwfile):
     import gpaw
-    return gpaw.GPAW(_std_calculator_gpwfile, txt=None)
+    return gpaw.GPAW(_h2_calculator_gpwfile, txt=None)
+
+
+@pytest.fixture(scope='module')
+def _si_calculator_gpwfile(_base_calculator_gpwfile):
+    atoms = bulk('Si')
+    gpw_path = _base_calculator_gpwfile(
+        atoms=atoms,
+        filename='wan_si.gpw',
+        nbands=8
+    )
+    return gpw_path
+
+
+@pytest.fixture(scope='module')
+def si_calculator(_si_calculator_gpwfile):
+    import gpaw
+    return gpaw.GPAW(_si_calculator_gpwfile, txt=None)
+
+
+@pytest.fixture(scope='module')
+def _ti_calculator_gpwfile(_base_calculator_gpwfile):
+    atoms = bulk('Ti', crystalstructure='hcp')
+    gpw_path = _base_calculator_gpwfile(
+        atoms=atoms,
+        filename='wan_ti.gpw',
+        nbands=None
+    )
+    return gpw_path
+
+
+@pytest.fixture(scope='module')
+def ti_calculator(_ti_calculator_gpwfile):
+    import gpaw
+    return gpaw.GPAW(_ti_calculator_gpwfile, txt=None)
 
 
 @pytest.fixture
-def wan(rng, std_calculator):
-    def _wan(gpts=(8, 8, 8),
-             atoms=None,
-             calc=None,
-             nwannier=2,
-             fixedstates=None,
-             initialwannier='bloch',
-             kpts=(1, 1, 1),
-             file=None,
-             rng=rng,
-             full_calc=False,
-             std_calc=True):
-        if std_calc and calc is None and atoms is None:
-            calc = std_calculator
-        else:
-            if calc is None:
-                gpaw = pytest.importorskip('gpaw')
-                calc = gpaw.GPAW(gpts=gpts, nbands=nwannier, kpts=kpts,
-                                 symmetry='off', txt=None)
-            if atoms is None and not full_calc:
-                pbc = (np.array(kpts) > 1).any()
-                atoms = molecule('H2', pbc=pbc)
-                atoms.center(vacuum=3.)
-            if not full_calc:
-                atoms.calc = calc
-                atoms.get_potential_energy()
-        return Wannier(nwannier=nwannier,
-                       fixedstates=fixedstates,
-                       calc=calc,
-                       initialwannier=initialwannier,
-                       file=None,
-                       rng=rng)
+def wan(rng, h2_calculator):
+    def _wan(
+        atoms=None,
+        calc=None,
+        nwannier=2,
+        fixedstates=None,
+        fixedenergy=None,
+        initialwannier='bloch',
+        functional='std',
+        kpts=None,
+        file=None,
+        rng=rng,
+        full_calc=False,
+        std_calc=True,
+    ):
+        """
+        Generate a Wannier object.
+
+        full_calc: the provided calculator has a converged calculation
+        std_calc: the default H2 calculator object is used
+        """
+        # If the calculator, or some fundamental parameters, are provided
+        # we clearly do not want a default calculator
+        if calc is not None or kpts is not None or atoms is not None:
+            std_calc = False
+            # Default value for kpts, if we need to generate atoms/calc
+            if kpts is None:
+                kpts = (Nk, Nk, Nk)
+
+        if std_calc:
+            calc = h2_calculator
+            full_calc = True
+        elif atoms is None and not full_calc:
+            pbc = (np.array(kpts) > 1).any()
+            atoms = molecule('H2', pbc=pbc)
+            atoms.center(vacuum=3.)
+
+        if calc is None:
+            gpaw = pytest.importorskip('gpaw')
+            calc = gpaw.GPAW(
+                gpts=gpts,
+                nbands=nwannier,
+                kpts=kpts,
+                symmetry='off',
+                txt=None
+            )
+
+        if not full_calc:
+            atoms.calc = calc
+            atoms.get_potential_energy()
+
+        return Wannier(
+            nwannier=nwannier,
+            fixedstates=fixedstates,
+            fixedenergy=fixedenergy,
+            calc=calc,
+            initialwannier=initialwannier,
+            file=None,
+            functional=functional,
+            rng=rng,
+        )
     return _wan
 
 
@@ -102,7 +192,7 @@ class Paraboloid:
         return np.sum(self.pos**2) + self.shift
 
 
-def orthonormality_error(matrix):
+def unitarity_error(matrix):
     return np.abs(dagger(matrix) @ matrix - np.eye(len(matrix))).max()
 
 
@@ -110,7 +200,7 @@ def orthogonality_error(matrix):
     errors = []
     for i in range(len(matrix)):
         for j in range(i + 1, len(matrix)):
-            errors.append(np.abs(matrix[i].T @ matrix[j]))
+            errors.append(np.abs(dagger(matrix[i]) @ matrix[j]))
     return np.max(errors)
 
 
@@ -121,27 +211,27 @@ def normalization_error(matrix):
 
 
 def test_gram_schmidt(rng):
-    matrix = rng.rand(4, 4)
-    assert orthonormality_error(matrix) > 1
+    matrix = rng.random((4, 4))
+    assert unitarity_error(matrix) > 1
     gram_schmidt(matrix)
-    assert orthonormality_error(matrix) < 1e-12
+    assert unitarity_error(matrix) < 1e-12
 
 
 def test_lowdin(rng):
-    matrix = rng.rand(4, 4)
-    assert orthonormality_error(matrix) > 1
+    matrix = rng.random((4, 4))
+    assert unitarity_error(matrix) > 1
     lowdin(matrix)
-    assert orthonormality_error(matrix) < 1e-12
+    assert unitarity_error(matrix) < 1e-12
 
 
 def test_random_orthogonal_matrix(rng):
     dim = 4
     matrix = random_orthogonal_matrix(dim, rng=rng, real=True)
     assert matrix.shape[0] == matrix.shape[1]
-    assert orthonormality_error(matrix) < 1e-12
+    assert unitarity_error(matrix) < 1e-12
     matrix = random_orthogonal_matrix(dim, rng=rng, real=False)
     assert matrix.shape[0] == matrix.shape[1]
-    assert orthonormality_error(matrix) < 1e-12
+    assert unitarity_error(matrix) < 1e-12
 
 
 def test_neighbor_k_search():
@@ -175,7 +265,7 @@ def test_steepest_descent():
     tol = 1e-6
     step = 0.1
     func = Paraboloid(pos=np.array([10, 10, 10], dtype=float), shift=1.)
-    steepest_descent(func=func, step=step, tolerance=tol, verbose=False)
+    steepest_descent(func=func, step=step, tolerance=tol)
     assert func.get_functional_value() == pytest.approx(1, abs=1e-5)
 
 
@@ -183,15 +273,16 @@ def test_md_min():
     tol = 1e-8
     step = 0.1
     func = Paraboloid(pos=np.array([10, 10, 10], dtype=complex), shift=1.)
-    md_min(func=func, step=step, tolerance=tol, verbose=False)
+    md_min(func=func, step=step, tolerance=tol,
+           max_iter=1e6)
     assert func.get_functional_value() == pytest.approx(1, abs=1e-5)
 
 
 def test_rotation_from_projection(rng):
-    proj_nw = rng.rand(6, 4)
-    assert orthonormality_error(proj_nw[:int(min(proj_nw.shape))]) > 1
+    proj_nw = rng.random((6, 4))
+    assert unitarity_error(proj_nw[:int(min(proj_nw.shape))]) > 1
     U_ww, C_ul = rotation_from_projection(proj_nw, fixed=2, ortho=True)
-    assert orthonormality_error(U_ww) < 1e-10, 'U_ww not unitary'
+    assert unitarity_error(U_ww) < 1e-10, 'U_ww not unitary'
     assert orthogonality_error(C_ul.T) < 1e-10, 'C_ul columns not orthogonal'
     assert normalization_error(C_ul) < 1e-10, 'C_ul not normalized'
     U_ww, C_ul = rotation_from_projection(proj_nw, fixed=2, ortho=False)
@@ -200,31 +291,43 @@ def test_rotation_from_projection(rng):
 
 def test_save(tmpdir, wan):
     wanf = wan(nwannier=4, fixedstates=2, initialwannier='bloch')
-    picklefile = tmpdir.join('wanf.pickle')
+    jsonfile = tmpdir.join('wanf.json')
     f1 = wanf.get_functional_value()
-    wanf.save(picklefile)
-    wanf.initialize(file=picklefile, initialwannier='bloch')
+    wanf.save(jsonfile)
+    wanf.initialize(file=jsonfile, initialwannier='bloch')
     assert pytest.approx(f1) == wanf.get_functional_value()
 
 
-# The following test always fails because get_radii() is broken.
 @pytest.mark.parametrize('lat', bravais_lattices())
-def test_get_radii(lat, std_calculator, wan):
+def test_get_radii(lat, wan):
+    # Sanity check, the Wannier functions' spread should always be positive.
+    # Also, make sure that the method does not fail for any lattice.
     if ((lat.tocell() == FCC(a=1).tocell()).all() or
             (lat.tocell() == ORCF(a=1, b=2, c=3).tocell()).all()):
-        pytest.skip("lattices not supported, yet")
+        pytest.skip("Lattices not supported by this function,"
+                    " use get_spreads() instead.")
     atoms = molecule('H2', pbc=True)
     atoms.cell = lat.tocell()
     atoms.center(vacuum=3.)
-    calc = std_calculator
-    wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, calc=calc,
-               initialwannier='bloch', full_calc=True)
-    assert not (wanf.get_radii() == 0).all()
+    wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, initialwannier='bloch')
+    assert all(wanf.get_radii() > 0)
 
 
-def test_get_functional_value(wan):
+@pytest.mark.parametrize('lat', bravais_lattices())
+def test_get_spreads(lat, wan):
+    # Sanity check, the Wannier functions' spread should always be positive.
+    # Also, make sure that the method does not fail for any lattice.
+    atoms = molecule('H2', pbc=True)
+    atoms.cell = lat.tocell()
+    atoms.center(vacuum=3.)
+    wanf = wan(nwannier=4, fixedstates=2, atoms=atoms, initialwannier='bloch')
+    assert all(wanf.get_spreads() > 0)
+
+
+@pytest.mark.parametrize('fun', ['std', 'var'])
+def test_get_functional_value(fun, wan):
     # Only testing if the functional scales with the number of functions
-    wan1 = wan(nwannier=3)
+    wan1 = wan(nwannier=3, functional=fun)
     f1 = wan1.get_functional_value()
     wan2 = wan(nwannier=4)
     f2 = wan2.get_functional_value()
@@ -245,18 +348,60 @@ def test_get_centers(factory):
     assert np.abs(centers - [com, com]).max() < 1e-4
 
 
-def test_write_cube(wan):
-    atoms = molecule('H2')
-    atoms.center(vacuum=3.)
-    wanf = wan(atoms=atoms)
+def test_write_cube_default(wan, h2_calculator, testdir):
+    # Chek the value saved in the CUBE file and the atoms object.
+    # The default saved value is the absolute value of the Wannier function,
+    # and the supercell is repeated per the number of k-points in each
+    # direction.
+    atoms = h2_calculator.atoms
+    wanf = wan(calc=h2_calculator, full_calc=True)
     index = 0
-    # It returns some errors when using file objects, so we use simple filename
+
+    # It returns some errors when using file objects, so we use a string
     cubefilename = 'wanf.cube'
     wanf.write_cube(index, cubefilename)
     with open(cubefilename, mode='r') as inputfile:
         content = read_cube(inputfile)
+    assert pytest.approx(content['atoms'].cell.array) == atoms.cell.array * 2
+    assert pytest.approx(content['data']) == abs(wanf.get_function(index))
+
+
+def test_write_cube_angle(wan, testdir):
+    # Check that the complex phase is correctly saved to the CUBE file, together
+    # with the right atoms object.
+    atoms = molecule('H2')
+    atoms.center(vacuum=3.)
+    wanf = wan(atoms=atoms, kpts=(1, 1, 1))
+    index = 0
+
+    # It returns some errors when using file objects, so we use a string
+    cubefilename = 'wanf.cube'
+    wanf.write_cube(index, cubefilename, angle=True)
+    with open(cubefilename, mode='r') as inputfile:
+        content = read_cube(inputfile)
     assert pytest.approx(content['atoms'].cell.array) == atoms.cell.array
-    assert pytest.approx(content['data']) == wanf.get_function(index)
+    assert pytest.approx(content['data']) == np.angle(wanf.get_function(index))
+
+
+def test_write_cube_repeat(wan, testdir):
+    # Check that the repeated supercell and Wannier functions are correctly
+    # saved to the CUBE file, together with the right atoms object.
+    atoms = molecule('H2')
+    atoms.center(vacuum=3.)
+    wanf = wan(atoms=atoms, kpts=(1, 1, 1))
+    index = 0
+    repetition = [4, 4, 4]
+
+    # It returns some errors when using file objects, so we use simple filename
+    cubefilename = 'wanf.cube'
+    wanf.write_cube(index, cubefilename, repeat=repetition)
+
+    with open(cubefilename, mode='r') as inputfile:
+        content = read_cube(inputfile)
+    assert pytest.approx(content['atoms'].cell.array) == \
+        (atoms * repetition).cell.array
+    assert pytest.approx(content['data']) == \
+        abs(wanf.get_function(index, repetition))
 
 
 def test_localize(wan):
@@ -296,11 +441,12 @@ def test_get_pdos(wan):
         assert pdos_n[i] != pytest.approx(0)
 
 
-def test_translate(wan, std_calculator):
+def test_translate(wan, h2_calculator):
     nwannier = 2
-    calc = std_calculator
+    calc = h2_calculator
     atoms = calc.get_atoms()
-    wanf = wan(nwannier=nwannier, initialwannier='bloch')
+    wanf = wan(nwannier=nwannier, initialwannier='bloch',
+               calc=calc, full_calc=True)
     wanf.translate_all_to_cell(cell=[0, 0, 0])
     c0_w = wanf.get_centers()
     for i in range(nwannier):
@@ -313,11 +459,12 @@ def test_translate(wan, std_calculator):
         assert c1_w == pytest.approx(c2_w)
 
 
-def test_translate_to_cell(wan, std_calculator):
+def test_translate_to_cell(wan, h2_calculator):
     nwannier = 2
-    calc = std_calculator
+    calc = h2_calculator
     atoms = calc.get_atoms()
-    wanf = wan(nwannier=nwannier, initialwannier='bloch')
+    wanf = wan(nwannier=nwannier, initialwannier='bloch',
+               calc=calc, full_calc=True)
     for i in range(nwannier):
         wanf.translate_to_cell(w=i, cell=[0, 0, 0])
         c0_w = wanf.get_centers()
@@ -332,11 +479,12 @@ def test_translate_to_cell(wan, std_calculator):
         assert c0_w == pytest.approx(c1_w)
 
 
-def test_translate_all_to_cell(wan, std_calculator):
+def test_translate_all_to_cell(wan, h2_calculator):
     nwannier = 2
-    calc = std_calculator
+    calc = h2_calculator
     atoms = calc.get_atoms()
-    wanf = wan(nwannier=nwannier, initialwannier='bloch')
+    wanf = wan(nwannier=nwannier, initialwannier='bloch',
+               calc=calc, full_calc=True)
     wanf.translate_all_to_cell(cell=[0, 0, 0])
     c0_w = wanf.get_centers()
     assert (c0_w < atoms.cell.array.diagonal()).all()
@@ -348,9 +496,9 @@ def test_translate_all_to_cell(wan, std_calculator):
             pytest.approx(np.linalg.norm(atoms.cell.array.diagonal()))
 
 
-def test_distances(wan, std_calculator):
+def test_distances(wan, h2_calculator):
     nwannier = 2
-    calc = std_calculator
+    calc = h2_calculator
     atoms = calc.get_atoms()
     wanf = wan(nwannier=nwannier, initialwannier='bloch')
     cent_w = wanf.get_centers()
@@ -373,7 +521,6 @@ def test_get_hopping_bloch(wan):
     for i in range(nwannier):
         assert hop0_ww[i, i] != 0
         assert hop1_ww[i, i] != 0
-        assert np.abs(hop1_ww[i, i]) < np.abs(hop0_ww[i, i])
         for j in range(i + 1, nwannier):
             assert hop0_ww[i, j] == 0
             assert hop1_ww[i, j] == 0
@@ -397,10 +544,10 @@ def test_get_hamiltonian_bloch(wan):
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
     kpts = (2, 2, 2)
-    Nk = kpts[0] * kpts[1] * kpts[2]
+    number_kpts = kpts[0] * kpts[1] * kpts[2]
     wanf = wan(atoms=atoms, kpts=kpts,
                nwannier=nwannier, initialwannier='bloch')
-    for k in range(Nk):
+    for k in range(number_kpts):
         H_ww = wanf.get_hamiltonian(k=k)
         for i in range(nwannier):
             assert H_ww[i, i] != 0
@@ -414,19 +561,19 @@ def test_get_hamiltonian_random(wan, rng):
     atoms = molecule('H2', pbc=True)
     atoms.center(vacuum=3.)
     kpts = (2, 2, 2)
-    Nk = kpts[0] * kpts[1] * kpts[2]
+    number_kpts = kpts[0] * kpts[1] * kpts[2]
     wanf = wan(atoms=atoms, kpts=kpts, rng=rng,
                nwannier=nwannier, initialwannier='random')
-    for k in range(Nk):
+    for k in range(number_kpts):
         H_ww = wanf.get_hamiltonian(k=k)
         for i in range(nwannier):
             for j in range(i + 1, nwannier):
                 assert np.abs(H_ww[i, j]) == pytest.approx(np.abs(H_ww[j, i]))
 
 
-def test_get_hamiltonian_kpoint(wan, rng, std_calculator):
+def test_get_hamiltonian_kpoint(wan, rng, h2_calculator):
     nwannier = 4
-    calc = std_calculator
+    calc = h2_calculator
     atoms = calc.get_atoms()
     wanf = wan(nwannier=nwannier, initialwannier='random')
     kpts = atoms.cell.bandpath(density=50).cartesian_kpts()
@@ -439,27 +586,24 @@ def test_get_hamiltonian_kpoint(wan, rng, std_calculator):
 
 def test_get_function(wan):
     nwannier = 2
-    atoms = molecule('H2', pbc=True)
-    atoms.center(vacuum=3.)
-    nk = 2
-    gpts = np.array([8, 8, 8])
-    wanf = wan(atoms=atoms, gpts=gpts, kpts=(nk, nk, nk), rng=rng,
-               nwannier=nwannier, initialwannier='bloch')
+    gpts_np = np.array(gpts)
+    wanf = wan(nwannier=nwannier, initialwannier='bloch')
     assert (wanf.get_function(index=[0, 0]) == 0).all()
     assert wanf.get_function(index=[0, 1]) + wanf.get_function(index=[1, 0]) \
         == pytest.approx(wanf.get_function(index=[1, 1]))
     for i in range(nwannier):
-        assert (gpts * nk == wanf.get_function(index=i).shape).all()
-        assert (gpts * [1, 2, 3] ==
+        assert (gpts_np * Nk == wanf.get_function(index=i).shape).all()
+        assert (gpts_np * [1, 2, 3] ==
                 wanf.get_function(index=i, repeat=[1, 2, 3]).shape).all()
 
 
-def test_get_gradients(wan, rng):
+@pytest.mark.parametrize('fun', ['std', 'var'])
+def test_get_gradients(fun, wan, rng):
     wanf = wan(nwannier=4, fixedstates=2, kpts=(1, 1, 1),
-               initialwannier='bloch', std_calc=False)
+               initialwannier='bloch', functional=fun)
     # create an anti-hermitian array/matrix
-    step = rng.rand(wanf.get_gradients().size) + \
-        1.j * rng.rand(wanf.get_gradients().size)
+    step = rng.random(wanf.get_gradients().size) + \
+        1.j * rng.random(wanf.get_gradients().size)
     step *= 1e-8
     step -= dagger(step)
     f1 = wanf.get_functional_value()
@@ -467,3 +611,167 @@ def test_get_gradients(wan, rng):
     f2 = wanf.get_functional_value()
     assert (np.abs((f2 - f1) / step).ravel() -
             np.abs(wanf.get_gradients())).max() < 1e-4
+
+
+@pytest.mark.parametrize('init', ['bloch', 'random', 'orbitals', 'scdm'])
+def test_initialwannier(init, wan, ti_calculator):
+    # dummy check to run the module with different initialwannier methods
+    wanf = wan(calc=ti_calculator, full_calc=True,
+               initialwannier=init, nwannier=14, fixedstates=12)
+    assert wanf.get_functional_value() > 0
+
+
+def test_nwannier_auto(wan, ti_calculator):
+    """ Test 'auto' value for parameter 'nwannier'. """
+    partial_wan = partial(
+        wan,
+        calc=ti_calculator,
+        full_calc=True,
+        initialwannier='bloch',
+        nwannier='auto'
+    )
+
+    # Check default value
+    wanf = partial_wan()
+    assert wanf.nwannier == 15
+
+    # Check value setting fixedenergy
+    wanf = partial_wan(fixedenergy=0)
+    assert wanf.nwannier == 15
+    wanf = partial_wan(fixedenergy=5)
+    assert wanf.nwannier == 18
+
+    # Check value setting fixedstates
+    number_kpts = Nk**3
+    list_fixedstates = [14] * number_kpts
+    list_fixedstates[Nk] = 18
+    wanf = partial_wan(fixedstates=list_fixedstates)
+    assert wanf.nwannier == 18
+
+
+def test_arbitrary_s_orbitals(rng):
+    atoms = Atoms('3H', positions=[[0, 0, 0],
+                                   [1, 1.5, 1],
+                                   [2, 3, 0]])
+    orbs = arbitrary_s_orbitals(atoms, 10, rng)
+
+    atoms.append('H')
+    s_pos = atoms.get_scaled_positions()
+    for orb in orbs:
+        # Test if they are actually s-orbitals
+        assert orb[1] == 0
+
+        # Read random position
+        x, y, z = orb[0]
+        s_pos[-1] = [x, y, z]
+        atoms.set_scaled_positions(s_pos)
+
+        # Use dummy H atom to measure distance from any other atom
+        dists = atoms.get_distances(
+            a=-1,
+            indices=range(atoms.get_global_number_of_atoms() - 1))
+
+        # Test that the s-orbital is close to at least one atom
+        assert (dists < 1.5).any()
+
+
+def test_init_orbitals_h2(rng):
+    # Check that the initial orbitals for H2 are as many as requested and they
+    # are all s-orbitals (l=0).
+    atoms = molecule('H2')
+    atoms.center(vacuum=3.)
+    ntot = 2
+    orbs = init_orbitals(atoms=atoms, ntot=ntot, rng=rng)
+    angular_momenta = [orb[1] for orb in orbs]
+    assert sum([l * 2 + 1 for l in angular_momenta]) == ntot
+    assert angular_momenta == [0] * ntot
+
+
+def test_init_orbitals_ti(rng):
+    # Check that the initial orbitals for Ti bulk are as many as requested and
+    # there are both s-orbitals (l=0) and d-orbitals (l=2).
+    atoms = bulk('Ti')
+    ntot = 14
+    orbs = init_orbitals(atoms=atoms, ntot=ntot, rng=rng)
+    angular_momenta = [orb[1] for orb in orbs]
+    assert sum([l * 2 + 1 for l in angular_momenta]) == ntot
+    assert 0 in angular_momenta
+    assert 2 in angular_momenta
+
+
+def test_search_for_gamma_point():
+    list_with_gamma = [[-1.0, -1.0, -1.0],
+                       [0.0, 0.0, 0.0],
+                       [0.1, 0.0, 0.0],
+                       [1.5, 2.5, 0.5]]
+    gamma_idx = search_for_gamma_point(list_with_gamma)
+    assert gamma_idx == 1
+
+    list_without_gamma = [[-1.0, -1.0, -1.0],
+                          [0.1, 0.0, 0.0],
+                          [1.5, 2.5, 0.5]]
+    gamma_idx = search_for_gamma_point(list_without_gamma)
+    assert gamma_idx is None
+
+
+def test_scdm(ti_calculator):
+    calc = ti_calculator
+    Nw = 14
+    ps = calc.get_pseudo_wave_function(band=Nw, kpt=0, spin=0)
+    Ng = ps.size
+    kpt_kc = calc.get_bz_k_points()
+    number_kpts = len(kpt_kc)
+    nbands = calc.get_number_of_bands()
+    pseudo_nkG = np.zeros((nbands, number_kpts, Ng), dtype=np.complex128)
+    for k in range(number_kpts):
+        for n in range(nbands):
+            pseudo_nkG[n, k] = calc.get_pseudo_wave_function(
+                band=n, kpt=k, spin=0).ravel()
+    fixed_k = [Nw - 2] * number_kpts
+    C_kul, U_kww = scdm(pseudo_nkG, kpts=kpt_kc,
+                        fixed_k=fixed_k, Nw=Nw)
+    for k in range(number_kpts):
+        assert unitarity_error(U_kww[k]) < 1e-10, 'U_ww not unitary'
+        assert orthogonality_error(C_kul[k].T) < 1e-10, \
+            'C_ul columns not orthogonal'
+        assert normalization_error(C_kul[k]) < 1e-10, 'C_ul not normalized'
+
+
+@pytest.mark.xfail
+def test_get_optimal_nwannier(wan, si_calculator):
+    """ Test method to compute the optimal 'nwannier' value. """
+
+    wanf = wan(calc=si_calculator, full_calc=True,
+               initialwannier='bloch', nwannier='auto', fixedenergy=1)
+
+    # Test with default parameters
+    opt_nw = wanf.get_optimal_nwannier()
+    assert opt_nw == 7
+
+    # Test with non-default parameters.
+    # This is mostly to test that is does actually support this parameters,
+    # it's not really testing the actual result.
+    opt_nw = wanf.get_optimal_nwannier(nwrange=10)
+    assert opt_nw == 7
+    opt_nw = wanf.get_optimal_nwannier(tolerance=1e-2)
+    assert opt_nw == 8
+
+    # This should give same result since the initialwannier does not include
+    # randomness.
+    opt_nw = wanf.get_optimal_nwannier(random_reps=10)
+    assert opt_nw == 7
+
+    # Test with random repetitions, just test if it runs.
+    wanf = wan(calc=si_calculator, full_calc=True,
+               initialwannier='orbitals', nwannier='auto', fixedenergy=0)
+    opt_nw = wanf.get_optimal_nwannier(random_reps=10)
+    assert opt_nw >= 0
+
+
+@pytest.mark.xfail
+def test_spread_contributions(wan):
+    # Only a test on a constant value to make sure it does not deviate too much
+    wan1 = wan()
+    test_values_w = wan1._spread_contributions()
+    ref_values_w = [2.28535569, 0.04660427]
+    assert test_values_w == pytest.approx(ref_values_w, abs=1e-4)

@@ -186,6 +186,7 @@ is set to ``pw91`` or ``lda``.
 ==========================  =====================================
 lda, pbe, pw91              ``pp`` (``gga`` set implicitly in POTCAR)
 pbesol, revpbe, rpbe, am05  ``gga``
+blyp                        ``gga``, ``aldax``, ``aggax``, ``aggac``, ``aldac``
 tpss, revtpss, m06l         ``metagga``
 vdw-df, optpbe-vdw          ``gga``, ``luse_vdw``, ``aggac``
 optb88-vdw, obptb86b-vdw    ``gga``, ``luse_vdw``, ``aggac``,

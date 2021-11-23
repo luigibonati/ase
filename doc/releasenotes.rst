@@ -12,13 +12,43 @@ Git master branch
 * :func:`ase.build.bulk` now assigns initial magnetic moments
   to BCC Fe, Co, and Ni.
 
+* :meth:`~ase.cell.Cell.mask` returns the mask of nonzero cell vectors,
+  an array of three booleans.
+
+* :meth:`~ase.cell.Cell.reciprocal` now guarantees that cell vectors
+  which are zero correspond to reciprocal cell vectors that are also
+  zero.  Previously the reciprocal cell vectors could have small
+  nonzero values due to floating point tolerance.
+
+* The :class:`~ase.cell.Cell` object now has
+  :meth:`~ase.cell.Cell.normal` and :meth:`~ase.cell.Cell.normals`
+  which calculate normal vectors to one or all pairs of cell vectors.
+  Also added
+  :meth:`~ase.cell.Cell.area` and
+  :meth:`~ase.cell.Cell.areas`, which return the area spanned by one
+  or all pairs of cell vectors.
+
+* New ``a2b`` and ``periodic`` formats for :class:`~ase.formula.Formula`
+  objects.  See :meth:`ase.formula.Formula.format`.  The ``abc`` format
+  has been renamed to ``ab2``.
+
+* IO formats can now be implemented in separate packages and registered
+  in ase with the entry point ``ase.ioformats`` in the external package
+  configuration. This entry point only accepts objects of the type
+  :class:`~ase.utils.plugins.ExternalIOFormat`.
+
 Calculators:
+
+* Created new :class:`ase.calculators.plumed.Plumed` that is an interface
+  between ASE and Plumed_ for carrying out enhanced sampling methods and MD
+  postprocessing.
 
 * :class:`ase.calculators.kim.kimmodel.KIMModelCalculator` updated to allow
   users to change the parameters of OpenKIM portable models at run time (see
   https://openkim.org/doc/repository/kim-content/ for an explanation of types
   of OpenKIM models).
 
+.. _Plumed: https://www.plumed.org/
 
 Version 3.22.0
 ==============
@@ -811,9 +841,6 @@ Algorithms:
 I/O:
 
 * Database supports user defined tables
-
-* Preliminary :class:`~ase.formula.Formula` type added.  Collects all
-  formula manipulation functionality in one place.
 
 * Support for reading and writing DL_POLY format.
 

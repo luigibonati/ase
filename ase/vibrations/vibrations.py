@@ -58,10 +58,10 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     # XXX below stuff only valid for TDDFT excitation stuff
     def save_ov_nn(self, ov_nn):
-        np.save(self.name + '.ov', ov_nn)
+        np.save(Path(self.vib.exname) / (self.name + '.ov'), ov_nn)
 
     def load_ov_nn(self):
-        return np.load(self.name + '.ov.npy')
+        return np.load(Path(self.vib.exname) / (self.name + '.ov.npy'))
 
     @property
     def _exname(self):

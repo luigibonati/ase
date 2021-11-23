@@ -166,6 +166,7 @@ Example of use::
 The Hookean class
 =================
 
+
 This class of constraints, based on Hooke's Law, is generally used to
 conserve molecular identity in optimization schemes and can be used in three
 different ways. In the first, it applies a Hookean restorative force between
@@ -174,6 +175,8 @@ maintain the identity of molecules in quenched molecular dynamics, without
 changing the degrees of freedom or violating conservation of energy. When the
 distance between the two atoms is less than the threshold length, this
 constraint is completely inactive.
+
+.. autoclass:: Hookean
 
 The below example tethers atoms at indices 3 and 4 together::
 
@@ -264,13 +267,13 @@ The FixInternals class
 ======================
 
 This class allows to fix an arbitrary number of bond lengths, angles
-and dihedral angles as well as linear combinations of these.
+and dihedral angles as well as linear combinations of bond lengths
+('bondcombos').
 A fixed linear combination of bond lengths fulfils
 :math:`\sum_i \text{coef}_i \times \text{bond_length}_i 
 = \text{constant}`.
-Fixed linear combinations of angles and dihedrals are defined similarly.
-The defined constraints are satisfied self
-consistently. To define the constraints one needs to specify the
+The defined constraints are satisfied self consistently.
+To define the constraints one needs to specify the
 atoms object on which the constraint works (needed for atomic
 masses), a list of bond, angle and dihedral constraints.
 Those constraint definitions are always list objects containing
@@ -278,12 +281,10 @@ the value to be set and a list of atomic indices.
 For the linear combination of bond lengths the list of atomic
 indices is a list of bond definitions with coeficients
 ([[a1, a2, coef],[a3, a4, coef],]).
-Linear combinations of angles and dihedrals are defined similarly with
-the corresponding number of atom indices.
 The usage of mic is supported by providing the keyword argument `mic=True`.
 Using mic slows the algorithm and is probably not necessary in most cases.
-The epsilon value
-specifies the accuracy to which the constraints are fulfilled.
+The epsilon value specifies the accuracy to which the constraints are
+fulfilled.
 Please specify angles and dihedrals in degrees using the keywords angles_deg
 and dihedrals_deg.
 
@@ -296,17 +297,11 @@ Example of use::
   >>> angle_indices1 = [2, 3, 4]
   >>> dihedral_indices1 = [2, 3, 4, 5]
   >>> bondcombo_indices1 = [[6, 7, 1.0], [8, 9, -1.0]]
-  >>> anglecombo_indices1 = [[10, 11, 12, 1.0], [13, 14, 15, 1.0]]
-  >>> dihedralcombo_indices1 = [[16, 17, 18, 19, 1.0], [20, 21, 22, 23, 1.0]]
   >>> angle1 = [atoms.get_angle(*angle_indices1), angle_indices1]
   >>> dihedral1 = [atoms.get_dihedral(*dihedral_indices1), dihedral_indices1]
   >>> bondcombo1 = [0.0, bondcombo_indices1]
-  >>> anglecombo1 = [90.0, bondcombo_indices1]
-  >>> dihedralcombo1 = [90.0, bondcombo_indices1]
   >>> c = FixInternals(bonds=[bond1], angles_deg=[angle1],
-  ...                  dihedrals_deg=[dihedral1], bondcombos=[bondcombo1],
-  ...                  anglecombos=[anglecombo1],
-  ...                  dihedralcombos=[dihedralcombo1])
+  ...                  dihedrals_deg=[dihedral1], bondcombos=[bondcombo1])
   >>> atoms.set_constraint(c)
 
 This example defines a bond, an angle and a dihedral angle constraint
@@ -314,8 +309,6 @@ to be fixed at the same time
 at which also the linear combination of bond lengths
 :math:`1.0 * \text{bond}_{6-7} -1.0 * \text{bond}_{8-9}`
 is fixed to the value of 0.0 Ångstrom.
-In addition, a linear combination of two angles and a linear combination
-of two dihedrals is fixed to the value of 90.0 degrees.
 
 
 Combining constraints

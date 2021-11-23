@@ -972,7 +972,7 @@ def write_xyz(fileobj, images, comment='', columns=None,
                 elif isinstance(c0, FixCartesian):
                     masks = np.ones((natoms, 3), dtype=bool)
                     for i in range(len(cnstr)):
-                        idx = cnstr[i].a
+                        idx = cnstr[i].index
                         masks[idx] = cnstr[i].mask
                     cnstr = masks
             else:
