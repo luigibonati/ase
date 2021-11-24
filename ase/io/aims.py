@@ -225,6 +225,10 @@ def write_aims(
 
     from ase.constraints import FixAtoms, FixCartesian
 
+    if scaled and not np.all(atoms.pbc):
+        warnings.warn("Setting scaled to False for molecular system.")
+        scaled = False
+
     if geo_constrain:
         if not scaled and np.all(atoms.pbc):
             warnings.warn(
@@ -233,7 +237,7 @@ def write_aims(
             scaled = True
         elif not np.all(atoms.pbc):
             warnings.warn(
-                "Parameteric constraints can only be used in periodic systems"
+                "Parameteric constraints can only be used in periodic systems."
             )
             geo_constrain = False
 
@@ -268,14 +272,15 @@ def write_aims(
             if isinstance(constr, FixAtoms):
                 fix_cart[constr.index] = [1, 1, 1]
             elif isinstance(constr, FixCartesian):
-                fix_cart[constr.a] = -constr.mask + 1
+                fix_cart[constr.index] = -constr.mask.astype(int) + 1
 
     if ghosts is None:
         ghosts = np.zeros(len(atoms))
     else:
         assert len(ghosts) == len(atoms)
 
-    scaled_positions = atoms.get_scaled_positions(wrap=(not geo_constrain))
+    wrap = wrap and not geo_constrain
+    scaled_positions = atoms.get_scaled_positions(wrap=wrap)
 
     for i, atom in enumerate(atoms):
         if ghosts[i] == 1:
@@ -581,7 +586,7 @@ scalar_property_to_line_key = {
     "n_kpts": "| Number of k-points",
     "n_spins": "| Number of spin channels",
     "electronic_temp": "Occupation type:",
-    "fermi_energy": "| Chemical potential (Fermi level) in eV",
+    "fermi_energy": "| Chemical potential (Fermi level)",
 }
 
 
@@ -613,9 +618,9 @@ class AimsOutChunk:
         int
             The last time one of the keys appears in self.lines
         """
-        for ll, line in enumerate(self.lines[-1:line_start:-1]):
+        for ll, line in enumerate(self.lines[line_start:][::-1]):
             if any([key in line for key in keys]):
-                return len(self.lines) - ll
+                return len(self.lines) - ll - 1
 
         return len(self.lines)
 
@@ -642,7 +647,7 @@ class AimsOutChunk:
                 line_index.append(ll + line_start)
         return line_index
 
-    def _parse_scalar(self, property):
+    def parse_scalar(self, property):
         """Parse a scalar property from the chunk
 
         Parameters
@@ -657,10 +662,10 @@ class AimsOutChunk:
         """
         line_start = self.reverse_search_for([scalar_property_to_line_key[property]])
 
-        if line_start == len(self.lines):
+        if line_start >= len(self.lines):
             return None
 
-        line = self.lines[line_start - 1]
+        line = self.lines[line_start]
         return float(line.split(":")[-1].strip().split()[0])
 
 
@@ -682,13 +687,14 @@ class AimsOutHeaderChunk(AimsOutChunk):
     def _parse_constraints(self):
         """Parse the constraints from the aims.out file"""
 
-        line_start = self.reverse_search_for(["Found relaxation constraint for atom"])
-        if line_start == len(self.lines):
+        line_inds = self.search_for_all("Found relaxation constraint for atom")
+        if len(line_inds) == 0:
             return None
 
         fix = []
         fix_cart = []
-        for line in self.lines[line_start:]:
+        for ll in line_inds:
+            line = self.lines[ll]
             xyz = [0, 0, 0]
             ind = int(line.split()[5][:-1]) - 1
             if "All coordinates fixed" in line:
@@ -704,8 +710,9 @@ class AimsOutHeaderChunk(AimsOutChunk):
                     xyz[2] = 1
                 keep = True
                 for n, c in enumerate(fix_cart):
-                    if ind == c.a:
+                    if ind == c.index:
                         keep = False
+                        break
                 if keep:
                     fix_cart.append(FixCartesian(ind, xyz))
                 else:
@@ -721,7 +728,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
         if line_start < len(self.lines):
             cell = [
                 [float(inp) for inp in line.split()[-3:]]
-                for line in self.lines[line_start : line_start + 3]
+                for line in self.lines[line_start + 1 : line_start + 4]
             ]
         else:
             cell = None
@@ -730,9 +737,12 @@ class AimsOutHeaderChunk(AimsOutChunk):
     def _parse_initial_atoms(self):
         """Create an atoms object for the initial geometry.in structure from the aims.out file"""
         # Get the initial geometries
+        line_start = self.reverse_search_for(["Atomic structure:"]) + 2
+        if line_start >= len(self.lines):
+            raise IOError("No structure information is inside the chunk.")
+
         cell = self.initial_cell
         atoms = Atoms()
-        line_start = self.reverse_search_for(["Atomic structure:"]) + 1
         for line in self.lines[line_start : line_start + self.n_atoms]:
             inp = line.split()
             atoms.append(Atom(inp[3], (float(inp[4]), float(inp[5]), float(inp[6]))))
@@ -757,15 +767,18 @@ class AimsOutHeaderChunk(AimsOutChunk):
 
     def _parse_k_points(self):
         """Get the list of k-points used in the calculation"""
-        n_kpts = int(self._parse_scalar("n_kpts"))
+        n_kpts = self.parse_scalar("n_kpts")
+        if n_kpts is None:
+            return
+        n_kpts = int(n_kpts)
 
-        line_start = self.reverse_search_for(["| K-points in task"])
-        line_end = self.reverse_search_for(["| k-point:"])
+        line_start = self.reverse_search_for(["| K-points in task"]) + 1
+        line_end = self.reverse_search_for(["| k-point:"]) + 1
         if line_end - line_start != n_kpts:
             return
 
-        self._k_points = np.zeros((nkpts, 3))
-        self._k_point_weights = np.zeros((nkpts))
+        self._k_points = np.zeros((n_kpts, 3))
+        self._k_point_weights = np.zeros((n_kpts))
         for kk, line in enumerate(self.lines[line_start:line_end]):
             self._k_points[kk] = [float(inp) for inp in line.split()[4:7]]
             self._k_point_weights[kk] = float(line.split()[-1])
@@ -798,12 +811,20 @@ class AimsOutHeaderChunk(AimsOutChunk):
     @lazyproperty
     def n_atoms(self):
         """The number of atoms for the material"""
-        return int(self._parse_scalar("n_atoms"))
+        n_atoms = self.parse_scalar("n_atoms")
+        if n_atoms is None:
+            raise IOError("No information about the number of atoms in the header.")
+        return int(n_atoms)
 
     @lazyproperty
     def n_bands(self):
         """The number of Kohn-Sham states for the chunk"""
-        return int(self._parse_scalar("n_bands"))
+        n_bands = self.parse_scalar("n_bands")
+        if n_bands is None:
+            raise IOError(
+                "No information about the number of Kohn-Sham states in the header."
+            )
+        return int(n_bands)
 
     @lazyproperty
     def n_electrons(self):
@@ -812,26 +833,42 @@ class AimsOutHeaderChunk(AimsOutChunk):
             [scalar_property_to_line_key["n_electrons"]]
         )
 
-        if line_start == len(self.lines):
-            return None
+        if line_start >= len(self.lines):
+            raise IOError("No information about the number of electrons in the header.")
 
-        line = self.lines[line_start - 1]
+        line = self.lines[line_start]
         return int(float(line.split()[-2]))
 
     @lazyproperty
     def n_k_points(self):
         """The number of k_ppoints for the calculation"""
-        return int(self._parse_scalar("n_kpts"))
+        n_kpts = self.parse_scalar("n_kpts")
+        if n_kpts is None:
+            return None
+
+        return int(n_kpts)
 
     @lazyproperty
     def n_spins(self):
         """The number of spin channels for the chunk"""
-        return int(self._parse_scalar("n_spins"))
+        n_spins = self.parse_scalar("n_spins")
+        if n_spins is None:
+            raise IOError(
+                "No information about the number of Kohn-Sham states in the header."
+            )
+        return int(n_spins)
 
     @lazyproperty
     def electronic_temperature(self):
         """The electronic temperature for the chunk"""
-        return self._parse_scalar("electronic_temp")
+        line_start = self.reverse_search_for(
+            [scalar_property_to_line_key["electronic_temp"]]
+        )
+        if line_start >= len(self.lines):
+            return 0.10
+
+        line = self.lines[line_start]
+        return float(line.split("=")[-1].strip().split()[0])
 
     @property
     def k_points(self):
@@ -852,6 +889,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
             "initial_cell": self.initial_cell,
             "constraints": self.constraints,
             "is_relaxation": self.is_relaxation,
+            "is_md": self.is_md,
             "n_atoms": self.n_atoms,
             "n_bands": self.n_bands,
             "n_electrons": self.n_electrons,
@@ -877,7 +915,7 @@ class AimsOutCalcChunk(AimsOutChunk):
             A summary of the relevant information from the aims.out header
         """
         super().__init__(lines)
-        self._header = header
+        self._header = header.header_summary
         self._atoms = None
         self._hirshfeld_charges = None
         self._hirshfeld_atomic_dipoles = None
@@ -894,13 +932,14 @@ class AimsOutCalcChunk(AimsOutChunk):
             "Atomic structure that was used in the preceding time step of the wrapper",
         ]
         line_start = self.reverse_search_for(start_keys)
-        if line_start == len(self.lines):
-            return self._header["initial_atoms"]
+        if line_start >= len(self.lines):
+            self._atoms = self.initial_atoms
+            return self._atoms
 
         cell = []
         velocities = []
         atoms = Atoms()
-        for line in self.lines[line_start:]:
+        for line in self.lines[line_start + 1 :]:
             if "lattice_vector   " in line:
                 cell.append([float(inp) for inp in line.split()[1:]])
             elif "atom   " in line:
@@ -923,12 +962,13 @@ class AimsOutCalcChunk(AimsOutChunk):
             atoms.set_velocities(np.array(velocities))
         atoms.set_constraint(self.constraints)
 
+        self._atoms = atoms
         return atoms
 
     def _parse_forces(self):
         """Parse the forces from the aims.out file"""
-        line_start = self.reverse_search_for(["Total atomic forces"])
-        if line_start == len(self.lines):
+        line_start = self.reverse_search_for(["Total atomic forces"]) + 1
+        if line_start >= len(self.lines):
             return
 
         return np.array(
@@ -940,13 +980,12 @@ class AimsOutCalcChunk(AimsOutChunk):
 
     def _parse_stresses(self):
         """Parse the stresses from the aims.out file"""
-        line_start = self.reverse_search_for(
+        line_start = 3 + self.reverse_search_for(
             ["Per atom stress (eV) used for heat flux calculation"]
         )
-        if line_start == len(self.lines):
+        if line_start >= len(self.lines):
             return
-        line_start = self.reverse_search_for(["-------------"], line_start)
-        self._stresses = []
+        stresses = []
         for line in self.lines[line_start : line_start + self.n_atoms]:
             xx, yy, zz, xy, xz, yz = [float(d) for d in line.split()[2:8]]
             stresses.append([xx, yy, zz, yz, xz, xy])
@@ -960,12 +999,12 @@ class AimsOutCalcChunk(AimsOutChunk):
         line_start = self.reverse_search_for(
             ["Analytical stress tensor - Symmetrized"]
         )  # Offest to relevant lines
-        if line_start == len(self.lines):
+        if line_start >= len(self.lines):
             return
 
         stress = [
             [float(inp) for inp in line.split()[2:5]]
-            for line in self.lines[line_start + 4 : line_start + 7]
+            for line in self.lines[line_start + 5 : line_start + 8]
         ]
         return full_3x3_to_voigt_6_stress(stress)
 
@@ -980,21 +1019,26 @@ class AimsOutCalcChunk(AimsOutChunk):
 
     def _parse_energy(self):
         """Parse the energy from the aims.out file"""
+        if self._atoms is None:
+            self._parse_atoms()
+
         if np.all(self._atoms.pbc) and self.is_metallic:
-            line = self.lines[-1 + self.reverse_search_for(["Total energy corrected"])]
+            line_ind = self.reverse_search_for(["Total energy corrected"])
         else:
-            line = self.lines[
-                -1 + self.reverse_search_for(["Total energy uncorrected"])
-            ]
-        return float(line.split()[5])
+            line_ind = self.reverse_search_for(["Total energy uncorrected"])
+
+        if line_ind == len(self.lines):
+            raise IOError("No energy is associated with the structure")
+
+        return float(self.lines[line_ind].split()[5])
 
     def _parse_dipole(self):
         """Parse the electric dipole moment from the aims.out file file."""
         line_start = self.reverse_search_for(["Total dipole moment [eAng]"])
-        if line_start == len(self.lines):
+        if line_start >= len(self.lines):
             return
 
-        line = self.lines[line_start - 1]
+        line = self.lines[line_start]
         return np.array([float(inp) for inp in line.split()[6:9]])
 
     def _parse_hirshfeld(self):
@@ -1002,54 +1046,49 @@ class AimsOutCalcChunk(AimsOutChunk):
         line_start = self.reverse_search_for(
             ["Performing Hirshfeld analysis of fragment charges and moments."]
         )
-        if line_start == len(self.lines):
-            return
+        if line_start >= len(self.lines):
+            return None
 
-        line_start = self.reverse_search_for(["Hirshfeld charge"], line_start)
+        line_inds = self.search_for_all("Hirshfeld charge", line_start, -1)
         self._hirshfeld_charges = np.array(
-            [
-                float(line.split(":")[1])
-                for line in self.lines[
-                    line_start : line_start + (self.n_atoms - 1) * 10 : 10
-                ]
-            ]
+            [float(self.lines[ind].split(":")[1]) for ind in line_inds]
         )
 
-        line_start = self.reverse_search_for(["Hirshfeld volume"], line_start)
+        line_inds = self.search_for_all("Hirshfeld volume", line_start, -1)
         self._hirshfeld_volumes = np.array(
-            [
-                float(line.split(":")[1])
-                for line in self.lines[
-                    line_start : line_start + (self.n_atoms - 1) * 10 : 10
-                ]
-            ]
+            [float(self.lines[ind].split(":")[1]) for ind in line_inds]
         )
 
-        line_start = self.reverse_search_for(["Hirshfeld dipole vector"], line_start)
+        line_inds = self.search_for_all("Hirshfeld dipole vector", line_start, -1)
         self._hirshfeld_atomic_dipoles = np.array(
             [
-                [float(inp) for inp in line.split(":")[1].split()]
-                for line in self.lines[
-                    line_start : line_start + (self.n_atoms - 1) * 10 : 10
-                ]
+                [float(inp) for inp in self.lines[ind].split(":")[1].split()]
+                for ind in line_inds
             ]
         )
 
-        self._hirshfeld_dipole = np.sum(
-            self._hirshfeld_charges.rehsape((-1, 1)) * self._atoms.get_positions(),
-            axis=1,
-        )
+        if not np.any(self.atoms.pbc):
+            self._hirshfeld_dipole = np.sum(
+                self._hirshfeld_charges.reshape((-1, 1)) * self._atoms.get_positions(),
+                axis=1,
+            )
 
     def _parse_eigenvalues(self):
         """Parse the eigenvalues and occupancies of the system. If eigenvalue is not present in the output file then set it to np.nan"""
         line_start = self.reverse_search_for(["Writing Kohn-Sham eigenvalues."])
-        if line_start == len(self.lines):
+        if line_start >= len(self.lines):
             return
-        line_end = self.reverse_search_for(
-            ["What follows are estimated values for band gap, HOMO, LUMO, etc."]
+        line_end = min(
+            self.reverse_search_for(["Self-consistency cycle converged."], line_start),
+            self.reverse_search_for(
+                [
+                    "What follows are estimated values for band gap, HOMO, LUMO, etc.",
+                    "Current spin moment of the entire structure :",
+                ],
+                line_start,
+            ),
         )
         n_kpts = self.n_k_points if np.all(self._atoms.pbc) else 1
-        print(self.n_k_points, self._atoms.pbc, self._atoms.cell)
         if n_kpts is None:
             return
 
@@ -1063,15 +1102,18 @@ class AimsOutCalcChunk(AimsOutChunk):
         )
         kpt_def = self.search_for_all("K-point: ", line_start, line_end)
 
-        assert len(kpt_def) == len(occupation_block_start)
-        kpt_inds = [int(self.lines[ll].split()[1]) - 1 for ll in kpt_def]
+        if self.n_k_points:
+            kpt_inds = [int(self.lines[ll].split()[1]) - 1 for ll in kpt_def]
+        else:
+            kpt_inds = [0]
+        assert len(kpt_inds) == len(occupation_block_start)
         spins = [0] * len(occupation_block_start)
 
         if self.n_spins == 2:
             spin_def = self.search_for_all("Spin-", line_start, line_end)
             assert len(spin_def) == len(occupation_block_start)
 
-            spins = [int("Spin-up eigenvalues:" in self.lines[ll]) for ll in spin_def]
+            spins = [int("Spin-down eigenvalues:" in self.lines[ll]) for ll in spin_def]
 
         for occ_start, kpt_ind, spin in zip(occupation_block_start, kpt_inds, spins):
             for ll, line in enumerate(
@@ -1101,9 +1143,6 @@ class AimsOutCalcChunk(AimsOutChunk):
     @property
     def results(self):
         """Convert an AimsOutChunk to a Results Dictionary"""
-        if self._atoms is None:
-            self._atoms = self._parse_atoms()
-
         results = {
             "energy": self.energy,
             "free_energy": self.free_energy,
@@ -1115,7 +1154,7 @@ class AimsOutCalcChunk(AimsOutChunk):
             "fermi_energy": self.E_f,
             "n_iter": self.n_iter,
             "hirshfeld_charges": self.hirshfeld_charges,
-            "hirshfeld_dipole": self.hirshfeld_atomic_dipoles,
+            "hirshfeld_dipole": self.hirshfeld_dipole,
             "hirshfeld_volumes": self.hirshfeld_volumes,
             "hirshfeld_atomic_dipoles": self.hirshfeld_atomic_dipoles,
             "eigenvalues": self.eigenvalues,
@@ -1184,7 +1223,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         return self._header["k_points"]
 
     @lazyproperty
-    def electronic_temperature(self):
+    def k_point_weights(self):
         """k_point_weights electronic temperature for the chunk"""
         return self._header["k_point_weights"]
 
@@ -1212,22 +1251,22 @@ class AimsOutCalcChunk(AimsOutChunk):
     @lazyproperty
     def free_energy(self):
         """The free energy for the chunk"""
-        return self._parse_scalar("free_energy")
+        return self.parse_scalar("free_energy")
 
     @lazyproperty
     def n_iter(self):
         """The number of SCF iterations needed to converge the SCF cycle for the chunk"""
-        return self._parse_scalar("number_of_iterations")
+        return self.parse_scalar("number_of_iterations")
 
     @lazyproperty
     def magmom(self):
         """The magnetic moment for the chunk"""
-        return self._parse_scalar("magnetic_moment")
+        return self.parse_scalar("magnetic_moment")
 
     @lazyproperty
     def E_f(self):
         """The Fermi energy for the chunk"""
-        return self._parse_scalar("fermi_energy")
+        return self.parse_scalar("fermi_energy")
 
     @lazyproperty
     def dipole(self):
@@ -1242,7 +1281,7 @@ class AimsOutCalcChunk(AimsOutChunk):
     @lazyproperty
     def converged(self):
         """True if the chunk is a fully converged final structure"""
-        return "Have a nice day" in self.lines[-1]
+        return (len(self.lines) > 0) and ("Have a nice day." in self.lines[-5:])
 
     @property
     def hirshfeld_charges(self):
@@ -1268,7 +1307,10 @@ class AimsOutCalcChunk(AimsOutChunk):
     @property
     def hirshfeld_dipole(self):
         """The Hirshfeld systematic dipole moment for the chunk"""
-        if self._hirshfeld_dipole is None:
+        if self._atoms is None:
+            self._parse_atoms()
+
+        if not np.any(self._atoms.pbc) and self._hirshfeld_dipole is None:
             self._parse_hirshfeld()
         return self._hirshfeld_dipole
 
