@@ -81,7 +81,7 @@ def test_cube_writing():
             assert float(idx) == line
 
 
-def test_cude_reading():
+def test_cube_reading():
     with tempfile.NamedTemporaryFile(mode="r+") as cubefil:
         # Write data to a file
         cubefil.write(file_content)
@@ -101,19 +101,19 @@ def test_cude_reading():
         # check spacing
         assert result["spacing"].shape == (3, 3)
         # check that values are on the diagonal (correctness of order in reading)
-        npt.assert_equal(
+        npt.assert_almost_equal(
             result["spacing"].diagonal() / Bohr,
             np.array([1.889726, 1.889726, 1.889726]),
         )
         # check that sum is only 1.889726 for every column (correctness of value)
-        npt.assert_equal(
+        npt.assert_almost_equal(
             result["spacing"].sum(axis=0) / Bohr,
             np.array([1.889726, 1.889726, 1.889726]),
         )
 
         # check origin
         assert result["origin"].shape == (3,)
-        npt.assert_equal(
+        npt.assert_almost_equal(
             result["origin"], np.array([-3.779452, -1.889726, -3.779452]) * Bohr
         )
 

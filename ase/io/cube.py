@@ -88,7 +88,7 @@ def read_cube(fileobj, read_data=True, program=None, verbose=False):
     * 'atoms': Atoms object
     * 'data' : (Nx, Ny, Nz) ndarray
     * 'origin': (3,) ndarray, specifying the cube_data origin.
-    * 'voxels': (3, 3) ndarray, representing voxel size
+    * 'spacing': (3, 3) ndarray, representing voxel size
     """
 
     readline = fileobj.readline
