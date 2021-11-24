@@ -1,6 +1,6 @@
 import re
 from io import StringIO
-from ase.calculators.aims import write_control
+from ase.io.aims import write_control
 from ase.build import bulk
 
 
