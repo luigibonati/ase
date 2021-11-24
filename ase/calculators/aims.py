@@ -3,20 +3,17 @@
 Felix Hanke hanke@liverpool.ac.uk
 Jonas Bjork j.bjork@liverpool.ac.uk
 Simon P. Rittmeyer simon.rittmeyer@tum.de
-Thomas A. R. Purcell purcell@fhi-berlin.mpg.de
+
+Edits on (24.11.2021) by Thomas A. R. Purcell purcell@fhi-berlin.mpg.de
 """
 
 import os
-import time
 import re
 from pathlib import Path
 
 import numpy as np
 
-from ase.units import Hartree
-from ase.io.aims import write_aims, write_control, read_aims_results
-from ase.data import atomic_numbers
-from ase.calculators.calculator import kpts2mp
+from ase.io.aims import write_aims, write_control
 from ase.calculators.genericfileio import GenericFileIOCalculator, CalculatorTemplate
 
 

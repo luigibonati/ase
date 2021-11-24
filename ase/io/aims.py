@@ -1,15 +1,21 @@
+import os
 import time
 import warnings
 
 import numpy as np
+from pathlib import Path
 
 from ase import Atoms, Atom
+from ase.calculators.calculator import kpts2mp
 from ase.calculators.singlepoint import SinglePointDFTCalculator
 from ase.constraints import FixAtoms, FixCartesian
+from ase.data import atomic_numbers
 from ase.units import Ang, fs
 from ase.utils import reader, writer, lazyproperty
 
+
 v_unit = Ang / (1000.0 * fs)
+
 
 # Read aims geometry files
 @reader
@@ -440,7 +446,7 @@ def write_control(fd, atoms, parameters, debug=False):
     if debug:
         fd.write("# \n# List of parameters used to initialize the calculator:")
         for p, v in parameters.items():
-            s = "#     {} : {}\n".format(p, v)
+            s = "#     {}:{}\n".format(p, v)
             fd.write(s)
     fd.write(lim + "\n")
 
@@ -728,7 +734,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
         if line_start < len(self.lines):
             cell = [
                 [float(inp) for inp in line.split()[-3:]]
-                for line in self.lines[line_start + 1 : line_start + 4]
+                for line in self.lines[line_start + 1:line_start + 4]
             ]
         else:
             cell = None
@@ -743,7 +749,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
 
         cell = self.initial_cell
         atoms = Atoms()
-        for line in self.lines[line_start : line_start + self.n_atoms]:
+        for line in self.lines[line_start:line_start + self.n_atoms]:
             inp = line.split()
             atoms.append(Atom(inp[3], (float(inp[4]), float(inp[5]), float(inp[6]))))
         assert len(atoms) == self.n_atoms
@@ -941,7 +947,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         cell = []
         velocities = []
         atoms = Atoms()
-        for line in self.lines[line_start + 1 : line_end]:
+        for line in self.lines[line_start + 1:line_end]:
             if "lattice_vector   " in line:
                 cell.append([float(inp) for inp in line.split()[1:]])
             elif "atom   " in line:
@@ -976,7 +982,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         return np.array(
             [
                 [float(inp) for inp in line.split()[-3:]]
-                for line in self.lines[line_start : line_start + self.n_atoms]
+                for line in self.lines[line_start:line_start + self.n_atoms]
             ]
         )
 
@@ -988,7 +994,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         if line_start >= len(self.lines):
             return
         stresses = []
-        for line in self.lines[line_start : line_start + self.n_atoms]:
+        for line in self.lines[line_start:line_start + self.n_atoms]:
             xx, yy, zz, xy, xz, yz = [float(d) for d in line.split()[2:8]]
             stresses.append([xx, yy, zz, yz, xz, xy])
 
@@ -1006,7 +1012,7 @@ class AimsOutCalcChunk(AimsOutChunk):
 
         stress = [
             [float(inp) for inp in line.split()[2:5]]
-            for line in self.lines[line_start + 5 : line_start + 8]
+            for line in self.lines[line_start + 5:line_start + 8]
         ]
         return full_3x3_to_voigt_6_stress(stress)
 
@@ -1118,7 +1124,7 @@ class AimsOutCalcChunk(AimsOutChunk):
 
         for occ_start, kpt_ind, spin in zip(occupation_block_start, kpt_inds, spins):
             for ll, line in enumerate(
-                self.lines[occ_start + 1 : occ_start + self.n_bands + 1]
+                self.lines[occ_start + 1:occ_start + self.n_bands + 1]
             ):
                 self._eigenvalues[kpt_ind, ll, spin] = float(line.split()[3])
                 self._occupancies[kpt_ind, ll, spin] = float(line.split()[1])
@@ -1339,7 +1345,10 @@ def get_header_chunk(fd):
         "Initializing partition tables, free-atom densities, potentials, etc. across the integration grid (initialize_grid_storage)."
         not in line
     ):
-        line = next(fd).strip()
+        try:
+            line = next(fd).strip()  # Raises StopIteration on empty file
+        except StopIteration:
+            return
         header.append(line)
     return AimsOutHeaderChunk(header)
 
