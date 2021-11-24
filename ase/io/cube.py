@@ -37,33 +37,33 @@ def write_cube(fileobj, atoms, data=None, origin=None, comment=None):
         data = np.abs(data)
 
     if comment is None:
-        comment = 'Cube file from ASE, written on ' + time.strftime('%c')
+        comment = "Cube file from ASE, written on " + time.strftime("%c")
     else:
         comment = comment.strip()
     fileobj.write(comment)
 
-    fileobj.write('\nOUTER LOOP: X, MIDDLE LOOP: Y, INNER LOOP: Z\n')
+    fileobj.write("\nOUTER LOOP: X, MIDDLE LOOP: Y, INNER LOOP: Z\n")
 
     if origin is None:
         origin = np.zeros(3)
     else:
         origin = np.asarray(origin) / Bohr
 
-    fileobj.write('{0:5}{1:12.6f}{2:12.6f}{3:12.6f}\n'
-                  .format(len(atoms), *origin))
+    fileobj.write("{0:5}{1:12.6f}{2:12.6f}{3:12.6f}\n".format(len(atoms), *origin))
 
     for i in range(3):
         n = data.shape[i]
         d = atoms.cell[i] / n / Bohr
-        fileobj.write('{0:5}{1:12.6f}{2:12.6f}{3:12.6f}\n'.format(n, *d))
+        fileobj.write("{0:5}{1:12.6f}{2:12.6f}{3:12.6f}\n".format(n, *d))
 
     positions = atoms.positions / Bohr
     numbers = atoms.numbers
     for Z, (x, y, z) in zip(numbers, positions):
-        fileobj.write('{0:5}{1:12.6f}{2:12.6f}{3:12.6f}{4:12.6f}\n'
-                      .format(Z, 0.0, x, y, z))
+        fileobj.write(
+            "{0:5}{1:12.6f}{2:12.6f}{3:12.6f}{4:12.6f}\n".format(Z, 0.0, x, y, z)
+        )
 
-    data.tofile(fileobj, sep='\n', format='%e')
+    data.tofile(fileobj, sep="\n", format="%e")
 
 
 def read_cube(fileobj, read_data=True, program=None, verbose=False):
@@ -84,7 +84,7 @@ def read_cube(fileobj, read_data=True, program=None, verbose=False):
         Print some more information to stdout.
 
     Returns a dict with the following keys:
-    
+
     * 'atoms': Atoms object
     * 'data' : (Nx, Ny, Nz) ndarray
     * 'origin': (3,) ndarray, specifying the cube_data origin.
@@ -98,16 +98,16 @@ def read_cube(fileobj, read_data=True, program=None, verbose=False):
     # The second comment line *CAN* contain information on the axes
     # But this is by far not the case for all programs
     axes = []
-    if 'OUTER LOOP' in line.upper():
-        axes = ['XYZ'.index(s[0]) for s in line.upper().split()[2::3]]
+    if "OUTER LOOP" in line.upper():
+        axes = ["XYZ".index(s[0]) for s in line.upper().split()[2::3]]
     if not axes:
         axes = [0, 1, 2]
 
     # castep2cube files have a specific comment in the second line ...
-    if 'castep2cube' in line:
-        program = 'castep'
+    if "castep2cube" in line:
+        program = "castep"
         if verbose:
-            print('read_cube identified program: castep')
+            print("read_cube identified program: castep")
 
     # Third line contains actual system information:
     line = readline().split()
@@ -119,7 +119,7 @@ def read_cube(fileobj, read_data=True, program=None, verbose=False):
 
     cell = np.empty((3, 3))
     shape = []
-    voxel_size = []
+    spacing = np.empty((3, 3))
 
     # the upcoming three lines contain the cell information
     for i in range(3):
@@ -128,10 +128,10 @@ def read_cube(fileobj, read_data=True, program=None, verbose=False):
 
         # different PBC treatment in castep, basically the last voxel row is
         # identical to the first one
-        if program == 'castep':
+        if program == "castep":
             n -= 1
         cell[i] = n * Bohr * np.array([x, y, z])
-        voxel_size.append(np.array([x, y, z]))
+        spacing[i] = np.array([x, y, z]) * Bohr
 
     numbers = np.empty(natoms, int)
     positions = np.empty((natoms, 3))
@@ -141,30 +141,29 @@ def read_cube(fileobj, read_data=True, program=None, verbose=False):
         positions[i] = [float(s) for s in line[2:]]
 
     positions *= Bohr
-    
+
     atoms = Atoms(numbers=numbers, positions=positions, cell=cell)
 
     # CASTEP will always have PBC, although the cube format does not
     # contain this kind of information
-    if program == 'castep':
+    if program == "castep":
         atoms.pbc = True
 
-    dct = {'atoms': atoms}
+    dct = {"atoms": atoms}
 
     if read_data:
-        data = np.array([float(s)
-                         for s in fileobj.read().split()]).reshape(shape)
+        data = np.array([float(s) for s in fileobj.read().split()]).reshape(shape)
         if axes != [0, 1, 2]:
             data = data.transpose(axes).copy()
 
-        if program == 'castep':
+        if program == "castep":
             # Due to the PBC applied in castep2cube, the last entry along each
             # dimension equals the very first one.
             data = data[:-1, :-1, :-1]
 
-        dct['data'] = data
-        dct['origin'] = origin
-        dct['voxels'] = voxel_size
+        dct["data"] = data
+        dct["origin"] = origin
+        dct["spacing"] = spacing
 
     return dct
 
@@ -173,5 +172,5 @@ def read_cube_data(filename):
     """Wrapper function to read not only the atoms information from a cube file
     but also the contained volumetric data.
     """
-    dct = read(filename, format='cube', read_data=True, full_output=True)
-    return dct['data'], dct['atoms']
+    dct = read(filename, format="cube", read_data=True, full_output=True)
+    return dct["data"], dct["atoms"]
