@@ -87,31 +87,35 @@ atom 0.3333333333333333 0.6666666666666666 0.2650974399999999 I
     initial_moment 1
 """
 
-expected_symbols = ['Pb', 'I', 'I']
-expected_scaled_positions = np.array([
-    [0.0000000000000000, 0.0000000000000000, 0.0000000000000000],
-    [0.6666666666666666, 0.3333333333333333, 0.7349025600000000],
-    [0.3333333333333333, 0.6666666666666666, 0.2650974400000000],
-])
+expected_symbols = ["Pb", "I", "I"]
+expected_scaled_positions = np.array(
+    [
+        [0.0000000000000000, 0.0000000000000000, 0.0000000000000000],
+        [0.6666666666666666, 0.3333333333333333, 0.7349025600000000],
+        [0.3333333333333333, 0.6666666666666666, 0.2650974400000000],
+    ]
+)
 expected_charges = np.array([0, -1, -1])
 expected_moments = np.array([0, 1, 1])
-expected_lattice_vectors = np.array([
-    [4.5521460059804628, 0.0000000000000000, 0.0000000000000000],
-    [-2.2760730029902314, 3.9422740829149499, 0.0000000000000000],
-    [0.0000000000000000, 0.0000000000000000, 7.1603474299999998],
-])
+expected_lattice_vectors = np.array(
+    [
+        [4.5521460059804628, 0.0000000000000000, 0.0000000000000000],
+        [-2.2760730029902314, 3.9422740829149499, 0.0000000000000000],
+        [0.0000000000000000, 0.0000000000000000, 7.1603474299999998],
+    ]
+)
 
 
 def test_parse_geometry_lines():
     lines = sample_geometry_1.splitlines()
-    atoms = parse_geometry_lines(lines, 'sample_geometry_1.in')
+    atoms = parse_geometry_lines(lines, "sample_geometry_1.in")
     assert all(atoms.symbols == expected_symbols)
     assert atoms.get_scaled_positions() == approx(expected_scaled_positions)
     assert atoms.get_cell()[:] == approx(expected_lattice_vectors)
     assert all(atoms.pbc)
 
     lines = sample_geometry_2.splitlines()
-    atoms = parse_geometry_lines(lines, 'sample_geometry_2.in')
+    atoms = parse_geometry_lines(lines, "sample_geometry_2.in")
     assert all(atoms.symbols == expected_symbols)
     assert atoms.get_scaled_positions() == approx(expected_scaled_positions)
     assert atoms.get_initial_charges() == approx(expected_charges)
