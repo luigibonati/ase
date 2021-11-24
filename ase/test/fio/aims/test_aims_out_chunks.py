@@ -1414,8 +1414,6 @@ def test_AimsOutCalcChunkMolecular():
     assert np.allclose(chunk.hirshfeld_charges, hirshfeld_charges)
     assert np.allclose(chunk.hirshfeld_volumes, hirshfeld_volumes)
     assert np.allclose(chunk.hirshfeld_atomic_dipoles, hirshfeld_atomic_dipoles)
-    print(chunk.hirshfeld_dipole)
-    print(hirshfeld_dipole)
     assert np.allclose(chunk.hirshfeld_dipole, hirshfeld_dipole)
 
     assert np.allclose(chunk.results["hirshfeld_charges"], hirshfeld_charges)

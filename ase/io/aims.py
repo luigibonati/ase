@@ -935,11 +935,13 @@ class AimsOutCalcChunk(AimsOutChunk):
         if line_start >= len(self.lines):
             self._atoms = self.initial_atoms
             return self._atoms
-
+        line_end = self.reverse_search_for(
+            ['Writing the current geometry to file "geometry.in.next_step"'], line_start
+        )
         cell = []
         velocities = []
         atoms = Atoms()
-        for line in self.lines[line_start + 1 :]:
+        for line in self.lines[line_start + 1 : line_end]:
             if "lattice_vector   " in line:
                 cell.append([float(inp) for inp in line.split()[1:]])
             elif "atom   " in line:
@@ -1026,7 +1028,6 @@ class AimsOutCalcChunk(AimsOutChunk):
             line_ind = self.reverse_search_for(["Total energy corrected"])
         else:
             line_ind = self.reverse_search_for(["Total energy uncorrected"])
-
         if line_ind == len(self.lines):
             raise IOError("No energy is associated with the structure")
 
@@ -1329,14 +1330,10 @@ class AimsOutCalcChunk(AimsOutChunk):
         return self._occupancies
 
 
-def get_aims_out_chunks(fd, n_atoms=None, constraints=None):
-    """Yield unprocessed chunks (header, lines) for each AimsOutChunk image."""
-    try:
-        line = next(fd).strip()  # Raises StopIteration on empty file
-    except StopIteration:
-        return
-
+def get_header_chunk(fd):
+    """Returns the header information from the aims.out file"""
     header = []
+    line = ""
     # Get to the control.in section
     while (
         "Initializing partition tables, free-atom densities, potentials, etc. across the integration grid (initialize_grid_storage)."
@@ -1344,7 +1341,15 @@ def get_aims_out_chunks(fd, n_atoms=None, constraints=None):
     ):
         line = next(fd).strip()
         header.append(line)
-    header_chunk = AimsOutHeaderChunk(header)
+    return AimsOutHeaderChunk(header)
+
+
+def get_aims_out_chunks(fd, header_chunk):
+    """Yield unprocessed chunks (header, lines) for each AimsOutChunk image."""
+    try:
+        line = next(fd).strip()  # Raises StopIteration on empty file
+    except StopIteration:
+        return
 
     if header_chunk.is_relaxation:
         chunk_end_line = (
@@ -1361,7 +1366,7 @@ def get_aims_out_chunks(fd, n_atoms=None, constraints=None):
             break
 
         lines = []
-        while not ignore_chunk_end_line and chunk_end_line not in line:
+        while chunk_end_line not in line or ignore_chunk_end_line:
             lines.append(line)
             # If SCF cycle not converged, don't end chunk on next Re-initialization
             if (
@@ -1377,32 +1382,39 @@ def get_aims_out_chunks(fd, n_atoms=None, constraints=None):
             except StopIteration:
                 break
 
-        yield AimsOutCalcChunk(lines, header_chunk.header_summary)
+        yield AimsOutCalcChunk(lines, header_chunk)
 
 
 @reader
 def read_aims_output(fd, index=-1):
     """Import FHI-aims output files with all data available, i.e.
     relaxations, MD information, force information etc etc etc."""
-    chunks = get_aims_out_chunks(fd)
-    initial_chunk = next(chunks)
-    chunks = [initial_chunk] + list(
-        get_aims_out_chunks(fd, initial_chunk.n_atoms, initial_chunk.constraints)
-    )
-    images = [chunk.atoms for chunk in chunks]
+    header_chunk = get_header_chunk(fd)
+    chunks = list(get_aims_out_chunks(fd, header_chunk))
+    if not chunks[-1].converged:
+        warnings.warn(
+            "This FHI-aims calculation did not fully converge, check the results and output file carefully."
+        )
+
+    # Relaxations have an additional fotter chunk due to how it is split
+    if header_chunk.is_relaxation:
+        images = [chunk.atoms for chunk in chunks[:-1]]
+    else:
+        images = [chunk.atoms for chunk in chunks]
     return images[index]
 
 
 @reader
 def read_aims_results(fd, index=-1):
-    chunks = get_aims_out_chunks(fd)
-    initial_chunk = next(chunks)
-    chunks = [initial_chunk] + list(
-        get_aims_out_chunks(fd, initial_chunk.n_atoms, initial_chunk.constraints)
-    )
+    header_chunk = get_header_chunk(fd)
+    chunks = list(get_aims_out_chunks(fd, header_chunk))
     if not chunks[-1].converged:
         warnings.warn(
             "This FHI-aims calculation did not fully converge, check the results and output file carefully."
         )
+
+    # Relaxations have an additional fotter chunk due to how it is split
+    if header_chunk.is_relaxation and (index == -1):
+        return chunks[-2].results
 
     return chunks[index].results
