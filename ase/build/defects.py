@@ -148,15 +148,27 @@ class DefectBuilder():
         return np.all(z==z[0])
 
 
-    def create_vacancies(self):
-        atoms = self.get_input_structure()
+    def create_vacancies(self, sc=3, size=None):
+        atoms = self.get_primitive_structure()
         spg_host = self.setup_spg_cell()
         eq_pos = get_equivalent_atoms(spg_host)
         finished_list = []
         vacancies = []
+        dim = self.get_dimension()
+        if not size is None:
+            assert size > 0, 'Choose size larger than zero!'
+            sc = self.get_supercell_repitition(size, dim=dim)
+
+        if dim == 2:
+            structure = atoms.repeat((sc, sc, 1))
+        elif dim == 3:
+            structure = atoms.repeat((sc, sc, sc))
+        elif dim == 1:
+            raise ValueError('1D not implemented!')
+
         for i in range(len(atoms)):
             if not eq_pos[i] in finished_list:
-                vac = self.get_input_structure().copy()
+                vac = structure.copy()
                 sitename = vac.get_chemical_symbols()[i]
                 vac.pop(i)
                 finished_list.append(eq_pos[i])
@@ -166,7 +178,7 @@ class DefectBuilder():
 
 
     def get_kindlist(self, intrinsic=True, extrinsic=None):
-        atoms = self.get_input_structure().copy()
+        atoms = self.get_primitive_structure().copy()
         defect_list = []
         if intrinsic:
             for i in range(len(atoms)):
@@ -181,19 +193,33 @@ class DefectBuilder():
         return defect_list
 
 
-    def create_substitutions(self, intrinsic=True, extrinsic=None):
-        atoms = self.get_input_structure().copy()
+    def create_substitutions(self, intrinsic=True, extrinsic=None,
+                             sc=3, size=None):
+        atoms = self.get_primitive_structure().copy()
         spg_host = self.setup_spg_cell()
         eq_pos = get_equivalent_atoms(spg_host)
         defect_list = self.get_kindlist(intrinsic=intrinsic,
                                         extrinsic=extrinsic)
+        dim = self.get_dimension()
+
+        if not size is None:
+            assert size > 0, 'Choose size larger than zero!'
+            sc = self.get_supercell_repitition(size, dim=dim)
+
+        if dim == 2:
+            structure = atoms.repeat((sc, sc, 1))
+        elif dim == 3:
+            structure = atoms.repeat((sc, sc, sc))
+        elif dim == 1:
+            raise ValueError('1D not implemented!')
+
         antisites = []
         finished_list = []
         for i in range(len(atoms)):
             if not eq_pos[i] in finished_list:
                 for element in defect_list:
                     if not atoms[i].symbol == element:
-                        antisite = atoms.copy()
+                        antisite = structure.copy()
                         sitename = antisite.get_chemical_symbols()[i]
                         antisite[i].symbol = element
                         antisites.append(antisite)
