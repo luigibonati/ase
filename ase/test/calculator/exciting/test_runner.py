@@ -5,7 +5,7 @@ from ase.calculators.exciting.runner import SimpleBinaryRunner, ExcitingRunner
 
 def test_class_simple_binary_runner(tmpdir):
     """
-    Test SimpleBinaryRunner attributes
+    Test SimpleBinaryRunner
     """
     binary = tmpdir / 'binary.exe'
     binary.write("Arbitrary text such that file exists")

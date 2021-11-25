@@ -231,3 +231,4 @@ class ExcitingGroundState(GenericFileIOCalculator):
     # initialize not needed. atoms object injected into XML via the template's write
     # function
 
+

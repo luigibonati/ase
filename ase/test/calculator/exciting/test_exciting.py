@@ -22,6 +22,8 @@ import unittest.mock as mock
 #     print(energy)
 
 
+# TODO(Alex/Dan) This needs a big refactor - mostly scrapping
+
 # skips tests which need the exciting calculator if the environment variable 'EXCITINGROOT' is not set
 need_exciting = pytest.mark.skipif('EXCITINGROOT' not in os.environ.keys(), reason='exciting is not available')
 
