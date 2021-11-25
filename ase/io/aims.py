@@ -583,16 +583,20 @@ def format_tiers(line, targettier, foundtarget, do_uncomment):
 
 # Read aims.out files
 scalar_property_to_line_key = {
-    "free_energy": "| Electronic free energy",
-    "number_of_iterations": "| Number of self-consistency cycles",
-    "magnetic_moment": "N_up - N_down",
-    "n_atoms": "| Number of atoms",
-    "n_bands": "Number of Kohn-Sham states",
-    "n_electrons": "The structure contains",
-    "n_kpts": "| Number of k-points",
-    "n_spins": "| Number of spin channels",
-    "electronic_temp": "Occupation type:",
-    "fermi_energy": "| Chemical potential (Fermi level)",
+    "free_energy": ["| Electronic free energy"],
+    "number_of_iterations": ["| Number of self-consistency cycles"],
+    "magnetic_moment": ["N_up - N_down"],
+    "n_atoms": ["| Number of atoms"],
+    "n_bands": [
+        "Number of Kohn-Sham states",
+        "Reducing total number of  Kohn-Sham states",
+        "Reducing total number of Kohn-Sham states",
+    ],
+    "n_electrons": ["The structure contains"],
+    "n_kpts": ["| Number of k-points"],
+    "n_spins": ["| Number of spin channels"],
+    "electronic_temp": ["Occupation type:"],
+    "fermi_energy": ["| Chemical potential (Fermi level)"],
 }
 
 
@@ -666,7 +670,7 @@ class AimsOutChunk:
         float
             The scalar value of the property
         """
-        line_start = self.reverse_search_for([scalar_property_to_line_key[property]])
+        line_start = self.reverse_search_for(scalar_property_to_line_key[property])
 
         if line_start >= len(self.lines):
             return None
@@ -825,19 +829,23 @@ class AimsOutHeaderChunk(AimsOutChunk):
     @lazyproperty
     def n_bands(self):
         """The number of Kohn-Sham states for the chunk"""
-        n_bands = self.parse_scalar("n_bands")
-        if n_bands is None:
+        line_start = self.reverse_search_for(scalar_property_to_line_key["n_bands"])
+
+        if line_start >= len(self.lines):
             raise IOError(
                 "No information about the number of Kohn-Sham states in the header."
             )
-        return int(n_bands)
+
+        line = self.lines[line_start]
+        if "| Number of Kohn-Sham states" in line:
+            return int(line.split(":")[-1].strip().split()[0])
+
+        return int(line.split()[-1].strip()[:-1])
 
     @lazyproperty
     def n_electrons(self):
         """The number of electrons for the chunk"""
-        line_start = self.reverse_search_for(
-            [scalar_property_to_line_key["n_electrons"]]
-        )
+        line_start = self.reverse_search_for(scalar_property_to_line_key["n_electrons"])
 
         if line_start >= len(self.lines):
             raise IOError("No information about the number of electrons in the header.")
@@ -868,7 +876,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
     def electronic_temperature(self):
         """The electronic temperature for the chunk"""
         line_start = self.reverse_search_for(
-            [scalar_property_to_line_key["electronic_temp"]]
+            scalar_property_to_line_key["electronic_temp"]
         )
         if line_start >= len(self.lines):
             return 0.10

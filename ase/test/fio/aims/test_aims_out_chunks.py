@@ -1066,7 +1066,7 @@ def test_AimsOutHeaderChunk():
 
 def test_AimsOutCalcChunk():
     lines = []
-    header_chunk = AimsOutHeaderChunk(header[:-1])
+    header_chunk = AimsOutHeaderChunk(header)
     chunk = AimsOutCalcChunk(lines, header_chunk)
 
     # Test that the header passing works
@@ -1245,9 +1245,8 @@ def test_AimsOutCalcChunk():
 def test_AimsOutCalcChunkMolecular():
     header = [
         "| Number of atoms                   :        3",
-        "| Number of Kohn-Sham states (occupied + empty):       11",
-        "The structure contains        2 atoms,  and a total of         10.000 electrons.",
         "| Number of spin channels           :        1",
+        "The structure contains        3 atoms,  and a total of         10.000 electrons.",
         "Input geometry:",
         "| Atomic structure:",
         "|       Atom                x [A]            y [A]            z [A]",
@@ -1255,6 +1254,9 @@ def test_AimsOutCalcChunkMolecular():
         "|    2: Species H             0.95840000        0.00000000        0.00000000",
         "|    3: Species H            -0.24000000        0.92790000        0.00000000",
         'Geometry relaxation: A file "geometry.in.next_step" is written out by default after each step.',
+        "| Maximum number of basis functions            :        7",
+        "| Number of Kohn-Sham states (occupied + empty):       11",
+        "Reducing total number of  Kohn-Sham states to        7.",
     ]
     calc = [
         "| Number of self-consistency cycles          :           7",
@@ -1315,10 +1317,6 @@ def test_AimsOutCalcChunkMolecular():
         "5       2.00000          -0.264427           -7.19543",
         "6       0.00000          -0.000414           -0.01127",
         "7       0.00000           0.095040            2.58616",
-        "8       0.00000           0.295251            8.03419",
-        "9       0.00000           0.328307            8.93368",
-        "10       0.00000           0.369311           10.04947",
-        "11       0.00000           0.578060           15.72981",
         "",
         "Highest occupied state (VBM) at     -7.19542820 eV",
         "| Occupation number:      2.00000000",
@@ -1334,12 +1332,13 @@ def test_AimsOutCalcChunkMolecular():
         "------------------------------------------------------------",
         "",
     ]
-    header_chunk = AimsOutHeaderChunk(header[:-1])
+    header_chunk = AimsOutHeaderChunk(header)
     assert header_chunk.k_points is None
     assert header_chunk.k_point_weights is None
     assert header_chunk.constraints is None
     assert header_chunk.initial_cell is None
     assert header_chunk.n_k_points is None
+    assert header_chunk.n_bands == 7
 
     chunk = AimsOutCalcChunk(calc, header_chunk)
     assert chunk.initial_cell is None
@@ -1431,10 +1430,6 @@ def test_AimsOutCalcChunkMolecular():
         -7.19543,
         -0.01127,
         2.58616,
-        8.03419,
-        8.93368,
-        10.04947,
-        15.72981,
     ]
     occupancies = [
         2.0,
@@ -1442,10 +1437,6 @@ def test_AimsOutCalcChunkMolecular():
         2.0,
         2.0,
         2.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
         0.0,
         0.0,
     ]
