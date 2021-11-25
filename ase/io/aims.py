@@ -1134,6 +1134,9 @@ class AimsOutCalcChunk(AimsOutChunk):
             for ll, line in enumerate(
                 self.lines[occ_start + 1:occ_start + self.n_bands + 1]
             ):
+                line = line.replace('**************', '         10000')
+                line = line.replace('***************', '          10000')
+                line = line.replace('****************', '           10000')
                 self._eigenvalues[kpt_ind, ll, spin] = float(line.split()[3])
                 self._occupancies[kpt_ind, ll, spin] = float(line.split()[1])
 
