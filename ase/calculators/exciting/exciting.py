@@ -3,6 +3,7 @@ ASE Calculator for the ground state exciting DFT code
 """
 from typing import Union, List, Optional
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 import ase
 from ase.calculators.genericfileio import (GenericFileIOCalculator, CalculatorTemplate)
@@ -10,7 +11,7 @@ from ase.calculators.exciting.runner import ExcitingRunner, SubprocessRunResults
 from ase.calculators.calculator import InputError, PropertyNotImplementedError
 
 from ase.calculators.exciting.input import query_exciting_version, ExcitingInput
-from ase.io.exciting import add_attributes_to_element_tree
+from ase.io.exciting import add_attributes_to_element_tree, prettify, initialise_input_xml, add_atoms_to_input_xml
 
 
 class ExcitingProfile:
@@ -60,20 +61,14 @@ class ExcitingGroundStateTemplate(CalculatorTemplate):
         :param Union[dict, ExcitingInput] input_parameters: exciting groundstate input parameters
         :param List[str] properties: List of output properties.
         """
+        root = initialise_input_xml()
+        structure = structure_element_tree(atoms,  autormt, species_path, tshift)
+        root.
+
+        fileobj.write(prettify(input))
 
 
-        root = add_attributes_to_element_tree(images, autormt, species_path, tshift, param_dict)
 
-        fid = open()
-        write_exciting(fid)
-        fid.close()
-
-        #TODO Implement
-        # Convert exciting inputs and ase.Atoms into an xml string
-        # input_xml = 'Add functions to compose and return me'
-        # Write the XML string to file
-        # Do something or nothing with properties (maybe check against input?)
-        return
 
     def execute(self, directory, exciting_calculation: ExcitingRunner) -> SubprocessRunResults:
         """

@@ -3,7 +3,6 @@ This is the implementation of the exciting I/O functions
 The functions are called with read write using the format "exciting"
 
 """
-
 import numpy as np
 from typing import Dict
 import xml.etree.ElementTree as ET
@@ -12,11 +11,9 @@ from xml.dom import minidom
 import ase
 from ase.atoms import Atoms
 from ase.units import Bohr
-from ase.utils import writer
 
 
-# TODO Rename structure_to_ase_atoms
-def read_exciting(fileobj):
+def structure_xml_to_ase_atoms(fileobj) -> ase.Atoms:
     """Reads structure from input.xml file.
 
     Parameters
@@ -25,14 +22,15 @@ def read_exciting(fileobj):
         File handle from which data should be read.
 
     """
-
     # Parse file into element tree
     doc = ET.parse(fileobj)
     root = doc.getroot()
     speciesnodes = root.find('structure').iter('species')
+
     symbols = []
     positions = []
     basevects = []
+
     # Collect data from tree
     for speciesnode in speciesnodes:
         symbol = speciesnode.get('speciesfile').split('.')[0]
@@ -41,7 +39,8 @@ def read_exciting(fileobj):
             x, y, z = atom.get('coord').split()
             positions.append([float(x), float(y), float(z)])
             symbols.append(symbol)
-    # scale unit cell accorting to scaling attributes
+
+    # scale unit cell according to scaling attributes
     if 'scale' in doc.find('structure/crystal').attrib:
         scale = float(str(doc.find('structure/crystal').attrib['scale']))
     else:
@@ -52,6 +51,7 @@ def read_exciting(fileobj):
         stretch = np.array([float(a), float(b), float(c)])
     else:
         stretch = np.array([1.0, 1.0, 1.0])
+
     basevectsn = root.findall('structure/crystal/basevect')
     for basevect in basevectsn:
         x, y, z = basevect.text.split()
@@ -70,67 +70,111 @@ def read_exciting(fileobj):
 
     return atoms
 
-# TODO(Alex/Dan) This should be the write function in the template
-@writer
-def write_exciting(fileobj, images, autormt, species_path, tshift, param_dict):
-    """writes exciting input structure in XML
 
-    Parameters
-    ----------
-    fileobj : File Object
-        File Object returned by call to open.
-    images : ASE Atoms Object or List of Atoms objects
-        This function will write the first Atoms object to file.
-    -------
+def prettify(elem: ET.Element) -> ET.Element:
     """
-    # Check if the directory where we want to save our file exists.
-    # If not, create the directory.
-    root = add_attributes_to_element_tree(images, autormt, species_path, tshift, param_dict)
-    # Prettify makes the output a lot nicer to read.
-    fileobj.write(prettify(root))
-
-
-def add_attributes_to_element_tree(atoms: ase.Atoms, autormt, species_path, tshift, param_dict):
-    """Adds attributes to the element tree.
-
-    The element tree created with ase.io.exciting.atoms_to_tree
-    is missing a few attributes that are specified in the __init__()
-    method of this class. We add them to our element tree.
-
-    Args:
-        atoms: Holds geometry and atomic information of the unit cell.
-
-    Returns:
-        An xml element tree.
+    Make the XML elements prettier to read.
     """
-    # Create an XML Document Object Model (DOM) where we can
-    # then assign different attributes of the DOM. `root` holds the root
-    # of the element tree that is populated with basis vectors, chemical
-    # symbols and the like.
-    root = atoms_to_etree(atoms)
-    # We have to add a few more attributes to the element tree before
-    # writing the xml input file. Assign the species path.
-    root.find('structure').attrib['speciespath'] = species_path
-    # Assign the autormt boolean.
-    root.find('structure').attrib['autormt'] = str(
-        autormt).lower()
-    # Assign the tshift bool. If true crystal is shifted so
-    # closest atom to origin is now at origin.
-    root.find('structure').attrib['tshift'] = str(
-        tshift).lower()
-    # Assign dict key values to XML dom object root.
-    if param_dict:
-        dict_to_xml(param_dict, root)
-    else:
-        ET.SubElement(root, 'groundstate', tforce='true')
-    return root
-
-
-def prettify(elem):
-    """Make the XML elements prettier to read."""
     rough_string = ET.tostring(elem, 'utf-8')
     reparsed = minidom.parseString(rough_string)
     return reparsed.toprettyxml(indent="\t")
+
+
+def initialise_input_xml(title_text='') -> ET.Element:
+    """
+    Initialise input.xml element tree for exciting
+
+    Includes a required subelements:
+        * structure
+        * crystal
+
+    :param str title_text: Title for calculation
+    :return ET.Element root: Elememnt tree root
+    """
+    root = ET.Element('input')
+
+    root.set(
+        '{http://www.w3.org/2001/XMLSchema-instance}noNamespaceSchemaLocation',
+        'http://xml.exciting-code.org/excitinginput.xsd')
+    title = ET.SubElement(root, 'title')
+    title.text = title_text
+
+    structure = ET.SubElement(root, 'structure')
+    ET.SubElement(structure, 'crystal')
+
+    return root
+
+
+def structure_element_tree(atoms: ase.Atoms, autormt: bool, species_path: str, tshift: bool) ->ET.ElementTree:
+    """
+
+    :param atoms ase.Atoms: ASE atoms and lattice vectors
+    :param bool autormt: Exciting autmatically determines MT radii
+    :param str species_path: Path to species files
+    :param bool tshift: Crystal is shifted so closest atom to origin is now at origin.
+    """
+
+
+    root.find('structure').attrib['speciespath'] = species_path
+    root.find('structure').attrib['autormt'] = str(
+        autormt).lower()
+
+    root.find('structure').attrib['tshift'] = str(
+        tshift).lower()
+
+    def add_atoms_to_element_tree(root: ET.Element, atoms: ase.Atoms) -> ET.Element:
+        """
+
+
+        """
+
+
+
+        for vec in atoms.cell:
+            basevect = ET.SubElement(crystal, 'basevect')
+            # use f string here and fix this.
+            basevect.text = f'{vec[0] / Bohr:.14f} {vec[1] / Bohr:.14f} {vec[2] / Bohr:.14f}'
+
+        oldsymbol = ''
+        oldrmt = -1  # The old radius of the muffin tin (rmt)
+        newrmt = -1
+        scaled_positions = atoms.get_scaled_positions()  # positions in fractions of the unit cell
+        # loop over the different elements and add corresponding species files
+        for aindex, symbol in enumerate(atoms.get_chemical_symbols()):
+            # TODO(speckhard): Check if rmt can be set
+            if 'rmt' in atoms.arrays:
+                newrmt = atoms.get_array('rmt')[aindex] / Bohr
+            if symbol != oldsymbol or newrmt != oldrmt:
+                speciesnode = ET.SubElement(structure, 'species',
+                                            speciesfile=f'{symbol}.xml',
+                                            chemicalSymbol=symbol)
+                oldsymbol = symbol
+                if 'rmt' in atoms.arrays:
+                    oldrmt = atoms.get_array('rmt')[aindex] / Bohr
+                    if oldrmt > 0:
+                        speciesnode.attrib['rmt'] = f'{oldrmt:.4f}'
+
+            atom = ET.SubElement(speciesnode, 'atom', coord=(f'{scaled_positions[aindex][0]:.14f} '
+                                                             f'{scaled_positions[aindex][1]:.14f} '
+                                                             f'{scaled_positions[aindex][2]:.14f}'))
+            # TODO(speckhard): Can momenta be set in arrays
+            if 'momenta' in atoms.arrays:
+                atom.attrib['bfcmt'] = (f'{atoms.get_array("momenta")[aindex][0]:.14f} '
+                                        f'{atoms.get_array("momenta")[aindex][1]:.14f} '
+                                        f'{atoms.get_array("momenta")[aindex][2]:.14f}')
+
+        return root
+
+
+    # # Assign dict key values to XML dom object root.
+    # if param_dict:
+    #     dict_to_xml(param_dict, root)
+    # else:
+    #     ET.SubElement(root, 'groundstate', tforce='true')
+    # return root
+
+
+
 
 
 def dict_to_xml(pdict: Dict, element):
@@ -162,74 +206,11 @@ def dict_to_xml(pdict: Dict, element):
             raise TypeError(f'cannot deal with key: {key}, val: {value}')
 
 
-# TODO(Alex/Dan) This also initialises the start of the XML, which has nothing to do with atoms
-# in the structure.
-# This should return the XML structure node
-# Intialise should be moved
-def atoms_to_etree(ase_atoms_obj) -> ET.Element:
-    """This function creates the XML DOM corresponding
-     to the structure for use in write and calculator
 
-    Parameters
-    ----------
 
-    ase_atoms_obj : Atom Object or List of Atoms objects
 
-    Returns
-    -------
-    root : etree object
-        Element tree of exciting input file containing the structure
-    """
-    # checks whether a list of ase atom objects is passed or a single ase atoms object
-    if not isinstance(ase_atoms_obj, (list, tuple)):
-        ase_atoms_obj_list = [ase_atoms_obj]
-    else:
-        ase_atoms_obj_list = ase_atoms_obj
-    root = ET.Element('input')
-    root.set(
-        '{http://www.w3.org/2001/XMLSchema-instance}noNamespaceSchemaLocation',
-        'http://xml.exciting-code.org/excitinginput.xsd')
 
-    title = ET.SubElement(root, 'title')
-    title.text = ''
-    structure = ET.SubElement(root, 'structure')
-    crystal = ET.SubElement(structure, 'crystal')
-    # if a list of ase atoms is passed use the first one
-    atoms = ase_atoms_obj_list[0]
-    for vec in atoms.cell:
-        basevect = ET.SubElement(crystal, 'basevect')
-        # use f string here and fix this.
-        basevect.text = f'{vec[0] / Bohr:.14f} {vec[1] / Bohr:.14f} {vec[2] / Bohr:.14f}'
 
-    oldsymbol = ''
-    oldrmt = -1  # The old radius of the muffin tin (rmt)
-    newrmt = -1
-    scaled_positions = atoms.get_scaled_positions()  # positions in fractions of the unit cell
-    # loop over the different elements and add corresponding species files
-    for aindex, symbol in enumerate(atoms.get_chemical_symbols()):
-        # TODO(speckhard): Check if rmt can be set
-        if 'rmt' in atoms.arrays:
-            newrmt = atoms.get_array('rmt')[aindex] / Bohr
-        if symbol != oldsymbol or newrmt != oldrmt:
-            speciesnode = ET.SubElement(structure, 'species',
-                                        speciesfile=f'{symbol}.xml',
-                                        chemicalSymbol=symbol)
-            oldsymbol = symbol
-            if 'rmt' in atoms.arrays:
-                oldrmt = atoms.get_array('rmt')[aindex] / Bohr
-                if oldrmt > 0:
-                    speciesnode.attrib['rmt'] = f'{oldrmt:.4f}'
-
-        atom = ET.SubElement(speciesnode, 'atom', coord=(f'{scaled_positions[aindex][0]:.14f} '
-                                                         f'{scaled_positions[aindex][1]:.14f} '
-                                                         f'{scaled_positions[aindex][2]:.14f}'))
-        # TODO(speckhard): Can momenta be set in arrays
-        if 'momenta' in atoms.arrays:
-            atom.attrib['bfcmt'] = (f'{atoms.get_array("momenta")[aindex][0]:.14f} '
-                                    f'{atoms.get_array("momenta")[aindex][1]:.14f} '
-                                    f'{atoms.get_array("momenta")[aindex][2]:.14f}')
-
-    return root
 
 
 # TODO(Fab) REFACTOR
