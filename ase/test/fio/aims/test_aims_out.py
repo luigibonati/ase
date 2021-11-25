@@ -2,6 +2,7 @@
 import numpy as np
 from ase.io import read
 from ase.io.aims import read_aims_results
+from ase.stress import full_3x3_to_voigt_6_stress
 from numpy.linalg import norm
 from pathlib import Path
 
@@ -86,28 +87,41 @@ def test_parse_md(testdir):
 
 def test_parse_relax(testdir):
     traj = read(parent / "aims_out_files/relax.out", ":", format="aims-output")
-    assert len(traj) == 4
-    p0 = [[0.0, 0.0, 0.0], [0.9584, 0.0, 0.0], [-0.24, 0.9279, 0.0]]
-    p_end = [
-        [-0.00191785, -0.00243279, -0.00000000],
-        [0.97071531, -0.00756333, 0.00000000],
-        [-0.25039746, 0.93789612, -0.00000000],
-    ]
-    assert np.allclose(traj[0].get_positions(), p0)
-    assert np.allclose(traj[-1].get_positions(), p_end)
+    assert len(traj) == 8
+    p0 = [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]
+    assert all([np.allclose(at.get_scaled_positions(), p0) for at in traj])
+    assert all([np.allclose(at.get_forces(), np.zeros((2, 3))) for at in traj])
 
-    f0 = [
-        [-0.481289284665163e00, -0.615051370384412e00, 0.811297123282653e-27],
-        [0.762033585727896e00, -0.942008578636939e-01, -0.811297123282653e-28],
-        [-0.280744301062733e00, 0.709252228248106e00, -0.324518849313061e-27],
+    s0 = full_3x3_to_voigt_6_stress(
+        [
+            [0.07748922, 0.0, 0.0],
+            [0.0, 0.07748923, 0.0],
+            [0.0, 0.0, 0.07748923],
+        ]
+    )
+    s_end = full_3x3_to_voigt_6_stress(
+        [
+            [-0.00007093, 0.00001488, 0.00001488],
+            [0.00001488, -0.00007093, 0.00001488],
+            [0.00001488, 0.00001488, -0.00007093],
+        ]
+    )
+    assert np.allclose(traj[0].get_stress(), s0)
+    assert np.allclose(traj[-1].get_stress(), s_end)
+
+    cell_0 = [
+        [0.000, 2.903, 2.903],
+        [2.903, 0.000, 2.903],
+        [2.903, 2.903, 0.000],
     ]
-    f_end = [
-        [0.502371358893591e-03, 0.518627680984070e-03, 0.324518849313061e-27],
-        [-0.108826759330217e-03, -0.408128913725760e-03, -0.194711309587837e-26],
-        [-0.393544599563376e-03, -0.110498767258316e-03, -0.973556547939183e-27],
+    cell_end = [
+        [0.00006390, 2.70950938, 2.70950938],
+        [2.70950941, 0.00006393, 2.70950939],
+        [2.70950941, 2.70950939, 0.00006393],
     ]
-    assert np.allclose(traj[0].get_forces(), f0)
-    assert np.allclose(traj[-1].get_forces(), f_end)
+    print(traj[-1].get_cell())
+    assert np.allclose(traj[0].get_cell(), cell_0)
+    assert np.allclose(traj[-1].get_cell(), cell_end)
 
 
 def test_parse_singlepoint(testdir):
