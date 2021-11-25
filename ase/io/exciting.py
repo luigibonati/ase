@@ -15,6 +15,7 @@ from ase.units import Bohr
 from ase.utils import writer
 
 
+# TODO Rename structure_to_ase_atoms
 def read_exciting(fileobj):
     """Reads structure from input.xml file.
 
@@ -69,7 +70,7 @@ def read_exciting(fileobj):
 
     return atoms
 
-
+# TODO(Alex/Dan) This should be the write function in the template
 @writer
 def write_exciting(fileobj, images, autormt, species_path, tshift, param_dict):
     """writes exciting input structure in XML
@@ -161,6 +162,10 @@ def dict_to_xml(pdict: Dict, element):
             raise TypeError(f'cannot deal with key: {key}, val: {value}')
 
 
+# TODO(Alex/Dan) This also initialises the start of the XML, which has nothing to do with atoms
+# in the structure.
+# This should return the XML structure node
+# Intialise should be moved
 def atoms_to_etree(ase_atoms_obj) -> ET.Element:
     """This function creates the XML DOM corresponding
      to the structure for use in write and calculator
