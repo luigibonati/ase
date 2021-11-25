@@ -22,7 +22,7 @@ class SubprocessRunResults:
 
 class SimpleBinaryRunner:
     """
-    Compose a run command and run a binary
+    Compose a run command, and run a binary
     """
 
     def __init__(self,
@@ -34,7 +34,7 @@ class SimpleBinaryRunner:
                  args: Optional[List[str]] = ['']
                  ) -> None:
         """
-        :param str binary: Binary name
+        :param str binary: Binary name prepended by full path
         :param List[str] run_cmd: Run commands sequentially as a list. For example:
           * For serial: ['./']
           * For MPI:   ['mpirun', '-np', '2']
@@ -46,16 +46,14 @@ class SimpleBinaryRunner:
         self.directory = directory
         self.run_cmd = run_cmd
         self.omp_num_threads = omp_num_threads
-        self.args = args
         self.time_out = time_out
+        self.args = args
 
-        # TODO(Alex)
-        #   Need to pass full binary path, then split the get the binary name
-        #   when accessing defaults
-        # TODO(Alex)
-        #   Check binary exists
+        if not os.path.isfile(self.binary):
+            raise FileNotFoundError("Binary does not exist: " + self.binary)
 
-        assert omp_num_threads > 0, "Number of OMP threads must be > 0"
+        if not Path(directory).is_dir():
+            raise OSError("Run directory does not exist: " + directory)
 
         try:
             i = run_cmd.index('np')
@@ -64,6 +62,10 @@ class SimpleBinaryRunner:
             assert mpi_processes > 0, "Number of MPI processes must be > 0"
         except ValueError:
             pass
+
+        assert omp_num_threads > 0, "Number of OMP threads must be > 0"
+
+        assert time_out > 0, "time_out must be a positive integer"
 
     def compose_execution_list(self) -> list:
         """
@@ -87,9 +89,8 @@ class SimpleBinaryRunner:
         if directory is not None:
             directory = self.directory
 
-        # TODO(Alex) What is the best thing to do in this case?
         if not Path(directory).is_dir():
-            sys.exit('Directory does not exist:', directory)
+            raise OSError("Run directory does not exist: " + directory)
 
         if execution_list is None:
             execution_list = self.compose_execution_list()
@@ -137,11 +138,14 @@ class ExcitingRunner(SimpleBinaryRunner):
                  args: Optional[List[str]] = [''],
                  ) -> None:
 
+        binary_name = os.path.basename(binary)
+
         if run_cmd is None:
-            run_cmd = self.default_run_cmd[binary]
+            run_cmd = self.default_run_cmd[binary_name]
 
         if omp_num_threads is None:
-            omp_num_threads = self.default_omp_threads[binary]
+            omp_num_threads = self.default_omp_threads[binary_name]
 
-        assert binary in self.binaries, "binary string is not a valid choice"
+        assert binary_name in self.binaries, "binary string is not a valid choice"
+
         super().__init__(binary, run_cmd, omp_num_threads, time_out, directory, args)
