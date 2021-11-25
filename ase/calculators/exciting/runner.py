@@ -115,11 +115,11 @@ class ExcitingRunner(SimpleBinaryRunner):
     input_name = 'input.xml'
 
     binary_exts = ['serial', 'purempi', 'smp', 'mpismp']
-    binaries = ['exciting_' + ext for ext in binary_exts]
+    binaries = ['exciting_' + ext for ext in binary_exts] + ['exciting']
 
     default_run_cmd = {'exciting_serial': ['./'],
                        'exciting_purempi': ['mpirun', '-np', '2'],
-                       'exciting_smp': ['./'] ,
+                       'exciting_smp': ['./'],
                        'exciting_mpismp': ['mpirun', '-np', '2']
                        }
 
@@ -139,13 +139,17 @@ class ExcitingRunner(SimpleBinaryRunner):
                  ) -> None:
 
         binary_name = os.path.basename(binary)
+        assert binary_name in self.binaries, "binary string is not a valid choice"
 
         if run_cmd is None:
-            run_cmd = self.default_run_cmd[binary_name]
+            try:
+                run_cmd = self.default_run_cmd[binary_name]
+            except KeyError:
+                raise KeyError("No default settings exist for this binary choice: " + binary_name)
 
         if omp_num_threads is None:
             omp_num_threads = self.default_omp_threads[binary_name]
 
-        assert binary_name in self.binaries, "binary string is not a valid choice"
+        #print(binary, run_cmd, omp_num_threads, time_out, directory, args)
 
         super().__init__(binary, run_cmd, omp_num_threads, time_out, directory, args)
