@@ -1,7 +1,6 @@
 """Test file for exciting file input and output methods."""
 import pytest
 import tempfile  # Used to create temporary directories for tests.
-import unittest
 import io
 import numpy as np
 import xml.etree.ElementTree as ET
@@ -11,13 +10,22 @@ import ase.io.exciting
 from ase.units import Bohr
 
 
+@pytest.fixture
+def nitrogen_trioxide_atoms():
+    return ase.Atoms('NO3',
+                     cell=[[2, 2, 0], [0, 4, 0], [0, 0, 6]],
+                     positions=[(0, 0, 0), (1, 3, 0),
+                                (0, 0, 1), (0.5, 0.5, 0.5)],
+                     pbc=True)
+
+
 def test_atoms_to_etree(nitrogen_trioxide_atoms):
     element_tree = ase.io.exciting.atoms_to_etree(nitrogen_trioxide_atoms)
     assert element_tree.tag == 'input'
     expected_children_tags = ['title', 'structure']
     for count, child in enumerate(element_tree):
         assert child.tag == expected_children_tags[count]
-
+    # TODO(Alex) Shouldn't convert in the reference data - should be correct by inspection
     expected_vectors = [[2 / Bohr, 2 / Bohr, 0], [0, 4 / Bohr, 0], [0, 0, 6 / Bohr]]
     basis_vector_list = element_tree.findall('./structure/crystal/basevect')
     for i in range(len(basis_vector_list)):
@@ -109,13 +117,6 @@ def test_add_attributes_to_element_tree(nitrogen_trioxide_atoms):
     assert element_tree.findall('./structure')[0].get('speciespath') == species_path
 
 
-@pytest.fixture
-def nitrogen_trioxide_atoms():
-    return ase.Atoms('NO3',
-                     cell=[[2, 2, 0], [0, 4, 0], [0, 0, 6]],
-                     positions=[(0, 0, 0), (1, 3, 0),
-                                (0, 0, 1), (0.5, 0.5, 0.5)],
-                     pbc=True)
 
 
 def test_read_exciting_file_does_not_exist():
