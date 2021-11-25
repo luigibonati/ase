@@ -464,7 +464,7 @@ def write_control(fd, atoms, parameters, debug=False):
         elif key == "plus_u":
             continue
         elif key == "smearing":
-            name = parameters.smearing[0].lower()
+            name = parameters["smearing"][0].lower()
             if name == "fermi-dirac":
                 name = "fermi"
             width = parameters["smearing"][1]
@@ -472,7 +472,7 @@ def write_control(fd, atoms, parameters, debug=False):
             if name == "methfessel-paxton":
                 order = parameters["smearing"][2]
                 fd.write(" %d" % order)
-            fd.write("\n" % order)
+            fd.write("\n")
         elif key == "output":
             for output_type in value:
                 fd.write("%-35s%s\n" % (key, output_type))
