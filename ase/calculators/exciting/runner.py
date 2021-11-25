@@ -3,7 +3,6 @@ Binary runner and results class
 """
 from typing import List, Optional
 from pathlib import Path
-import sys
 import os
 import subprocess
 
@@ -61,7 +60,11 @@ class SimpleBinaryRunner:
             assert type(mpi_processes) == int, "Number of MPI processes should be an int"
             assert mpi_processes > 0, "Number of MPI processes must be > 0"
         except ValueError:
+            # .index will return ValueError if 'np' not found (serial and omp calculations)
             pass
+
+        # TODO(Alex) if directory of type py._path.local.LocalPath, does it need explicitly converting
+        # before passing to subprocess?
 
         assert omp_num_threads > 0, "Number of OMP threads must be > 0"
 
@@ -139,7 +142,9 @@ class ExcitingRunner(SimpleBinaryRunner):
                  ) -> None:
 
         binary_name = os.path.basename(binary)
-        assert binary_name in self.binaries, "binary string is not a valid choice"
+
+        if not binary_name in self.binaries:
+            raise ValueError("binary name is not a valid choice: " + binary_name)
 
         if run_cmd is None:
             try:
@@ -149,7 +154,5 @@ class ExcitingRunner(SimpleBinaryRunner):
 
         if omp_num_threads is None:
             omp_num_threads = self.default_omp_threads[binary_name]
-
-        #print(binary, run_cmd, omp_num_threads, time_out, directory, args)
 
         super().__init__(binary, run_cmd, omp_num_threads, time_out, directory, args)
