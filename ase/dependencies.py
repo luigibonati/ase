@@ -21,7 +21,7 @@ def format_dependency(modname: str) -> Tuple[str, str]:
 
     # (only packages have __path__, but we are importing packages.)
     try:
-        info = str(module.__path__[0])
+        info = str(module.__path__[0])  # type: ignore
     except Exception as ex:
         info = f'module has no path ({ex})'
     return name, info
