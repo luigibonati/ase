@@ -20,11 +20,10 @@ def format_dependency(modname: str) -> Tuple[str, str]:
             name += '-{:.10}'.format(githash)
 
     # (only packages have __path__, but we are importing packages.)
-    paths = getattr(module, '__path__', [])
-    if paths:
-        info = paths[0]
-    else:
-        info = 'module has no path'
+    try:
+        info = str(module.__path__[0])
+    except Exception as ex:
+        info = f'module has no path ({ex})'
     return name, info
 
 
