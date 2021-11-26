@@ -868,7 +868,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
         n_spins = self.parse_scalar("n_spins")
         if n_spins is None:
             raise IOError(
-                "No information about the number of Kohn-Sham states in the header."
+                "No information about the number of spin channels in the header."
             )
         return int(n_spins)
 
@@ -1043,7 +1043,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         else:
             line_ind = self.reverse_search_for(["Total energy uncorrected"])
         if line_ind == len(self.lines):
-            raise IOError("No energy is associated with the structure")
+            raise IOError("No energy is associated with the structure.")
 
         return float(self.lines[line_ind].split()[5])
 
@@ -1090,6 +1090,9 @@ class AimsOutCalcChunk(AimsOutChunk):
 
     def _parse_eigenvalues(self):
         """Parse the eigenvalues and occupancies of the system. If eigenvalue is not present in the output file then set it to np.nan"""
+        if self._atoms is None:
+            self._parse_atoms()
+
         line_start = self.reverse_search_for(["Writing Kohn-Sham eigenvalues."])
         if line_start >= len(self.lines):
             return
@@ -1134,9 +1137,9 @@ class AimsOutCalcChunk(AimsOutChunk):
             for ll, line in enumerate(
                 self.lines[occ_start + 1:occ_start + self.n_bands + 1]
             ):
-                line = line.replace('**************', '         10000')
-                line = line.replace('***************', '          10000')
-                line = line.replace('****************', '           10000')
+                line = line.replace("**************", "         10000")
+                line = line.replace("***************", "          10000")
+                line = line.replace("****************", "           10000")
                 self._eigenvalues[kpt_ind, ll, spin] = float(line.split()[3])
                 self._occupancies[kpt_ind, ll, spin] = float(line.split()[1])
 
