@@ -1861,18 +1861,38 @@ def prepare_structure_input(atoms: Atoms,
     else:
         cell_unit = 'angstrom'
     cell_info = {}
-    cell_params = atoms.get_cell().tolist(
-    )  # if cell is not defined, will return zero
-    # all_zero=np.all(cell_params==0.0)
-    # print(all_zero)
-    for row in cell_params:
-        all_zero = np.all((row == 0.0))
-        if all_zero:
-            raise KeyError('cell is not defined')  ### keyerror??
-        else:
-            cell_info = {'CELL_PARAMETERS': (cell_unit, cell_params[:])}
-
+    cell_params = atoms.get_cell()
+    # if cell is not defined, will return zero
+    if cell_params.rank < 3:
+        raise ValueError('cell is not defined') 
+    else:
+            cell_info = {'CELL_PARAMETERS': (cell_unit, cell_params[:].tolist())}
+    
     final_structure = {}
     for dct in (atomic_pos, cell_info):
         final_structure.update(dct)
-    return final_structure
+    return final_structure    
+   
+def prepare_kpoint_input(kpts=None, koffset=None,  kspacing=None, atoms=None):
+    print(kpts)
+    kpoints_info={}
+
+    if (kpts== None) or (kpts==(0.0,0.0,0.0)):
+       
+        kpoints_info['KPOINTS'] = 'gamma'
+    
+    else:
+        kpoints_info['KPOINTS'] = kpts
+    
+    if koffset is None:
+        kpoints_info['koffset'] = (0,0,0) # or False
+    else:
+        kpoints_info['koffset'] = (1, 1, 1)
+
+
+    if kspacing is not None:
+        raise ValueError('kspacing not implemented, FIX ME PLS!')
+    
+    return kpoints_info
+
+
