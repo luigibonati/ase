@@ -741,7 +741,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
         if line_start < len(self.lines):
             cell = [
                 [float(inp) for inp in line.split()[-3:]]
-                for line in self.lines[line_start + 1 : line_start + 4]
+                for line in self.lines[line_start + 1:line_start + 4]
             ]
         else:
             cell = None
@@ -755,7 +755,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
 
         cell = self.initial_cell
         atoms = Atoms()
-        for line in self.lines[line_start : line_start + self.n_atoms]:
+        for line in self.lines[line_start:line_start + self.n_atoms]:
             inp = line.split()
             atoms.append(Atom(inp[3], (float(inp[4]), float(inp[5]), float(inp[6]))))
         assert len(atoms) == self.n_atoms
@@ -960,7 +960,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         cell = []
         velocities = []
         atoms = Atoms()
-        for line in self.lines[line_start + 1 : line_end]:
+        for line in self.lines[line_start + 1:line_end]:
             if "lattice_vector   " in line:
                 cell.append([float(inp) for inp in line.split()[1:]])
             elif "atom   " in line:
@@ -995,7 +995,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         return np.array(
             [
                 [float(inp) for inp in line.split()[-3:]]
-                for line in self.lines[line_start : line_start + self.n_atoms]
+                for line in self.lines[line_start:line_start + self.n_atoms]
             ]
         )
 
@@ -1007,7 +1007,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         if line_start >= len(self.lines):
             return
         stresses = []
-        for line in self.lines[line_start : line_start + self.n_atoms]:
+        for line in self.lines[line_start:line_start + self.n_atoms]:
             xx, yy, zz, xy, xz, yz = [float(d) for d in line.split()[2:8]]
             stresses.append([xx, yy, zz, yz, xz, xy])
 
@@ -1025,7 +1025,7 @@ class AimsOutCalcChunk(AimsOutChunk):
 
         stress = [
             [float(inp) for inp in line.split()[2:5]]
-            for line in self.lines[line_start + 5 : line_start + 8]
+            for line in self.lines[line_start + 5:line_start + 8]
         ]
         return full_3x3_to_voigt_6_stress(stress)
 
@@ -1063,6 +1063,9 @@ class AimsOutCalcChunk(AimsOutChunk):
 
     def _parse_hirshfeld(self):
         """Parse the Hirshfled charges volumes, and dipole moments from the ouput"""
+        if self._atoms is None:
+            self._parse_atoms()
+
         line_start = self.reverse_search_for(
             ["Performing Hirshfeld analysis of fragment charges and moments."]
         )
@@ -1087,7 +1090,7 @@ class AimsOutCalcChunk(AimsOutChunk):
             ]
         )
 
-        if not np.any(self.atoms.pbc):
+        if not np.any(self._atoms.pbc):
             self._hirshfeld_dipole = np.sum(
                 self._hirshfeld_charges.reshape((-1, 1)) * self._atoms.get_positions(),
                 axis=1,
@@ -1098,7 +1101,15 @@ class AimsOutCalcChunk(AimsOutChunk):
         if self._atoms is None:
             self._parse_atoms()
 
-        line_start = self.reverse_search_for(["Writing Kohn-Sham eigenvalues."])
+        # line_start = self.reverse_search_for(
+        #     [
+        #         "Convergence:    q app. |  density  | eigen (eV) | Etot (eV)",
+        #         "Begin self-consistency iteration #",
+        #     ]
+        # )
+        line_start = self.reverse_search_for(
+            ["Writing Kohn-Sham eigenvalues."]
+        )
         if line_start >= len(self.lines):
             return
         line_end = min(
@@ -1129,6 +1140,7 @@ class AimsOutCalcChunk(AimsOutChunk):
             kpt_inds = [int(self.lines[ll].split()[1]) - 1 for ll in kpt_def]
         else:
             kpt_inds = [0]
+
         assert len(kpt_inds) == len(occupation_block_start)
         spins = [0] * len(occupation_block_start)
 
@@ -1140,7 +1152,7 @@ class AimsOutCalcChunk(AimsOutChunk):
 
         for occ_start, kpt_ind, spin in zip(occupation_block_start, kpt_inds, spins):
             for ll, line in enumerate(
-                self.lines[occ_start + 1 : occ_start + self.n_bands + 1]
+                self.lines[occ_start + 1:occ_start + self.n_bands + 1]
             ):
                 line = line.replace("**************", "         10000")
                 line = line.replace("***************", "          10000")
@@ -1154,25 +1166,25 @@ class AimsOutCalcChunk(AimsOutChunk):
         if self._atoms is None:
             self._atoms = self._parse_atoms()
 
-            self._atoms.calc = SinglePointDFTCalculator(
-                self._atoms,
-                energy=self.energy,
-                free_energy=self.free_energy,
-                forces=self.forces,
-                stress=self.stress,
-                stresses=self.stresses,
-                magmom=self.magmom,
-                dipole=self.dipole,
-            )
+        self._atoms.calc = SinglePointDFTCalculator(
+            self._atoms,
+            energy=self.energy,
+            free_energy=self.free_energy,
+            forces=self.forces,
+            stress=self.stress,
+            stresses=self.stresses,
+            magmom=self.magmom,
+            dipole=self.dipole,
+        )
 
-            self._atoms.info["fermi_energy"] = self.E_f
-            self._atoms.info["n_iter"] = self.n_iter
-            self._atoms.info["hirshfeld_charges"] = self.hirshfeld_charges
-            self._atoms.info["hirshfeld_dipole"] = self.hirshfeld_dipole
-            self._atoms.info["hirshfeld_volumes"] = self.hirshfeld_volumes
-            self._atoms.info["hirshfeld_atomic_dipoles"] = self.hirshfeld_atomic_dipoles
-            self._atoms.info["eigenvalues"] = self.eigenvalues
-            self._atoms.info["occupancies"] = self.occupancies
+        self._atoms.info["fermi_energy"] = self.E_f
+        self._atoms.info["n_iter"] = self.n_iter
+        self._atoms.info["hirshfeld_charges"] = self.hirshfeld_charges
+        self._atoms.info["hirshfeld_dipole"] = self.hirshfeld_dipole
+        self._atoms.info["hirshfeld_volumes"] = self.hirshfeld_volumes
+        self._atoms.info["hirshfeld_atomic_dipoles"] = self.hirshfeld_atomic_dipoles
+        self._atoms.info["eigenvalues"] = self.eigenvalues
+        self._atoms.info["occupancies"] = self.occupancies
 
         return self._atoms
 
@@ -1370,10 +1382,10 @@ def get_header_chunk(fd):
     header = []
     line = ""
 
-    # The header stops here and not Initialize SCF becuase of where the k-point information is printed
+    # Stop the header once the first SCF cycle begins
     while (
-        "Initializing partition tables, free-atom densities, potentials, etc. across the integration grid (initialize_grid_storage)."
-        not in line
+        "Convergence:    q app. |  density  | eigen (eV) | Etot (eV)" not in line
+        and "Begin self-consistency iteration #" not in line
     ):
         try:
             line = next(fd).strip()  # Raises StopIteration on empty file
