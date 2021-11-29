@@ -695,7 +695,10 @@ class AimsOutHeaderChunk(AimsOutChunk):
         self._k_point_weights = None
 
     def _parse_constraints(self):
-        """Parse the constraints from the aims.out file"""
+        """Parse the constraints from the aims.out file
+
+        Constraints for the lattice vectors are not supported.
+        """
 
         line_inds = self.search_for_all("Found relaxation constraint for atom")
         if len(line_inds) == 0:
@@ -738,7 +741,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
         if line_start < len(self.lines):
             cell = [
                 [float(inp) for inp in line.split()[-3:]]
-                for line in self.lines[line_start + 1:line_start + 4]
+                for line in self.lines[line_start + 1 : line_start + 4]
             ]
         else:
             cell = None
@@ -746,14 +749,13 @@ class AimsOutHeaderChunk(AimsOutChunk):
 
     def _parse_initial_atoms(self):
         """Create an atoms object for the initial geometry.in structure from the aims.out file"""
-        # Get the initial geometries
         line_start = self.reverse_search_for(["Atomic structure:"]) + 2
         if line_start >= len(self.lines):
             raise IOError("No structure information is inside the chunk.")
 
         cell = self.initial_cell
         atoms = Atoms()
-        for line in self.lines[line_start:line_start + self.n_atoms]:
+        for line in self.lines[line_start : line_start + self.n_atoms]:
             inp = line.split()
             atoms.append(Atom(inp[3], (float(inp[4]), float(inp[5]), float(inp[6]))))
         assert len(atoms) == self.n_atoms
@@ -886,18 +888,21 @@ class AimsOutHeaderChunk(AimsOutChunk):
 
     @property
     def k_points(self):
+        """All k-points listed in the calculation"""
         if self._k_points is None:
             self._parse_k_points()
         return self._k_points
 
     @property
     def k_point_weights(self):
+        """The k-point weights for the calculation"""
         if self._k_point_weights is None:
             self._parse_k_points()
         return self._k_point_weights
 
     @lazyproperty
     def header_summary(self):
+        """Dictionary summarizing the information inside the header"""
         return {
             "initial_atoms": self.initial_atoms,
             "initial_cell": self.initial_cell,
@@ -955,7 +960,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         cell = []
         velocities = []
         atoms = Atoms()
-        for line in self.lines[line_start + 1:line_end]:
+        for line in self.lines[line_start + 1 : line_end]:
             if "lattice_vector   " in line:
                 cell.append([float(inp) for inp in line.split()[1:]])
             elif "atom   " in line:
@@ -990,7 +995,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         return np.array(
             [
                 [float(inp) for inp in line.split()[-3:]]
-                for line in self.lines[line_start:line_start + self.n_atoms]
+                for line in self.lines[line_start : line_start + self.n_atoms]
             ]
         )
 
@@ -1002,7 +1007,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         if line_start >= len(self.lines):
             return
         stresses = []
-        for line in self.lines[line_start:line_start + self.n_atoms]:
+        for line in self.lines[line_start : line_start + self.n_atoms]:
             xx, yy, zz, xy, xz, yz = [float(d) for d in line.split()[2:8]]
             stresses.append([xx, yy, zz, yz, xz, xy])
 
@@ -1020,7 +1025,7 @@ class AimsOutCalcChunk(AimsOutChunk):
 
         stress = [
             [float(inp) for inp in line.split()[2:5]]
-            for line in self.lines[line_start + 5:line_start + 8]
+            for line in self.lines[line_start + 5 : line_start + 8]
         ]
         return full_3x3_to_voigt_6_stress(stress)
 
@@ -1057,7 +1062,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         return np.array([float(inp) for inp in line.split()[6:9]])
 
     def _parse_hirshfeld(self):
-        """Parse the Hirshfled charges and dipole moments from the ouput"""
+        """Parse the Hirshfled charges volumes, and dipole moments from the ouput"""
         line_start = self.reverse_search_for(
             ["Performing Hirshfeld analysis of fragment charges and moments."]
         )
@@ -1089,7 +1094,7 @@ class AimsOutCalcChunk(AimsOutChunk):
             )
 
     def _parse_eigenvalues(self):
-        """Parse the eigenvalues and occupancies of the system. If eigenvalue is not present in the output file then set it to np.nan"""
+        """Parse the eigenvalues and occupancies of the system. If eigenvalue for a particular k-point is not present in the output file then set it to np.nan"""
         if self._atoms is None:
             self._parse_atoms()
 
@@ -1135,7 +1140,7 @@ class AimsOutCalcChunk(AimsOutChunk):
 
         for occ_start, kpt_ind, spin in zip(occupation_block_start, kpt_inds, spins):
             for ll, line in enumerate(
-                self.lines[occ_start + 1:occ_start + self.n_bands + 1]
+                self.lines[occ_start + 1 : occ_start + self.n_bands + 1]
             ):
                 line = line.replace("**************", "         10000")
                 line = line.replace("***************", "          10000")
@@ -1145,20 +1150,30 @@ class AimsOutCalcChunk(AimsOutChunk):
 
     @property
     def atoms(self):
-        """Convert AimsOutChunk to Atoms object"""
+        """Convert AimsOutChunk to Atoms object and add all non-standard outputs to atoms.info"""
         if self._atoms is None:
             self._atoms = self._parse_atoms()
 
-        self._atoms.calc = SinglePointDFTCalculator(
-            self._atoms,
-            energy=self.energy,
-            free_energy=self.free_energy,
-            forces=self.forces,
-            stress=self.stress,
-            stresses=self.stresses,
-            magmom=self.magmom,
-            dipole=self.dipole,
-        )
+            self._atoms.calc = SinglePointDFTCalculator(
+                self._atoms,
+                energy=self.energy,
+                free_energy=self.free_energy,
+                forces=self.forces,
+                stress=self.stress,
+                stresses=self.stresses,
+                magmom=self.magmom,
+                dipole=self.dipole,
+            )
+
+            self._atoms.info["fermi_energy"] = self.E_f
+            self._atoms.info["n_iter"] = self.n_iter
+            self._atoms.info["hirshfeld_charges"] = self.hirshfeld_charges
+            self._atoms.info["hirshfeld_dipole"] = self.hirshfeld_dipole
+            self._atoms.info["hirshfeld_volumes"] = self.hirshfeld_volumes
+            self._atoms.info["hirshfeld_atomic_dipoles"] = self.hirshfeld_atomic_dipoles
+            self._atoms.info["eigenvalues"] = self.eigenvalues
+            self._atoms.info["occupancies"] = self.occupancies
+
         return self._atoms
 
     @property
@@ -1354,7 +1369,8 @@ def get_header_chunk(fd):
     """Returns the header information from the aims.out file"""
     header = []
     line = ""
-    # Get to the control.in section
+
+    # The header stops here and not Initialize SCF becuase of where the k-point information is printed
     while (
         "Initializing partition tables, free-atom densities, potentials, etc. across the integration grid (initialize_grid_storage)."
         not in line
@@ -1374,6 +1390,7 @@ def get_aims_out_chunks(fd, header_chunk):
     except StopIteration:
         return
 
+    # If the calculation is relaxation the updated structural information occurs before the re-initialization
     if header_chunk.is_relaxation:
         chunk_end_line = (
             "Geometry optimization: Attempting to predict improved coordinates."
@@ -1381,6 +1398,7 @@ def get_aims_out_chunks(fd, header_chunk):
     else:
         chunk_end_line = "Begin self-consistency loop: Re-initialization"
 
+    # If SCF is not converged then do not treat the next chunk_end_line as a new chunk until after the SCF is re-initialized
     ignore_chunk_end_line = False
     while True:
         try:
@@ -1429,6 +1447,7 @@ def read_aims_output(fd, index=-1):
 
 @reader
 def read_aims_results(fd, index=-1):
+    """Import FHI-aims output files and summarize all relevant information into a dictionary"""
     header_chunk = get_header_chunk(fd)
     chunks = list(get_aims_out_chunks(fd, header_chunk))
     if not chunks[-1].converged:
