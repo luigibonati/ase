@@ -130,12 +130,12 @@ def test_parse_singlepoint(testdir):
     assert np.allclose(atoms.get_positions(), p0)
 
     f0 = [
-        [-0.481289284665163e00, -0.615051370384412e00, 0.811297123282653e-27],
-        [0.762033585727896e00, -0.942008578636939e-01, -0.811297123282653e-28],
-        [-0.280744301062733e00, 0.709252228248106e00, -0.324518849313061e-27],
+        [-0.478299830661005e01, -0.616960341437854e01, 0.162259424656531e-27],
+        [0.692109878170016e01, -0.419925410034428e00, 0.000000000000000e00],
+        [-0.213810047509011e01, 0.658952882441297e01, 0.243389136984796e-27],
     ]
     assert np.allclose(atoms.get_forces(), f0)
 
     results = read_aims_results(parent / "aims_out_files/singlepoint.out")
     assert np.allclose(results["forces"], f0)
-    assert np.abs(results["energy"] + 2.06777440861977e03) < 1e-15
+    assert np.abs(results["energy"] + 2.06302072675943e03) < 1e-15
