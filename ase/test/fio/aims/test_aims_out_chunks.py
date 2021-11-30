@@ -1368,6 +1368,10 @@ def test_calc_stress(calc_chunk):
 
 def test_calc_free_energy(calc_chunk):
     assert np.abs(calc_chunk.free_energy + 0.169503986610555e05) < 1e-15
+    assert (
+        np.abs(calc_chunk.atoms.calc.get_property("free_energy") + 0.169503986610555e05)
+        < 1e-15
+    )
     assert np.abs(calc_chunk.results["free_energy"] + 0.169503986610555e05) < 1e-15
 
 
@@ -1387,11 +1391,13 @@ def test_calc_magnetic_moment(calc_chunk):
 
 def test_calc_n_iter(calc_chunk):
     assert calc_chunk.n_iter == 58
+    assert calc_chunk.atoms.info["n_iter"] == 58
     assert calc_chunk.results["n_iter"] == 58
 
 
 def test_calc_fermi_energy(calc_chunk):
     assert np.abs(calc_chunk.E_f + 8.24271207) < 1e-7
+    assert np.abs(calc_chunk.atoms.info["fermi_energy"] + 8.24271207) < 1e-7
     assert np.abs(calc_chunk.results["fermi_energy"] + 8.24271207) < 1e-7
 
 
@@ -1410,6 +1416,9 @@ def test_calc_converged(calc_chunk):
 def test_calc_hirshfeld_charges(calc_chunk):
     assert np.allclose(calc_chunk.hirshfeld_charges, [0.20898543, -0.20840994])
     assert np.allclose(
+        calc_chunk.atoms.info["hirshfeld_charges"], [0.20898543, -0.20840994]
+    )
+    assert np.allclose(
         calc_chunk.results["hirshfeld_charges"], [0.20898543, -0.20840994]
     )
 
@@ -1417,12 +1426,18 @@ def test_calc_hirshfeld_charges(calc_chunk):
 def test_calc_hirshfeld_volumes(calc_chunk):
     assert np.allclose(calc_chunk.hirshfeld_volumes, [73.39467444, 62.86011074])
     assert np.allclose(
+        calc_chunk.atoms.info["hirshfeld_volumes"], [73.39467444, 62.86011074]
+    )
+    assert np.allclose(
         calc_chunk.results["hirshfeld_volumes"], [73.39467444, 62.86011074]
     )
 
 
 def test_calc_hirshfeld_atomic_dipoles(calc_chunk):
     assert np.allclose(calc_chunk.hirshfeld_atomic_dipoles, np.zeros((2, 3)))
+    assert np.allclose(
+        calc_chunk.atoms.info["hirshfeld_atomic_dipoles"], np.zeros((2, 3))
+    )
     assert np.allclose(calc_chunk.results["hirshfeld_atomic_dipoles"], np.zeros((2, 3)))
 
 
@@ -1433,12 +1448,18 @@ def test_calc_hirshfeld_dipole(calc_chunk):
 def test_calc_eigenvalues(calc_chunk, eigenvalues_occupancies):
     assert np.allclose(calc_chunk.eigenvalues, eigenvalues_occupancies[:, :, :, 1])
     assert np.allclose(
+        calc_chunk.atoms.info["eigenvalues"], eigenvalues_occupancies[:, :, :, 1]
+    )
+    assert np.allclose(
         calc_chunk.results["eigenvalues"], eigenvalues_occupancies[:, :, :, 1]
     )
 
 
 def test_calc_occupancies(calc_chunk, eigenvalues_occupancies):
     assert np.allclose(calc_chunk.occupancies, eigenvalues_occupancies[:, :, :, 0])
+    assert np.allclose(
+        calc_chunk.atoms.info["occupancies"], eigenvalues_occupancies[:, :, :, 0]
+    )
     assert np.allclose(
         calc_chunk.results["occupancies"], eigenvalues_occupancies[:, :, :, 0]
     )
@@ -1634,6 +1655,13 @@ def test_molecular_calc_free_energy(molecular_calc_chunk):
         np.abs(molecular_calc_chunk.results["free_energy"] + 0.206778551123339e04)
         < 1e-15
     )
+    assert (
+        np.abs(
+            molecular_calc_chunk.atoms.calc.get_property("free_energy")
+            + 0.206778551123339e04
+        )
+        < 1e-15
+    )
 
 
 def test_molecular_calc_energy(molecular_calc_chunk):
@@ -1652,6 +1680,7 @@ def test_molecular_calc_magmom(molecular_calc_chunk):
 def test_molecular_calc_n_iter(molecular_calc_chunk):
     assert molecular_calc_chunk.n_iter == 7
     assert molecular_calc_chunk.results["n_iter"] == 7
+    assert molecular_calc_chunk.atoms.info["n_iter"] == 7
 
 
 def test_molecular_calc_fermi_energy(molecular_calc_chunk):
@@ -1687,6 +1716,10 @@ def test_molecular_calc_hirshfeld_charges(
     assert np.allclose(
         molecular_calc_chunk.results["hirshfeld_charges"], molecular_hirshfeld_charges
     )
+    assert np.allclose(
+        molecular_calc_chunk.atoms.info["hirshfeld_charges"],
+        molecular_hirshfeld_charges,
+    )
 
 
 def test_molecular_calc_hirshfeld_volumes(molecular_calc_chunk):
@@ -1694,6 +1727,9 @@ def test_molecular_calc_hirshfeld_volumes(molecular_calc_chunk):
     assert np.allclose(molecular_calc_chunk.hirshfeld_volumes, hirshfeld_volumes)
     assert np.allclose(
         molecular_calc_chunk.results["hirshfeld_volumes"], hirshfeld_volumes
+    )
+    assert np.allclose(
+        molecular_calc_chunk.atoms.info["hirshfeld_volumes"], hirshfeld_volumes
     )
 
 
@@ -1712,6 +1748,10 @@ def test_molecular_calc_hirshfeld_atomic_dipoles(molecular_calc_chunk):
         molecular_calc_chunk.results["hirshfeld_atomic_dipoles"],
         hirshfeld_atomic_dipoles,
     )
+    assert np.allclose(
+        molecular_calc_chunk.atoms.info["hirshfeld_atomic_dipoles"],
+        hirshfeld_atomic_dipoles,
+    )
 
 
 def test_molecular_calc_hirshfeld_dipole(
@@ -1723,6 +1763,9 @@ def test_molecular_calc_hirshfeld_dipole(
     assert np.allclose(molecular_calc_chunk.hirshfeld_dipole, hirshfeld_dipole)
     assert np.allclose(
         molecular_calc_chunk.results["hirshfeld_dipole"], hirshfeld_dipole
+    )
+    assert np.allclose(
+        molecular_calc_chunk.atoms.info["hirshfeld_dipole"], hirshfeld_dipole
     )
 
 
@@ -1740,6 +1783,9 @@ def test_molecular_calc_eigenvalues(molecular_calc_chunk):
     assert np.allclose(
         molecular_calc_chunk.results["eigenvalues"][0, :, 0], eigenvalues
     )
+    assert np.allclose(
+        molecular_calc_chunk.atoms.info["eigenvalues"][0, :, 0], eigenvalues
+    )
 
 
 def test_molecular_calc_occupancies(molecular_calc_chunk):
@@ -1755,4 +1801,7 @@ def test_molecular_calc_occupancies(molecular_calc_chunk):
     assert np.allclose(molecular_calc_chunk.occupancies[0, :, 0], occupancies)
     assert np.allclose(
         molecular_calc_chunk.results["occupancies"][0, :, 0], occupancies
+    )
+    assert np.allclose(
+        molecular_calc_chunk.atoms.info["occupancies"][0, :, 0], occupancies
     )
