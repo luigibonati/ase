@@ -241,8 +241,7 @@ class HarmonicForceField:
                 # determine x0 for present orientation
                 x0 = self.back_transform(x, q, self.q0, atoms.copy())
                 ref_atoms = atoms.copy()
-                ref_atoms.set_positions(x0.reshape(int(len(x0) / 3), 3),
-                                        apply_constraint=False)
+                ref_atoms.set_positions(x0.reshape(int(len(x0) / 3), 3))
                 # determine jac0 for present orientation
                 jac0 = self.get_jacobian(ref_atoms)
                 self.check_redundancy(jac0)  # check for coordinate failure
