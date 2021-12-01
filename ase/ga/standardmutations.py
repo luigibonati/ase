@@ -1,6 +1,7 @@
 """A collection of mutations that can be used."""
 import numpy as np
 from math import cos, sin, pi
+from ase.cell import Cell
 from ase.calculators.lammpslib import convert_cell
 from ase.ga.utilities import (atoms_too_close,
                               atoms_too_close_two_sets,
@@ -85,9 +86,9 @@ class RattleMutation(OffspringCreator):
             ok = False
             for tag in np.unique(tags):
                 select = np.where(tags == tag)
-                if self.rng.rand() < self.rattle_prop:
+                if self.rng.random() < self.rattle_prop:
                     ok = True
-                    r = self.rng.rand(3)
+                    r = self.rng.random(3)
                     pos[select] += st * (r - 0.5)
 
             if not ok:
@@ -283,8 +284,8 @@ class MirrorMutation(OffspringCreator):
             cm = np.average(top.get_positions(), axis=0)
 
             # first select a randomly oriented cutting plane
-            theta = pi * self.rng.rand()
-            phi = 2. * pi * self.rng.rand()
+            theta = pi * self.rng.random()
+            phi = 2. * pi * self.rng.random()
             n = (cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta))
             n = np.array(n)
 
@@ -462,7 +463,13 @@ class StrainMutation(OffspringCreator):
         """ Does the actual mutation. """
         cell_ref = atoms.get_cell()
         pos_ref = atoms.get_positions()
-        vol_ref = atoms.get_volume()
+
+        if self.scaling_volume is None:
+            # The scaling_volume has not been set (yet),
+            # so we give it the same volume as the parent
+            vol_ref = atoms.get_volume()
+        else:
+            vol_ref = self.scaling_volume
 
         if self.use_tags:
             tags = atoms.get_tags()
@@ -492,18 +499,17 @@ class StrainMutation(OffspringCreator):
             # applying the strain:
             cell_new = np.dot(strain, cell_ref)
 
-            # convert to lower triangular form
+            # convert the submatrix with the variable cell vectors
+            # to a lower triangular form
             cell_new = convert_cell(cell_new)[0].T
+            for i in range(self.number_of_variable_cell_vectors, 3):
+                cell_new[i] = cell_ref[i]
+
+            cell_new = Cell(cell_new)
 
             # volume scaling:
             if self.number_of_variable_cell_vectors > 0:
-                volume = abs(np.linalg.det(cell_new))
-                if self.scaling_volume is None:
-                    # The scaling_volume has not been set (yet),
-                    # so we give it the same volume as the parent
-                    scaling = vol_ref / volume
-                else:
-                    scaling = self.scaling_volume / volume
+                scaling = vol_ref / cell_new.volume
                 scaling **= 1. / self.number_of_variable_cell_vectors
                 cell_new[:self.number_of_variable_cell_vectors] *= scaling
 
@@ -514,6 +520,9 @@ class StrainMutation(OffspringCreator):
             # ensure non-variable cell vectors are indeed unchanged
             for i in range(self.number_of_variable_cell_vectors, 3):
                 assert np.allclose(cell_new[i], cell_ref[i])
+
+            # check that the volume is correct
+            assert np.isclose(vol_ref, cell_new.volume)
 
             # apply the new unit cell and scale
             # the atomic positions accordingly
@@ -667,17 +676,17 @@ class RotationalMutation(OffspringCreator):
                 if len(p) == 2:
                     line = (p[1] - p[0]) / np.linalg.norm(p[1] - p[0])
                     while True:
-                        axis = self.rng.rand(3)
+                        axis = self.rng.random(3)
                         axis /= np.linalg.norm(axis)
                         a = np.arccos(np.dot(axis, line))
                         if np.pi / 4 < a < np.pi * 3 / 4:
                             break
                 else:
-                    axis = self.rng.rand(3)
+                    axis = self.rng.random(3)
                     axis /= np.linalg.norm(axis)
 
                 angle = self.min_angle
-                angle += 2 * (np.pi - self.min_angle) * self.rng.rand()
+                angle += 2 * (np.pi - self.min_angle) * self.rng.random()
 
                 m = get_rotation_matrix(axis, angle)
                 newpos[indices[tag]] = np.dot(m, (p - cop).T).T + cop

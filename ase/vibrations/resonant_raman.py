@@ -1,7 +1,7 @@
 """Resonant Raman intensities"""
 
 import sys
-
+from pathlib import Path
 import numpy as np
 
 import ase.units as u
@@ -82,7 +82,8 @@ class ResonantRamanCalculator(RamanCalculatorBase, Vibrations):
             # XXXX stupid way to make a copy
             self.atoms.get_potential_energy()
             self.eq_calculator = self.atoms.calc
-            fname = 'tmp.gpw'
+            Path(self.name).mkdir(parents=True, exist_ok=True)
+            fname = Path(self.name) / 'tmp.gpw'
             self.eq_calculator.write(fname, 'all')
             self.eq_calculator = self.eq_calculator.__class__(restart=fname)
             try:

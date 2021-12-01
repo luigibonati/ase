@@ -41,3 +41,12 @@ class KimpyError(CalculatorError):
     """
 
     pass
+
+
+class KIMModelParameterError(CalculatorError):
+    """
+    An attempt to either access or mutate a KIM portable model
+    parameter was unsuccessful
+    """
+
+    pass

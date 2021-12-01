@@ -17,7 +17,7 @@ def find_nearest_value(array, value):
 
 
 def write_gpumd(fd, atoms, maximum_neighbors=None, cutoff=None,
-                groupings=None, use_triclinic=False):
+                groupings=None, use_triclinic=False, species=None):
     """
     Writes atoms into GPUMD input format.
 
@@ -42,6 +42,11 @@ def write_gpumd(fd, atoms, maximum_neighbors=None, cutoff=None,
         of atoms.
     use_triclinic: bool
         Use format for triclinic cells
+    species : List[str]
+        GPUMD uses integers to define atom types. This list allows customized
+        such definitions (e.g, ['Pd', 'H'] means Pd is type 0 and H type 1).
+        If None, this list is built by assigning each distinct species to
+        an integer in the order of appearance in `atoms`.
 
     Raises
     ------
@@ -83,7 +88,8 @@ def write_gpumd(fd, atoms, maximum_neighbors=None, cutoff=None,
             for atom in atoms:
                 maximum_neighbors = max(maximum_neighbors,
                                         len(nl.get_neighbors(atom.index)[0]))
-                maximum_neighbors *= 2
+            maximum_neighbors *= 2
+            maximum_neighbors = min(maximum_neighbors, 1024)
 
     # Add header and cell parameters
     lines = []
@@ -102,10 +108,18 @@ def write_gpumd(fd, atoms, maximum_neighbors=None, cutoff=None,
                                             *atoms.cell.lengths()))
 
     # Create symbols-to-type map, i.e. integers starting at 0
-    symbol_type_map = {}
-    for symbol in atoms.get_chemical_symbols():
-        if symbol not in symbol_type_map:
-            symbol_type_map[symbol] = len(symbol_type_map)
+    if not species:
+        symbol_type_map = {}
+        for symbol in atoms.get_chemical_symbols():
+            if symbol not in symbol_type_map:
+                symbol_type_map[symbol] = len(symbol_type_map)
+    else:
+        if any([sym not in species
+               for sym in set(atoms.get_chemical_symbols())]):
+            raise ValueError('The species list does not contain all chemical '
+                             'species that are present in the atoms object.')
+        else:
+            symbol_type_map = {symbol: i for i, symbol in enumerate(species)}
 
     # Add lines for all atoms
     for a, atm in enumerate(atoms):
@@ -161,7 +175,6 @@ def load_xyz_input_gpumd(fd, species=None, isotope_masses=None):
     """
     # Parse first line
     first_line = next(fd)
-    print(first_line)
     input_parameters = {}
     keys = ['N', 'M', 'cutoff', 'triclinic', 'has_velocity',
             'num_of_groups']

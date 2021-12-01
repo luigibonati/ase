@@ -9,8 +9,7 @@ from ase.io import write
     params=[
         bulk('Ti'),
         fcc111('Au', size=(1, 1, 1)),
-        pytest.param(Atoms('H', cell=[0, 0, 1], pbc=[0, 0, 1]),
-                     marks=pytest.mark.xfail),  # Please investigate failure
+        pytest.param(Atoms('H', cell=[0, 0, 1], pbc=[0, 0, 1])),
     ],
     ids=lambda atoms: f'{atoms.cell.rank}-dim',
 )

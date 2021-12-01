@@ -14,7 +14,7 @@ import warnings
 import numpy as np
 
 from ase.atoms import Atoms
-from ase.geometry import cellpar_to_cell
+from ase.cell import Cell
 from ase.io.espresso import label_to_symbol
 from ase.utils import reader, writer
 
@@ -35,7 +35,11 @@ def read_atom_line(line_full):
         resname = line[17:21]
         # chainid = line[21]        # Not used
 
-        resseq = int(line[22:26].split()[0])  # sequence identifier
+        seq = line[22:26].split()
+        if len(seq) == 0:
+            resseq = 1
+        else:
+            resseq = int(seq[0])  # sequence identifier
         # icode = line[26]          # insertion code, not used
 
         # atomic coordinates
@@ -119,7 +123,7 @@ def read_proteindatabank(fileobj, index=-1, read_arrays=True):
                        float(line[33:40]),  # alpha
                        float(line[40:47]),  # beta
                        float(line[47:54])]  # gamma
-            cell = cellpar_to_cell(cellpar)
+            cell = Cell.new(cellpar)
             pbc = True
         for c in range(3):
             if line.startswith('ORIGX' + '123'[c]):
@@ -181,17 +185,14 @@ def read_proteindatabank(fileobj, index=-1, read_arrays=True):
 @writer
 def write_proteindatabank(fileobj, images, write_arrays=True):
     """Write images to PDB-file."""
+    rot_t = None
     if hasattr(images, 'get_positions'):
         images = [images]
 
-    rotation = None
     if images[0].get_pbc().any():
-        from ase.geometry import cell_to_cellpar, cellpar_to_cell
-
         currentcell = images[0].get_cell()
-        cellpar = cell_to_cellpar(currentcell)
-        exportedcell = cellpar_to_cell(cellpar)
-        rotation = np.linalg.solve(currentcell, exportedcell)
+        cellpar = currentcell.cellpar()
+        _, rot_t = currentcell.standard_form()
         # ignoring Z-value, using P1 since we have all atoms defined explicitly
         format = 'CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f P 1\n'
         fileobj.write(format % (cellpar[0], cellpar[1], cellpar[2],
@@ -211,6 +212,8 @@ def write_proteindatabank(fileobj, images, write_arrays=True):
     for n, atoms in enumerate(images):
         fileobj.write('MODEL     ' + str(n + 1) + '\n')
         p = atoms.get_positions()
+        if rot_t is not None:
+            p = p.dot(rot_t.T)
         occupancy = np.ones(len(atoms))
         bfactor = np.zeros(len(atoms))
         if write_arrays:
@@ -218,8 +221,6 @@ def write_proteindatabank(fileobj, images, write_arrays=True):
                 occupancy = atoms.get_array('occupancy')
             if 'bfactor' in atoms.arrays:
                 bfactor = atoms.get_array('bfactor')
-        if rotation is not None:
-            p = p.dot(rotation)
         for a in range(natoms):
             x, y, z = p[a]
             occ = occupancy[a]

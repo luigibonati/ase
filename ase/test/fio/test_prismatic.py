@@ -13,7 +13,7 @@ def test_write_read_cycle_xyz_prismatic():
     atoms = bulk('Si', cubic=True)
     atoms.set_array('occupancies', np.ones(len(atoms)))
     rng = np.random.RandomState(42)
-    atoms.set_array('debye_waller_factors', 0.62 + 0.1 * rng.rand(len(atoms)))
+    atoms.set_array('debye_waller_factors', 0.62 + 0.1 * rng.random(len(atoms)))
 
     filename = 'SI100.XYZ'
     atoms.write(filename=filename, format='prismatic',

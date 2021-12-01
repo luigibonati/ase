@@ -41,7 +41,7 @@ Supported :mod:`Calculators <ase.calculators>`
 |dftd4| |DFTK| |elk| |exciting| |EMT|
 |fhi-aims| |fleur| |gamess_us| |gpaw| |gromacs|
 |hotbit| |jdftx| |kim| |lammps| |nwchem|
-|octopus| |onetep| |openmx| |psi4| |qchem| |q_espresso| |siesta| |turbomole| |vasp|
+|octopus| |onetep| |openmx| |plumed|  |psi4| |qchem| |q_espresso| |siesta| |turbomole| |vasp|
 |xtb| |orca|
 :mod:`ACE-Molecule <ase.calculators.acemolecule>`
 :mod:`~ase.calculators.amber`
@@ -273,6 +273,9 @@ Contents
    :align: middle
 .. |openmx| image:: static/openmx.png
    :target: ase/calculators/openmx.html
+   :align: middle
+.. |plumed| image:: static/plumed.png
+   :target: ase/calculators/plumed.html
    :align: middle
 .. |psi4| image:: static/psi4.png
    :target: ase/calculators/psi4.html

@@ -29,7 +29,7 @@ class LennardJones(Calculator):
     ::
 
         d u_ij / d r_ij
-        = (-24 epsilon / r_ij) ( sigma^12/r_ij^12 - sigma^6/r_ij^6 )
+        = (-24 epsilon / r_ij) ( 2 sigma^12/r_ij^12 - sigma^6/r_ij^6 )
 
     We can define a "pairwise force"
 

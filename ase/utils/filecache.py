@@ -2,7 +2,9 @@ from pathlib import Path
 import json
 from collections.abc import MutableMapping, Mapping
 from contextlib import contextmanager
-from ase.io.jsonio import read_json, write_json, encode
+from ase.io.jsonio import read_json, write_json
+from ase.io.jsonio import encode as encode_json
+from ase.io.ulm import ulmopen, NDArrayReader, Writer, InvalidULMFileError
 from ase.utils import opencew
 
 
@@ -14,32 +16,97 @@ class Locked(Exception):
     pass
 
 
+class JSONBackend:
+    extension = '.json'
+    DecodeError = json.decoder.JSONDecodeError
+
+    @staticmethod
+    def open_for_writing(path):
+        return opencew(path)
+
+    @staticmethod
+    def read(fname):
+        return read_json(fname, always_array=False)
+
+    @staticmethod
+    def open_and_write(target, data):
+        write_json(target, data)
+
+    @staticmethod
+    def write(fd, value):
+        fd.write(encode_json(value).encode('utf-8'))
+
+    @classmethod
+    def dump_cache(cls, path, dct):
+        return CombinedJSONCache.dump_cache(path, dct)
+
+    @classmethod
+    def create_multifile_cache(cls, directory):
+        return MultiFileJSONCache(directory)
+
+
+class ULMBackend:
+    extension = '.ulm'
+    DecodeError = InvalidULMFileError
+
+    @staticmethod
+    def open_for_writing(path):
+        fd = opencew(path)
+        if fd is not None:
+            return Writer(fd, 'w', '')
+
+    @staticmethod
+    def read(fname):
+        with ulmopen(fname, 'r') as r:
+            data = r._data['cache']
+            if isinstance(data, NDArrayReader):
+                return data.read()
+        return data
+
+    @staticmethod
+    def open_and_write(target, data):
+        with ulmopen(target, 'w') as w:
+            w.write('cache', data)
+
+    @staticmethod
+    def write(fd, value):
+        fd.write('cache', value)
+
+    @classmethod
+    def dump_cache(cls, path, dct):
+        return CombinedULMCache.dump_cache(path, dct)
+
+    @classmethod
+    def create_multifile_cache(cls, directory):
+        return MultiFileULMCache(directory)
+
+
 class CacheLock:
-    def __init__(self, fd, key):
+    def __init__(self, fd, key, backend):
         self.fd = fd
         self.key = key
+        self.backend = backend
 
     def save(self, value):
-        json_utf8 = encode(value).encode('utf-8')
         try:
-            self.fd.write(json_utf8)
+            self.backend.write(self.fd, value)
         except Exception as ex:
             raise RuntimeError(f'Failed to save {value} to cache') from ex
         finally:
             self.fd.close()
 
 
-class MultiFileJSONCache(MutableMapping):
+class _MultiFileCacheTemplate(MutableMapping):
     writable = True
 
     def __init__(self, directory):
         self.directory = Path(directory)
 
     def _filename(self, key):
-        return self.directory / f'cache.{key}.json'
+        return self.directory / (f'cache.{key}' + self.backend.extension)
 
     def _glob(self):
-        return self.directory.glob('cache.*.json')
+        return self.directory.glob('cache.*' + self.backend.extension)
 
     def __iter__(self):
         for path in self._glob():
@@ -56,12 +123,12 @@ class MultiFileJSONCache(MutableMapping):
     def lock(self, key):
         self.directory.mkdir(exist_ok=True, parents=True)
         path = self._filename(key)
-        fd = opencew(path)
+        fd = self.backend.open_for_writing(path)
         try:
             if fd is None:
                 yield None
             else:
-                yield CacheLock(fd, key)
+                yield CacheLock(fd, key, self.backend)
         finally:
             if fd is not None:
                 fd.close()
@@ -75,10 +142,10 @@ class MultiFileJSONCache(MutableMapping):
     def __getitem__(self, key):
         path = self._filename(key)
         try:
-            return read_json(path, always_array=False)
+            return self.backend.read(path)
         except FileNotFoundError:
             missing(key)
-        except json.decoder.JSONDecodeError:
+        except self.backend.DecodeError:
             # May be partially written, which typically means empty
             # because the file was locked with exclusive-write-open.
             #
@@ -94,7 +161,7 @@ class MultiFileJSONCache(MutableMapping):
             missing(key)
 
     def combine(self):
-        cache = CombinedJSONCache.dump_cache(self.directory, dict(self))
+        cache = self.backend.dump_cache(self.directory, dict(self))
         assert set(cache) == set(self)
         self.clear()
         assert len(self) == 0
@@ -113,7 +180,7 @@ class MultiFileJSONCache(MutableMapping):
         return len(empties)
 
 
-class CombinedJSONCache(Mapping):
+class _CombinedCacheTemplate(Mapping):
     writable = False
 
     def __init__(self, directory, dct):
@@ -125,14 +192,7 @@ class CombinedJSONCache(Mapping):
 
     @property
     def _filename(self):
-        return self.directory / 'combined.json'
-
-    def _dump_json(self):
-        target = self._filename
-        if target.exists():
-            raise RuntimeError(f'Already exists: {target}')
-        self.directory.mkdir(exist_ok=True, parents=True)
-        write_json(target, self._dct)
+        return self.directory / ('combined' + self.backend.extension)
 
     def __len__(self):
         return len(self._dct)
@@ -143,17 +203,24 @@ class CombinedJSONCache(Mapping):
     def __getitem__(self, index):
         return self._dct[index]
 
+    def _dump(self):
+        target = self._filename
+        if target.exists():
+            raise RuntimeError(f'Already exists: {target}')
+        self.directory.mkdir(exist_ok=True, parents=True)
+        self.backend.open_and_write(target, self._dct)
+
     @classmethod
     def dump_cache(cls, path, dct):
         cache = cls(path, dct)
-        cache._dump_json()
+        cache._dump()
         return cache
 
     @classmethod
     def load(cls, path):
         # XXX Very hacky this one
         cache = cls(path, {})
-        dct = read_json(cache._filename, always_array=False)
+        dct = cls.backend.read(cache._filename)
         cache._dct.update(dct)
         return cache
 
@@ -165,12 +232,28 @@ class CombinedJSONCache(Mapping):
         return self
 
     def split(self):
-        cache = MultiFileJSONCache(self.directory)
+        cache = self.backend.create_multifile_cache(self.directory)
         assert len(cache) == 0
         cache.update(self)
         assert set(cache) == set(self)
         self.clear()
         return cache
+
+
+class MultiFileJSONCache(_MultiFileCacheTemplate):
+    backend = JSONBackend()
+
+
+class MultiFileULMCache(_MultiFileCacheTemplate):
+    backend = ULMBackend()
+
+
+class CombinedJSONCache(_CombinedCacheTemplate):
+    backend = JSONBackend()
+
+
+class CombinedULMCache(_CombinedCacheTemplate):
+    backend = ULMBackend()
 
 
 def get_json_cache(directory):

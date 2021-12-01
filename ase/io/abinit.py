@@ -2,14 +2,13 @@ import os
 from os.path import join
 import re
 from glob import glob
-import warnings
+from pathlib import Path
 
 import numpy as np
 
 from ase import Atoms
 from ase.data import chemical_symbols
 from ase.units import Hartree, Bohr, fs
-from ase.calculators.calculator import Parameters
 
 
 def read_abinit_in(fd):
@@ -153,24 +152,18 @@ keys_with_units = {
 
 
 def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
-    import copy
     from ase.calculators.calculator import kpts2mp
-    from ase.calculators.abinit import Abinit
 
     if param is None:
         param = {}
 
-    _param = copy.deepcopy(Abinit.default_parameters)
-    _param.update(param)
-    param = _param
-
     if species is None:
         species = sorted(set(atoms.numbers))
 
-    inp = {}
-    inp.update(param)
-    for key in ['xc', 'smearing', 'kpts', 'pps', 'raw']:
-        del inp[key]
+    inp = dict(param)
+    xc = inp.pop('xc', 'LDA')
+    for key in ['smearing', 'kpts', 'pps', 'raw']:
+        inp.pop(key, None)
 
     smearing = param.get('smearing')
     if 'tsmear' in param or 'occopt' in param:
@@ -194,7 +187,7 @@ def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
                           'PBE': 11,
                           'revPBE': 14,
                           'RPBE': 15,
-                          'WC': 23}[param['xc']]
+                          'WC': 23}[xc]
 
     magmoms = atoms.get_initial_magnetic_moments()
     if magmoms.any():
@@ -205,7 +198,7 @@ def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
     else:
         inp['nsppol'] = 1
 
-    if param['kpts'] is not None:
+    if param.get('kpts') is not None:
         mp = kpts2mp(atoms, param['kpts'])
         fd.write('kptopt 1\n')
         fd.write('ngkpt %d %d %d\n' % tuple(mp))
@@ -236,7 +229,7 @@ def write_abinit_in(fd, atoms, param=None, species=None, pseudos=None):
             else:
                 fd.write("{} {} {}\n".format(key, value, unit))
 
-    if param['raw'] is not None:
+    if param.get('raw') is not None:
         if isinstance(param['raw'], str):
             raise TypeError('The raw parameter is a single string; expected '
                             'a sequence of lines')
@@ -544,100 +537,50 @@ def read_eig(fd):
     return results
 
 
-def write_files_file(fd, label, ppp_list):
-    """Write files-file, the file which tells abinit about other files."""
-    prefix = label.rsplit('/', 1)[-1]
-    fd.write('%s\n' % (prefix + '.in'))  # input
-    fd.write('%s\n' % (prefix + '.txt'))  # output
-    fd.write('%s\n' % (prefix + 'i'))  # input
-    fd.write('%s\n' % (prefix + 'o'))  # output
-    fd.write('%s\n' % (prefix + '.abinit'))
-    # Provide the psp files
-    for ppp in ppp_list:
-        fd.write('%s\n' % (ppp))  # psp file path
-
-
 def get_default_abinit_pp_paths():
     return os.environ.get('ABINIT_PP_PATH', '.').split(':')
 
 
-abinit_input_version_warning = """\
-Abinit input format has changed in Abinit9.
-
-ASE will currently write inputs for Abinit8 by default.  Please
-silence this warning passing either Abinit(v8_legacy_format=True) to
-write the old Abinit8 format, or False for writing
-the new Abinit9+ format.
-
-The default will change to Abinit9+ format from ase-3.22, and this
-warning will be removed.
-
-Please note that stdin to Abinit should be the .files file until version 8
-but the main inputfile (conventionally abinit.in) from abinit9,
-which may require reconfiguring the ASE/Abinit shell command.
-"""
-
-
-def write_all_inputs(atoms, properties, parameters,
-                     pp_paths=None,
-                     raise_exception=True,
-                     label='abinit',
-                     *, v8_legacy_format=True):
+def prepare_abinit_input(directory, atoms, properties, parameters,
+                         pp_paths=None,
+                         raise_exception=True):
+    directory = Path(directory)
     species = sorted(set(atoms.numbers))
     if pp_paths is None:
         pp_paths = get_default_abinit_pp_paths()
     ppp = get_ppp_list(atoms, species,
                        raise_exception=raise_exception,
-                       xc=parameters.xc,
-                       pps=parameters.pps,
+                       xc=parameters['xc'],
+                       pps=parameters['pps'],
                        search_paths=pp_paths)
 
-    if v8_legacy_format is None:
-        warnings.warn(abinit_input_version_warning,
-                      FutureWarning)
-        v8_legacy_format = True
+    inputfile = directory / 'abinit.in'
 
-    if v8_legacy_format:
-        with open(label + '.files', 'w') as fd:
-            write_files_file(fd, label, ppp)
-        pseudos = None
-
-        # XXX here we build the txt filename again, which is bad
-        # (also defined in the calculator)
-        output_filename = label + '.txt'
-    else:
-        pseudos = ppp  # Include pseudopotentials in inputfile
-        output_filename = label + '.abo'
+    # XXX inappropriate knowledge about choice of outputfile
+    outputfile = directory / 'abinit.abo'
 
     # Abinit will write to label.txtA if label.txt already exists,
     # so we remove it if it's there:
-    if os.path.isfile(output_filename):
-        os.remove(output_filename)
+    if outputfile.exists():
+        outputfile.unlink()
 
-    parameters.write(label + '.ase')
-
-    with open(label + '.in', 'w') as fd:
+    with open(inputfile, 'w') as fd:
         write_abinit_in(fd, atoms, param=parameters, species=species,
-                        pseudos=pseudos)
+                        pseudos=ppp)
 
 
-def read_ase_and_abinit_inputs(label):
-    with open(label + '.in') as fd:
-        atoms = read_abinit_in(fd)
-    parameters = Parameters.read(label + '.ase')
-    return atoms, parameters
-
-
-def read_results(label, textfilename):
-    # filename = label + '.txt'
+def read_abinit_outputs(directory, label):
+    directory = Path(directory)
+    textfilename = directory / f'{label}.abo'
     results = {}
     with open(textfilename) as fd:
         dct = read_abinit_out(fd)
         results.update(dct)
+
     # The eigenvalues section in the main file is shortened to
     # a limited number of kpoints.  We read the complete one from
     # the EIG file then:
-    with open('{}o_EIG'.format(label)) as fd:
+    with open(directory / f'{label}o_EIG') as fd:
         dct = read_eig(fd)
         results.update(dct)
     return results
@@ -728,8 +671,8 @@ def get_ppp_list(atoms, species, raise_exception, xc, pps,
         if not found:
             ppp_list.append("Provide {}.{}.{}?".format(symbol, '*', pps))
             if raise_exception:
-                msg = ('Could not find {} pseudopotential {} for {}'
-                       .format(xcname.lower(), pps, symbol))
+                msg = ('Could not find {} pseudopotential {} for {} in {}'
+                       .format(xcname.lower(), pps, symbol, search_paths))
                 raise RuntimeError(msg)
 
     return ppp_list

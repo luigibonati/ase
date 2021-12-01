@@ -467,7 +467,6 @@ class Cp2kShell:
 
         self.isready = False
         self.version = 1.0  # assume oldest possible version until verified
-        self._child = None
         self._debug = debug
 
         # launch cp2k_shell child process
@@ -500,11 +499,13 @@ class Cp2kShell:
         """Terminate cp2k_shell child process"""
         if self.isready:
             self.send('EXIT')
+            self._child.communicate()
             rtncode = self._child.wait()
             assert rtncode == 0  # child process exited properly?
         else:
             warn("CP2K-shell not ready, sending SIGTERM.", RuntimeWarning)
             self._child.terminate()
+            self._child.communicate()
         self._child = None
         self.version = None
         self.isready = False
