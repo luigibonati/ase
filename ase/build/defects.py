@@ -8,6 +8,21 @@ from ase import Atoms, Atom
 import spglib as spg
 
 
+def calculate_interstitial_distances(atoms_int, atoms_prim):
+    cell = atoms_prim.get_cell()
+    distances = []
+    for i, atom in enumerate(atoms_int):
+        if atoms_int.get_chemical_symbols()[i] == 'X':
+            pos = atoms_int.get_positions()[i]
+            distance = min(get_distances(pos,
+                                         atoms_prim.get_positions(),
+                                         cell=cell,
+                                         pbc=True)[1][0])
+            distances.append(distance)
+
+    return distances
+
+
 def split(word):
     return [char for char in word]
 
@@ -90,7 +105,7 @@ class DefectBuilder():
     """
     from .defects import get_middle_point
 
-    def __init__(self, atoms, min_dist=0.5):
+    def __init__(self, atoms, min_dist=1):
         self.dim = np.sum(atoms.get_pbc())
         self.primitive = atoms
         self.atoms = self._set_construction_cell(atoms)
@@ -405,13 +420,39 @@ class DefectBuilder():
                      pbc=atoms.get_pbc())
 
 
-    def create_interstitials(self, atoms=None):
+    def create_interstitials(self, atoms=None, Nsites=None):
         if atoms is None:
             atoms = self.get_primitive_structure()
         sym = self.get_host_symmetry()
         wyck = get_wyckoff_data(sym['number'])
         un, struc = self.map_positions(wyck,
                                        structure=atoms)
+        if Nsites is None:
+            return un, struc
+        else:
+            # compute distances for all 2D interstitial (adsorption) sites
+            prim = self.get_primitive_structure()
+            cell = prim.get_cell()
+            positions = prim.get_positions()
+            symbols = prim.get_chemical_symbols()
+            distances = calculate_interstitial_distances(un, prim)
+            distances = np.array(distances)
+            # get indices of distance array with the largest min. distance
+            # (the Nsite largest elements, 1 by default)
+            indices = np.argsort(distances)[::-1]
+            indices = indices[:Nsites]
+            j = 0
+            for i, atom in enumerate(un):
+                if un.get_chemical_symbols()[i] == 'X':
+                    pos = un.get_positions()[i]
+                    if j in indices:
+                        positions = np.append(positions, [pos], axis=0)
+                        symbols.append('X')
+                    j += 1
+        un = Atoms(symbols=symbols,
+                   positions=positions,
+                   cell=cell,
+                   pbc=prim.get_pbc())
 
         return un, struc
 
@@ -419,8 +460,9 @@ class DefectBuilder():
     def get_interstitial_structures(self,
                                     kindlist=None,
                                     sc=3,
-                                    size=None):
-        atoms, _ = self.create_interstitials()
+                                    size=None,
+                                    Nsites=None):
+        atoms, _ = self.create_interstitials(Nsites=Nsites)
         dim = self.get_dimension()
         if kindlist is None:
             kindlist = self.get_intrinsic_types()
@@ -451,7 +493,7 @@ class DefectBuilder():
         return structures
 
 
-    def create_adsorption_sites(self, layer='top'):
+    def create_adsorption_sites(self, layer='top', Nsites=None):
         assert self.get_dimension() == 2, "Adsorption site creation only for 2D materials"
 
         atoms = self.get_layer(layer)
@@ -459,8 +501,9 @@ class DefectBuilder():
             z = 2
         elif layer == 'bottom':
             z = -2
-        un, struc = self.create_interstitials(atoms)
+        un, struc = self.create_interstitials(atoms, Nsites)
         prim = self.get_primitive_structure()
+        cell = un.get_cell()
         positions = prim.get_positions()
         symbols = prim.get_chemical_symbols()
         occ_sites = []
@@ -470,27 +513,12 @@ class DefectBuilder():
                 positions = np.append(positions, [pos + [0, 0, z]], axis=0)
                 symbols.append('X')
                 occ_sites.append(kind)
-        cell = prim.get_cell()
-        distances = []
+
         for i, atom in enumerate(un):
             if un.get_chemical_symbols()[i] == 'X':
                 pos = un.get_positions()[i]
-                distance = min(get_distances(pos,
-                                             prim.get_positions(),
-                                             cell=cell,
-                                             pbc=True)[1][0])
-                distances.append(distance)
-        for i, distance in enumerate(distances):
-            if distance == max(distances):
-                index = i
-        j = 0
-        for i, atom in enumerate(un):
-            if un.get_chemical_symbols()[i] == 'X':
-                pos = un.get_positions()[i]
-                if j == index:
-                    positions = np.append(positions, [pos + [0, 0, z]], axis=0)
-                    symbols.append('X')
-                j += 1
+                positions = np.append(positions, [pos + [0, 0, z]], axis=0)
+                symbols.append('X')
 
         return Atoms(symbols=symbols,
                      positions=positions,
@@ -535,10 +563,10 @@ class DefectBuilder():
 
     def get_adsorbate_structures(self, atoms=None, kindlist=None,
                                  sc=3, mechanism='chemisorption',
-                                 size=None):
+                                 size=None, Nsites=None):
         if atoms is None:
-            atoms_top = self.create_adsorption_sites('top')
-            atoms_bottom = self.create_adsorption_sites('bottom')
+            atoms_top = self.create_adsorption_sites('top', Nsites=Nsites)
+            atoms_bottom = self.create_adsorption_sites('bottom', Nsites=Nsites)
             if not has_same_kind(self.get_layer('top'),
                                  self.get_layer('bottom')):
                 atoms_list = [atoms_top, atoms_bottom]

@@ -100,12 +100,8 @@ def test_create_interstitials():
     builder = DefectBuilder(MoS2)
 
     unique, equivalent = builder.create_interstitials()
-    counter = 0
-    for symbol in unique.get_chemical_symbols():
-        if symbol == 'X':
-            counter += 1
 
-    assert counter == 11
+    assert len(MoS2) + 7 == len(unique)
 
 
 def test_create_adsorption():
@@ -113,7 +109,7 @@ def test_create_adsorption():
     from ase.build.defects import DefectBuilder
 
     formulas = ['MoS2', 'MoSSe']
-    lengths = [4, 8]
+    lengths = [6, 12]
     structures = []
     for formula in formulas:
         structure = mx2(formula=formula, kind='2H',
@@ -124,7 +120,7 @@ def test_create_adsorption():
         builder = DefectBuilder(structure)
         counter = 0
         adsorbates = builder.get_adsorbate_structures(
-            kindlist=['H', 'He'])
+            kindlist=['H', 'He'], Nsites=2)
         assert len(adsorbates) == lengths[i]
 
         for ad in adsorbates:
