@@ -60,7 +60,7 @@ Version 3.22.1
 
 1 December 2021: :git:`3.22.1 <../3.22.1>`
 
-* No changes yet
+* Fixed compatibility of Brillouin zone plotting with matplotlib 3.5+.
 
 
 Version 3.22.0
