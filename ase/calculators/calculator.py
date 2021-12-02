@@ -455,6 +455,9 @@ class BaseCalculator(GetPropertiesMixin):
         self.atoms = None
         self.results = {}
 
+        if not hasattr(self, 'name'):
+            self.name = self.__class__.__name__.lower()
+
     def calculate_properties(self, atoms, properties):
         """This method is experimental; currently for internal use."""
         for name in properties:
