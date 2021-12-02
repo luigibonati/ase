@@ -26,6 +26,7 @@ class HarmonicCalculator(BaseCalculator):
         self.harmonicforcefield = harmonicforcefield
 
     def calculate(self, atoms, properties, system_changes):
+        self.atoms = atoms.copy()  # for caching of results
         energy, forces_x = self.harmonicforcefield.get_energy_forces(atoms)
         self.results['energy'] = energy
         self.results['forces'] = forces_x
