@@ -962,6 +962,8 @@ End CASTEP Interface Documentation
         kpoints = None
 
         positions_frac_list = []
+        mulliken_charges = []
+        spins = []
 
         out.seek(record_start)
         while True:
@@ -1307,8 +1309,6 @@ End CASTEP Interface Documentation
                 # extract info from the Mulliken analysis
                 elif 'Atomic Populations' in line:
                     # sometimes this appears twice in a castep file
-                    mulliken_charges = []
-                    spins = []
 
                     mulliken_analysis = True
                     # skip the separating line
@@ -1368,12 +1368,20 @@ End CASTEP Interface Documentation
         if not spin_polarized:
             # set to zero spin if non-spin polarized calculation
             spins = np.zeros(len(positions_frac))
+        elif len(spins) != len(positions_frac):
+            warnings.warn('Spins could not be read for the atoms despite'
+                          ' spin-polarized calculation; spins will be ignored')
+            spins = np.zeros(len(positions_frac))
 
         positions_frac_atoms = np.array(positions_frac)
         forces_atoms = np.array(forces)
         spins_atoms = np.array(spins)
 
         if mulliken_analysis:
+            if len(mulliken_charges) != len(positions_frac):
+                warnings.warn('Mulliken charges could not be read for the atoms;'
+                              ' charges will be ignored')
+                mulliken_charges = np.zeros(len(positions_frac))
             mulliken_charges_atoms = np.array(mulliken_charges)
         else:
             mulliken_charges_atoms = np.zeros(len(positions_frac))
