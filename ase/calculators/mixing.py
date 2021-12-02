@@ -1,4 +1,4 @@
-from ase.calculators.calculator import BaseCalculator, Calculator, all_changes
+from ase.calculators.calculator import BaseCalculator, all_changes
 from ase.calculators.calculator import PropertyNotImplementedError, CalculatorSetupError
 
 
