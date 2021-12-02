@@ -5,7 +5,6 @@ from ase.calculators.calculator import PropertyNotImplementedError, CalculatorSe
 class Mixer:
     def __init__(self, calcs, weights):
         self.check_input(calcs, weights)
-
         common_properties = set.intersection(*(set(calc.implemented_properties)
                                                for calc in calcs))
         self.implemented_properties = list(common_properties)
@@ -40,7 +39,6 @@ class Mixer:
 class LinearCombinationCalculator(BaseCalculator):
     """LinearCombinationCalculator for weighted summation of multiple calculators.
     """
-
     def __init__(self, calcs, weights):
         """Implementation of sum of calculators.
 
@@ -56,6 +54,7 @@ class LinearCombinationCalculator(BaseCalculator):
     def calculate(self, atoms, properties, system_changes):
         """ Calculates all the specific property for each calculator and returns with the summed value.
         """
+        self.atoms = atoms.copy()  # for caching of results
         self.results = self.mixer.get_properties(properties, atoms)
 
     def __str__(self):
@@ -80,7 +79,6 @@ class MixedCalculator(LinearCombinationCalculator):
     weight2 : float
         weight for calculator 2
     """
-
     def __init__(self, calc1, calc2, weight1, weight2):
         super().__init__([calc1, calc2], [weight1, weight2])
 
@@ -102,7 +100,6 @@ class SumCalculator(LinearCombinationCalculator):
     when it is required.
     The supported properties are the intersection of the implemented properties in each calculator.
     """
-
     def __init__(self, calcs):
         """Implementation of sum of calculators.
 
@@ -117,7 +114,6 @@ class SumCalculator(LinearCombinationCalculator):
 class AverageCalculator(LinearCombinationCalculator):
     """AverageCalculator for equal summation of multiple calculators (for thermodynamic purposes)..
     """
-
     def __init__(self, calcs):
         """Implementation of average of calculators.
 
