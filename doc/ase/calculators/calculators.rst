@@ -49,11 +49,15 @@ interfaces.
    FORTRAN/C/C++ codes are not part of ASE.
 
 3) Pure python implementations included in the ASE package: EMT, EAM,
-   Lennard-Jones and Morse.
+   Lennard-Jones, Morse and HarmonicCalculator.
 
 4) Calculators that wrap others, included in the ASE package:
    :class:`ase.calculators.checkpoint.CheckpointCalculator`,
    the :class:`ase.calculators.loggingcalc.LoggingCalculator`,
+   the :class:`ase.calculators.mixing.LinearCombinationCalculator`,
+   the :class:`ase.calculators.mixing.MixedCalculator`,
+   the :class:`ase.calculators.mixing.SumCalculator`,
+   the :class:`ase.calculators.mixing.AverageCalculator`,
    the :class:`ase.calculators.socketio.SocketIOCalculator`,
    the :ref:`Grimme-D3 <grimme>` potential, and the qmmm calculators
    :class:`~ase.calculators.qmmm.EIQMMM`,  and :class:`~ase.calculators.qmmm.SimpleQMMM`.
@@ -84,6 +88,7 @@ elk                                       Full Potential LAPW code
 :mod:`~ase.calculators.gaussian`          Gaussian based electronic structure code
 :mod:`~ase.calculators.gromacs`           Classical molecular dynamics code
 :mod:`~ase.calculators.gulp`              Interatomic potential code
+:mod:`~ase.calculators.harmonic`          Hessian based harmonic force-field code
 :mod:`~ase.calculators.kim`               Classical MD with standardized models
 :mod:`~ase.calculators.lammps`            Classical molecular dynamics code
 :mod:`~ase.calculators.mixing`            Combination of multiple calculators
@@ -224,6 +229,7 @@ the :meth:`set` method:
    gaussian
    gromacs
    gulp
+   harmonic
    socketio/socketio
    jacapo
    kim
