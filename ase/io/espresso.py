@@ -1597,10 +1597,14 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
                 mask = ''
 
             # construct line for atomic positions
+            if crystal_coordinates:
+                coords = [atom.a, atom.b, atom.c]
+            else:
+                coords = atom.position
             atomic_positions_str.append(
                 '{atom.symbol}{tidx} '
-                '{atom.x:.10f} {atom.y:.10f} {atom.z:.10f}'
-                '{mask}\n'.format(atom=atom, tidx=tidx, mask=mask))
+                '{coords[0]:.10f} {coords[1]:.10f} {coords[2]:.10f} '
+                '{mask}\n'.format(atom=atom, tidx=tidx, coords=coords, mask=mask))
 
     else:
         # Do nothing about magnetisation
