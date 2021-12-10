@@ -214,8 +214,16 @@ def dict_to_xml(pdict: Dict, element):
 
 
 # TODO(Fab) REFACTOR
-def parse_info_out_xml(self):
-    """ Read total energy and forces from the info.xml output file."""
+def parse_info_out_xml(directory: Union[path.Path, str], info_xml='info.xml') -> ExcitingGroundStateResults:
+    """ Read total energy and forces from the info.xml output file
+
+    :param
+    """
+    # Probably return a dictionary as a free function.
+    # Then have a light wrapper in class ExcitingGroundStateResults to call
+    # parse_info_out_xml and pass the dictionary values to attributes
+    # Check if calculation converged by inspecting WARNINGS.OUT
+
     # Define where to find output file which is called
     # info.xml in exciting.
     output_file = self.dir + '/info.xml'
