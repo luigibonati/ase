@@ -211,8 +211,6 @@ def dict_to_xml(pdict: Dict, element):
 
 
 
-
-
 # TODO(Fab) REFACTOR
 def parse_info_out_xml(directory: Union[path.Path, str], info_xml='info.xml') -> ExcitingGroundStateResults:
     """ Read total energy and forces from the info.xml output file
