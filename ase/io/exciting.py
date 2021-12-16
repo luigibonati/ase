@@ -209,7 +209,6 @@ def dict_to_xml(pdict: Dict, element):
             raise TypeError(f'cannot deal with key: {key}, val: {value}')
 
 
-# TODO(Fab) REFACTOR
 def parse_info_out_xml(directory: Union[PathLike, str]) -> ExcitingGroundStateResults:
     """ Read total energy and forces from the info.xml output file
     :param: directory: dir to the exciting calculation
@@ -232,10 +231,12 @@ def parse_info_out_xml(directory: Union[PathLike, str]) -> ExcitingGroundStateRe
         raise RuntimeError(
             "Output file %s doesn't exist" % output_file)
 
+    results = dict()
     # Find the last instance of 'totalEnergy'.
     energy = float(parsed_output.findall(
         'groundstate/scl/iter/energies')[-1].attrib[
                             'totalEnergy']) * Hartree
+    results['potential_energy'] = energy
     # Initialize forces list.
     forces = []
     # final all instances of 'totalforce'.
@@ -248,6 +249,9 @@ def parse_info_out_xml(directory: Union[PathLike, str]) -> ExcitingGroundStateRe
         forces.append(np.array(list(force.attrib.values())).astype(float))
     # Reshape forces so we get three columns (x,y,z) and scale units.
     forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
+    results['forces'] = forces
+    # TODO: cnvergence check needed here?
+    """
     # Check if the calculation converged.
     if str(parsed_output.find('groundstate').attrib[
                'status']) == 'finished':
@@ -258,3 +262,5 @@ def parse_info_out_xml(directory: Union[PathLike, str]) -> ExcitingGroundStateRe
         # or it's simply not the reson
         # and the caller can decide how to handle the errors
         raise RuntimeError('Calculation did not converge.')
+    """
+    return ExcitingGroundStateResults(results)
