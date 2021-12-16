@@ -209,10 +209,10 @@ def dict_to_xml(pdict: Dict, element):
             raise TypeError(f'cannot deal with key: {key}, val: {value}')
 
 
-def parse_info_out_xml(directory: Union[PathLike, str]) -> ExcitingGroundStateResults:
+def parse_info_out_xml(directory: Union[PathLike, str]) -> dict:
     """ Read total energy and forces from the info.xml output file
     :param: directory: dir to the exciting calculation
-    :returns: Exciting Groundstate Results object with the outputs of the calculation
+    :returns: dictionary with the outputs of the calculation
     """
     # Probably return a dictionary as a free function.
     # Then have a light wrapper in class ExcitingGroundStateResults to call
@@ -263,4 +263,32 @@ def parse_info_out_xml(directory: Union[PathLike, str]) -> ExcitingGroundStateRe
         # and the caller can decide how to handle the errors
         raise RuntimeError('Calculation did not converge.')
     """
-    return ExcitingGroundStateResults(results)
+    return results
+
+
+def parse_eigval_xml(directory: Union[PathLike, str]) -> dict:
+    """ Read eigenvalues from the eigval.xml output file
+    :param: directory: dir to the exciting calculation
+    :returns: dictionary with the outputs of the calculation
+    """
+    output_file = directory + '/eigval.xml'
+    root = ET.parse(output_file).getroot()
+    eigval = root.attrib
+
+    kpts = []
+    for node in root.findall('kpt'):
+        kpt = node.attrib
+        state = []
+        for subnode in node:
+            state.append(subnode.attrib)
+            kpt['state'] = {}  # converts list of states into a dictionary
+        for item in state:
+            name = item['ist']
+            kpt['state'][name] = item
+            kpts.append(kpt)
+            eigval['kpt'] = {}
+    for item in kpts:  # converts list of kpts into a dictionary
+        name = item['ik']
+        eigval['kpt'][name] = item
+
+    return eigval
