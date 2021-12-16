@@ -3,14 +3,17 @@ This is the implementation of the exciting I/O functions
 The functions are called with read write using the format "exciting"
 
 """
+from os import path, PathLike
+
 import numpy as np
-from typing import Dict
+from typing import Dict, Union
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
 import ase
 from ase.atoms import Atoms
-from ase.units import Bohr
+from ase.calculators.exciting.exciting import ExcitingGroundStateResults
+from ase.units import Bohr, Hartree
 
 
 def structure_xml_to_ase_atoms(fileobj) -> ase.Atoms:
@@ -108,7 +111,7 @@ def initialise_input_xml(title_text='') -> ET.Element:
 def structure_element_tree(atoms: ase.Atoms, autormt: bool, species_path: str, tshift: bool) ->ET.ElementTree:
     """
 
-    :param atoms ase.Atoms: ASE atoms and lattice vectors
+    :param atoms: ASE atoms and lattice vectors
     :param bool autormt: Exciting autmatically determines MT radii
     :param str species_path: Path to species files
     :param bool tshift: Crystal is shifted so closest atom to origin is now at origin.
@@ -206,16 +209,11 @@ def dict_to_xml(pdict: Dict, element):
             raise TypeError(f'cannot deal with key: {key}, val: {value}')
 
 
-
-
-
-
-
 # TODO(Fab) REFACTOR
-def parse_info_out_xml(directory: Union[path.Path, str], info_xml='info.xml') -> ExcitingGroundStateResults:
+def parse_info_out_xml(directory: Union[PathLike, str]) -> ExcitingGroundStateResults:
     """ Read total energy and forces from the info.xml output file
-
-    :param
+    :param: directory: dir to the exciting calculation
+    :returns: Exciting Groundstate Results object with the outputs of the calculation
     """
     # Probably return a dictionary as a free function.
     # Then have a light wrapper in class ExcitingGroundStateResults to call
@@ -224,7 +222,7 @@ def parse_info_out_xml(directory: Union[path.Path, str], info_xml='info.xml') ->
 
     # Define where to find output file which is called
     # info.xml in exciting.
-    output_file = self.dir + '/info.xml'
+    output_file = directory + '/info.xml'
     # Try to open the output file.
     try:
         with open(output_file, 'r') as outfile:
@@ -234,8 +232,8 @@ def parse_info_out_xml(directory: Union[path.Path, str], info_xml='info.xml') ->
         raise RuntimeError(
             "Output file %s doesn't exist" % output_file)
 
-    # Find the last istance of 'totalEnergy'.
-    self.energy = float(parsed_output.findall(
+    # Find the last instance of 'totalEnergy'.
+    energy = float(parsed_output.findall(
         'groundstate/scl/iter/energies')[-1].attrib[
                             'totalEnergy']) * Hartree
     # Initialize forces list.
@@ -249,11 +247,11 @@ def parse_info_out_xml(directory: Union[path.Path, str], info_xml='info.xml') ->
         # Append the total force to the forces list.
         forces.append(np.array(list(force.attrib.values())).astype(float))
     # Reshape forces so we get three columns (x,y,z) and scale units.
-    self.forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
+    forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
     # Check if the calculation converged.
     if str(parsed_output.find('groundstate').attrib[
                'status']) == 'finished':
-        self.converged = True
+        converged = True
     else:
         # BAD - return the status as 'finished': False
         # or converged: False
