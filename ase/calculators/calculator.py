@@ -454,7 +454,6 @@ class BaseCalculator(GetPropertiesMixin):
         self.parameters = dict(parameters)
         self.atoms = None
         self.results = {}
-        #self._name = None
 
     def calculate_properties(self, atoms, properties):
         """This method is experimental; currently for internal use."""
@@ -525,18 +524,10 @@ class BaseCalculator(GetPropertiesMixin):
 
     def _get_name(self):
         return self.__class__.__name__.lower()
-        #if self._name is None:
-        #    return self.__class__.__name__.lower()
-        #else:
-        #    return self._name
 
     @property
     def name(self):
         return self._get_name()
-
-    #@name.setter
-    #def name(self, name):
-    #    self._name = name
 
 
 class Calculator(BaseCalculator):
@@ -594,7 +585,6 @@ class Calculator(BaseCalculator):
         self.results = {}  # calculated properties (energy, forces, ...)
         self.parameters = None  # calculational parameters
         self._directory = None  # Initialize
-        self._name = None
 
         if ignore_bad_restart_file is self._deprecated:
             ignore_bad_restart_file = False
@@ -649,9 +639,6 @@ class Calculator(BaseCalculator):
 
         self.set(**kwargs)
 
-        #if not hasattr(self, 'name'):
-        #    self.name = self.__class__.__name__.lower()
-
         if not hasattr(self, 'get_spin_polarized'):
             self.get_spin_polarized = self._deprecated_get_spin_polarized
         # XXX We are very naughty and do not call super constructor!
@@ -665,7 +652,7 @@ class Calculator(BaseCalculator):
         self._directory = str(Path(directory))  # Normalize path.
 
     def _get_name(self):
-        if self._name is None:
+        if not hasattr(self, '_name'):
             return super()._get_name()
         else:
             return self._name
