@@ -662,8 +662,8 @@ class Calculator(BaseCalculator):
         return super().name
 
     @name.setter
-    def name(self, name):
-        self._name = name
+    def name(self, newname):
+        self._name = newname
 
     @property
     def label(self):
