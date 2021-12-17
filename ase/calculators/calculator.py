@@ -651,20 +651,6 @@ class Calculator(BaseCalculator):
     def directory(self, directory: Union[str, os.PathLike]):
         self._directory = str(Path(directory))  # Normalize path.
 
-    def _get_name(self):
-        if not hasattr(self, '_name'):
-            return super()._get_name()
-        else:
-            return self._name
-
-    @property
-    def name(self):
-        return super().name
-
-    @name.setter
-    def name(self, newname):
-        self._name = newname
-
     @property
     def label(self):
         if self.directory == '.':
