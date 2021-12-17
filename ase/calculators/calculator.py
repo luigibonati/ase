@@ -522,11 +522,11 @@ class BaseCalculator(GetPropertiesMixin):
     def export_properties(self):
         return Properties(self.results)
 
-    def _get_name(self):
+    def _get_name(self) -> str:  # child class can override this
         return self.__class__.__name__.lower()
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._get_name()
 
 
