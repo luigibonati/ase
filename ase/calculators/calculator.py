@@ -454,6 +454,7 @@ class BaseCalculator(GetPropertiesMixin):
         self.parameters = dict(parameters)
         self.atoms = None
         self.results = {}
+        self._name = None
 
     def calculate_properties(self, atoms, properties):
         """This method is experimental; currently for internal use."""
@@ -521,6 +522,20 @@ class BaseCalculator(GetPropertiesMixin):
 
     def export_properties(self):
         return Properties(self.results)
+
+    def _get_name(self):
+        if self._name is None:
+            return self.__class__.__name__.lower()
+        else:
+            return self._name
+
+    @property
+    def name(self):
+        return self._get_name()
+
+    @name.setter
+    def name(self, name):
+        self._name = name
 
 
 class Calculator(BaseCalculator):
