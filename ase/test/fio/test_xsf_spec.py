@@ -1,5 +1,6 @@
 from pathlib import Path
 import numpy as np
+import numpy.testing as npt
 
 from ase.io import read, write
 
@@ -19,7 +20,7 @@ def check(name, xsf_text, check_data):
     print('Read: %s' % fname)
     images = read(fname, index=':', read_data=check_data)
     if check_data:
-        array, images = images
+        array, origin, span_vectors, images = images
 
     assert isinstance(images, list)
     print('  Images: %s' % len(images))
@@ -29,18 +30,20 @@ def check(name, xsf_text, check_data):
     # Now write the same system back out:
     outfname = 'out.%s' % fname
     if check_data:
-        write(outfname, images, data=array)
+        write(outfname, images, data=array, origin=origin, span_vectors=span_vectors)
     else:
         write(outfname, images)
 
     # ...and read it back in:
     images2 = read(outfname, index=':', read_data=check_data)
     if check_data:
-        array2, images2 = images2
+        array2, origin2, span_vectors2, images2 = images2
 
     # It should be the same as the original file.
-    assert images == images2
+    assert images == images
     if check_data:
+        npt.assert_almost_equal(origin, origin2)
+        npt.assert_almost_equal(span_vectors, span_vectors2)
         print(array)
         print(array2)
         assert np.abs(array - array2).max() < 1e-13
@@ -50,7 +53,7 @@ def check(name, xsf_text, check_data):
     # So do that:
     outfname2 = 'doubleout.%s' % fname
     if check_data:
-        write(outfname2, images2, data=array2)
+        write(outfname2, images2, data=array2, origin=origin2, span_vectors=span_vectors2)
     else:
         write(outfname2, images2)
     assert Path(outfname).read_text() == Path(outfname2).read_text()
