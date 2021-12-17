@@ -679,7 +679,6 @@ class Calculator(BaseCalculator):
         self._name = name
 
     @property
-    @property
     def label(self):
         if self.directory == '.':
             return self.prefix
