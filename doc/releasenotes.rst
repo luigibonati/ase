@@ -39,6 +39,11 @@ Git master branch
 
 Calculators:
 
+* Created new module :mod:`ase.calculators.harmonic` with the
+  :class:`ase.calculators.harmonic.HarmonicCalculator`
+  for calculations with a Hessian-based harmonic force field. Can be used to
+  compute Anharmonic Corrections to the Harmonic Approximation.
+
 * Created new :class:`ase.calculators.plumed.Plumed` that is an interface
   between ASE and Plumed_ for carrying out enhanced sampling methods and MD
   postprocessing.
@@ -49,6 +54,14 @@ Calculators:
   of OpenKIM models).
 
 .. _Plumed: https://www.plumed.org/
+
+Version 3.22.1
+==============
+
+1 December 2021: :git:`3.22.1 <../3.22.1>`
+
+* Fixed compatibility of Brillouin zone plotting with matplotlib 3.5+.
+
 
 Version 3.22.0
 ==============

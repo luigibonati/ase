@@ -97,15 +97,6 @@ class BravaisLattice(ABC):
         cell = self._cell(**self._parameters)
         return Cell(cell)
 
-    def get_transformation(self, cell, eps=1e-8):
-        # Get transformation matrix relating input cell to canonical cell
-        T = cell.dot(np.linalg.pinv(self.tocell()))
-        msg = 'This transformation changes the length/area/volume of the cell'
-        assert np.isclose(np.abs(np.linalg.det(T[:self.ndim,
-                                                 :self.ndim])), 1,
-                          atol=eps), msg
-        return T
-
     def cellpar(self) -> np.ndarray:
         """Get cell lengths and angles as array of length 6.
 
@@ -172,7 +163,7 @@ class BravaisLattice(ABC):
         return bandpath.plot(dimension=self.ndim, **plotkwargs)
 
     def bandpath(self, path=None, npoints=None, special_points=None,
-                 density=None, transformation=None) -> BandPath:
+                 density=None) -> BandPath:
         """Return a :class:`~ase.dft.kpoints.BandPath` for this lattice.
 
         See :meth:`ase.cell.Cell.bandpath` for description of parameters.
@@ -199,9 +190,6 @@ special_points={GNPSS1XYY1Z}, kpts=[51x3])
                                                          self._eps)
 
         cell = self.tocell()
-        if transformation is not None:
-            cell = transformation.dot(cell)
-
         bandpath = BandPath(cell=cell, path=path,
                             special_points=special_points)
         return bandpath.interpolate(npoints=npoints, density=density)
@@ -211,7 +199,6 @@ special_points={GNPSS1XYY1Z}, kpts=[51x3])
         """Return a Cell object from this Bravais lattice.
 
         Arguments are the dictionary of Bravais parameters."""
-        pass
 
     def _special_points(self, **kwargs):
         """Return the special point coordinates as an npoints x 3 sequence.
@@ -363,7 +350,7 @@ class Cubic(BravaisLattice):
     conventional_cls = 'CUB'
 
     def __init__(self, a):
-        BravaisLattice.__init__(self, a=a)
+        super().__init__(a=a)
 
 
 @bravaisclass('primitive cubic', 'cubic', 'cubic', 'cP', 'a',
@@ -401,7 +388,7 @@ class TET(BravaisLattice):
     conventional_cellmap = _identity
 
     def __init__(self, a, c):
-        BravaisLattice.__init__(self, a=a, c=c)
+        super().__init__(a=a, c=c)
 
     def _cell(self, a, c):
         return np.diag(np.array([a, a, c]))
@@ -418,7 +405,7 @@ class BCT(BravaisLattice):
     conventional_cellmap = _fcc_map
 
     def __init__(self, a, c):
-        BravaisLattice.__init__(self, a=a, c=c)
+        super().__init__(a=a, c=c)
 
     def _cell(self, a, c):
         return 0.5 * np.array([[-a, a, c], [a, -a, c], [a, a, -c]])
@@ -467,7 +454,7 @@ class Orthorhombic(BravaisLattice):
 
     def __init__(self, a, b, c):
         check_orc(a, b, c)
-        BravaisLattice.__init__(self, a=a, b=b, c=c)
+        super().__init__(a=a, b=b, c=c)
 
 
 @bravaisclass('primitive orthorhombic', 'orthorhombic', 'orthorhombic', 'oP',
@@ -588,7 +575,7 @@ class ORCC(BravaisLattice):
         # ORCC is the only ORCx lattice with a<b and not a<b<c
         if a >= b:
             raise UnconventionalLattice(f'Expected a < b, got a={a}, b={b}')
-        BravaisLattice.__init__(self, a=a, b=b, c=c)
+        super().__init__(a=a, b=b, c=c)
 
     def _cell(self, a, b, c):
         return np.array([[0.5 * a, -0.5 * b, 0], [0.5 * a, 0.5 * b, 0],
@@ -618,7 +605,7 @@ class HEX(BravaisLattice):
     conventional_cellmap = _identity
 
     def __init__(self, a, c):
-        BravaisLattice.__init__(self, a=a, c=c)
+        super().__init__(a=a, c=c)
 
     def _cell(self, a, c):
         x = 0.5 * np.sqrt(3)
@@ -638,7 +625,7 @@ class RHL(BravaisLattice):
         if alpha >= 120:
             raise UnconventionalLattice('Need alpha < 120 degrees, got {}'
                                         .format(alpha))
-        BravaisLattice.__init__(self, a=a, alpha=alpha)
+        super().__init__(a=a, alpha=alpha)
 
     def _cell(self, a, alpha):
         alpha *= np.pi / 180
@@ -701,7 +688,7 @@ class MCL(BravaisLattice):
 
     def __init__(self, a, b, c, alpha):
         check_mcl(a, b, c, alpha)
-        BravaisLattice.__init__(self, a=a, b=b, c=c, alpha=alpha)
+        super().__init__(a=a, b=b, c=c, alpha=alpha)
 
     def _cell(self, a, b, c, alpha):
         alpha *= _degrees
@@ -754,7 +741,7 @@ class MCLC(BravaisLattice):
 
     def __init__(self, a, b, c, alpha):
         check_mcl(a, b, c, alpha)
-        BravaisLattice.__init__(self, a=a, b=b, c=c, alpha=alpha)
+        super().__init__(a=a, b=b, c=c, alpha=alpha)
 
     def _cell(self, a, b, c, alpha):
         alpha *= np.pi / 180
@@ -910,8 +897,8 @@ class TRI(BravaisLattice):
     conventional_cellmap = _identity
 
     def __init__(self, a, b, c, alpha, beta, gamma):
-        BravaisLattice.__init__(self, a=a, b=b, c=c, alpha=alpha, beta=beta,
-                                gamma=gamma)
+        super().__init__(a=a, b=b, c=c, alpha=alpha, beta=beta,
+                         gamma=gamma)
 
     def _cell(self, a, b, c, alpha, beta, gamma):
         alpha, beta, gamma = np.array([alpha, beta, gamma])
@@ -995,7 +982,11 @@ def get_subset_points(names, points):
               ndim=2)
 class OBL(BravaisLattice):
     def __init__(self, a, b, alpha, **kwargs):
-        BravaisLattice.__init__(self, a=a, b=b, alpha=alpha, **kwargs)
+        check_rect(a, b)
+        if alpha >= 90:
+            raise UnconventionalLattice(
+                f'Expected alpha < 90, got alpha={alpha}')
+        super().__init__(a=a, b=b, alpha=alpha, **kwargs)
 
     def _cell(self, a, b, alpha):
         cosa = np.cos(alpha * _degrees)
@@ -1006,15 +997,8 @@ class OBL(BravaisLattice):
                          [0., 0., 0.]])
 
     def _special_points(self, a, b, alpha, variant):
-        # XXX Check me
-        if alpha > 90:
-            _alpha = 180 - alpha
-            a, b = b, a
-        else:
-            _alpha = alpha
-
-        cosa = np.cos(_alpha * _degrees)
-        eta = (1 - a * cosa / b) / (2 * np.sin(_alpha * _degrees)**2)
+        cosa = np.cos(alpha * _degrees)
+        eta = (1 - a * cosa / b) / (2 * np.sin(alpha * _degrees)**2)
         nu = .5 - eta * b * cosa / a
 
         points = [[0, 0, 0],
@@ -1023,13 +1007,6 @@ class OBL(BravaisLattice):
                   [.5, .5, 0],
                   [1 - eta, nu, 0],
                   [.5, 0, 0]]
-
-        if alpha > 90:
-            # Then we map the special points back
-            op = np.array([[0, 1, 0],
-                           [-1, 0, 0],
-                           [0, 0, 1]])
-            points = np.dot(points, op.T)
 
         return points
 
@@ -1041,13 +1018,18 @@ class OBL(BravaisLattice):
               ndim=2)
 class HEX2D(BravaisLattice):
     def __init__(self, a, **kwargs):
-        BravaisLattice.__init__(self, a=a, **kwargs)
+        super().__init__(a=a, **kwargs)
 
     def _cell(self, a):
         x = 0.5 * np.sqrt(3)
         return np.array([[a, 0, 0],
                          [-0.5 * a, x * a, 0],
                          [0., 0., 0.]])
+
+
+def check_rect(a, b):
+    if a >= b:
+        raise UnconventionalLattice(f'Expected a < b, got a={a}, b={b}')
 
 
 @bravaisclass('primitive rectangular', 'orthorhombic', None, 'op', 'ab',
@@ -1057,7 +1039,8 @@ class HEX2D(BravaisLattice):
               ndim=2)
 class RECT(BravaisLattice):
     def __init__(self, a, b, **kwargs):
-        BravaisLattice.__init__(self, a=a, b=b, **kwargs)
+        check_rect(a, b)
+        super().__init__(a=a, b=b, **kwargs)
 
     def _cell(self, a, b):
         return np.array([[a, 0, 0],
@@ -1069,7 +1052,16 @@ class RECT(BravaisLattice):
               ('a', 'alpha'), [['CRECT', 'GXA1Y', 'GXA1YG', None]], ndim=2)
 class CRECT(BravaisLattice):
     def __init__(self, a, alpha, **kwargs):
-        BravaisLattice.__init__(self, a=a, alpha=alpha, **kwargs)
+        # It would probably be better to define the CRECT cell
+        # by (a, b) rather than (a, alpha).  Then we can require a < b
+        # like in ordinary RECT.
+        #
+        # In 3D, all lattices in the same family generally take
+        # identical parameters.
+        if alpha >= 90:
+            raise UnconventionalLattice(
+                f'Expected alpha < 90.  Got alpha={alpha}')
+        super().__init__(a=a, alpha=alpha, **kwargs)
 
     def _cell(self, a, alpha):
         x = np.cos(alpha * _degrees)
@@ -1079,14 +1071,10 @@ class CRECT(BravaisLattice):
                          [0, 0, 0.]])
 
     def _special_points(self, a, alpha, variant):
-        if alpha > 90:
-            _alpha = 180 - alpha
-        else:
-            _alpha = alpha
-        sina2 = np.sin(_alpha / 2 * _degrees)**2
-        sina = np.sin(_alpha * _degrees)**2
+        sina2 = np.sin(alpha / 2 * _degrees)**2
+        sina = np.sin(alpha * _degrees)**2
         eta = sina2 / sina
-        cosa = np.cos(_alpha * _degrees)
+        cosa = np.cos(alpha * _degrees)
         xi = eta * cosa
 
         points = [[0, 0, 0],
@@ -1094,12 +1082,6 @@ class CRECT(BravaisLattice):
                   [0.5 + xi, 0.5 - xi, 0],
                   [0.5, 0.5, 0]]
 
-        if alpha > 90:
-            # Then we map the special points back
-            op = np.array([[0, 1, 0],
-                           [-1, 0, 0],
-                           [0, 0, 1]])
-            points = np.dot(points, op.T)
         return points
 
 
@@ -1109,7 +1091,7 @@ class CRECT(BravaisLattice):
               ndim=2)
 class SQR(BravaisLattice):
     def __init__(self, a, **kwargs):
-        BravaisLattice.__init__(self, a=a, **kwargs)
+        super().__init__(a=a, **kwargs)
 
     def _cell(self, a):
         return np.array([[a, 0, 0],
@@ -1122,7 +1104,7 @@ class SQR(BravaisLattice):
               ndim=1)
 class LINE(BravaisLattice):
     def __init__(self, a, **kwargs):
-        BravaisLattice.__init__(self, a=a, **kwargs)
+        super().__init__(a=a, **kwargs)
 
     def _cell(self, a):
         return np.array([[a, 0.0, 0.0],
@@ -1135,8 +1117,10 @@ def celldiff(cell1, cell2):
     cell1 = Cell.ascell(cell1).complete()
     cell2 = Cell.ascell(cell2).complete()
     v1v2 = cell1.volume * cell2.volume
-    if v1v2 == 0:
-        raise ZeroDivisionError('Cell volumes are zero')
+    if v1v2 < 1e-10:
+        # (Proposed cell may be linearly dependent)
+        return np.inf
+
     scale = v1v2**(-1. / 3.)  # --> 1/Ang^2
     x1 = cell1 @ cell1.T
     x2 = cell2 @ cell2.T
@@ -1161,39 +1145,12 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
     Returns Bravais lattice object representing the cell along with
     an operation that, applied to the cell, yields the same lengths
     and angles as the Bravais lattice object."""
+    from ase.geometry.bravais_type_engine import niggli_op_table
 
     pbc = cell.any(1) & pbc2pbc(pbc)
     npbc = sum(pbc)
 
-    if npbc == 1:
-        i = np.argmax(pbc)  # index of periodic axis
-        a = cell[i, i]
-        if a < 0 or cell[i, [i - 1, i - 2]].any():
-            raise ValueError('Not a 1-d cell ASE can handle: {cell}.'
-                             .format(cell=cell))
-        if i == 0:
-            op = np.eye(3)
-        elif i == 1:
-            op = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
-        else:
-            op = np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])
-        return LINE(a), op
-
-    if npbc == 2:
-        lat, op = get_2d_bravais_lattice(cell, eps, pbc=pbc)
-        return lat, op
-
-    if npbc != 3:
-        raise ValueError('System must be periodic either '
-                         'along all three axes, '
-                         'along two first axes or, '
-                         'along the third axis.  '
-                         'Got pbc={}'.format(pbc))
-
-    from ase.geometry.bravais_type_engine import niggli_op_table
-
-    if cell.rank < 3:
-        raise ValueError('Expected 3 linearly independent cell vectors')
+    cell = cell.uncomplete(pbc)
     rcell, reduction_op = cell.niggli_reduce(eps=eps)
 
     # We tabulate the cell's Niggli-mapped versions so we don't need to
@@ -1203,7 +1160,7 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
 
     # We loop through the most symmetric kinds (CUB etc.) and return
     # the first one we find:
-    for latname in LatticeChecker.check_order:
+    for latname in LatticeChecker.check_orders[npbc]:
         # There may be multiple Niggli operations that produce valid
         # lattices, at least for MCL.  In that case we will pick the
         # one whose angle is closest to 90, but it means we cannot
@@ -1231,8 +1188,9 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
         best_defect = np.inf
         for lat, op in matching_lattices:
             cell = lat.tocell()
-            lengths = cell.lengths()
-            defect = np.prod(lengths) / cell.volume
+            lengths = cell.lengths()[pbc]
+            generalized_volume = cell.complete().volume
+            defect = np.prod(lengths) / generalized_volume
             if defect < best_defect:
                 best = lat, op
                 best_defect = defect
@@ -1240,12 +1198,17 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
         if best is not None:
             return best
 
+    raise RuntimeError('Failed to recognize lattice')
+
 
 class LatticeChecker:
     # The check order is slightly different than elsewhere listed order
     # as we need to check HEX/RHL before the ORCx family.
-    check_order = ['CUB', 'FCC', 'BCC', 'TET', 'BCT', 'HEX', 'RHL',
-                   'ORC', 'ORCF', 'ORCI', 'ORCC', 'MCL', 'MCLC', 'TRI']
+    check_orders = {
+        1: ['LINE'],
+        2: ['SQR', 'RECT', 'HEX2D', 'CRECT', 'OBL'],
+        3: ['CUB', 'FCC', 'BCC', 'TET', 'BCT', 'HEX', 'RHL',
+            'ORC', 'ORCF', 'ORCI', 'ORCC', 'MCL', 'MCLC', 'TRI']}
 
     def __init__(self, cell, eps=2e-4):
         """Generate Bravais lattices that look (or not) like the given cell.
@@ -1290,7 +1253,7 @@ class LatticeChecker:
         """Match cell against all lattices, returning most symmetric match.
 
         Returns the lattice object.  Raises RuntimeError on failure."""
-        for name in self.check_order:
+        for name in self.check_orders[self.cell.rank]:
             lat = self.query(name)
             if lat:
                 return lat
@@ -1306,6 +1269,24 @@ class LatticeChecker:
         meth = getattr(self, latname)
         lat = meth()
         return lat
+
+    def LINE(self):
+        return self._check(LINE, self.lengths[0])
+
+    def SQR(self):
+        return self._check(SQR, self.lengths[0])
+
+    def RECT(self):
+        return self._check(RECT, *self.lengths[:2])
+
+    def CRECT(self):
+        return self._check(CRECT, self.lengths[0], self.angles[2])
+
+    def HEX2D(self):
+        return self._check(HEX2D, self.lengths[0])
+
+    def OBL(self):
+        return self._check(OBL, *self.lengths[:2], self.angles[2])
 
     def CUB(self):
         # These methods (CUB, FCC, ...) all return a lattice object if
@@ -1414,82 +1395,7 @@ class LatticeChecker:
         return self._check(TRI, *self.cellpar)
 
 
-class UnsupportedLattice(ValueError):
-    pass
-
-
-def get_2d_bravais_lattice(origcell, eps=2e-4, *, pbc=True):
-
-    pbc = origcell.any(1) & pbc2pbc(pbc)
-    if list(pbc) != [1, 1, 0]:
-        raise UnsupportedLattice('Can only get 2D Bravais lattice of cell with '
-                                 'pbc==[1, 1, 0]; but we have {}'.format(pbc))
-
-    nonperiodic = pbc.argmin()
-    # Start with op = I
-    ops = [np.eye(3)]
-    for i in range(-1, 1):
-        for j in range(-1, 1):
-            op = [[1, j],
-                  [i, 1]]
-            if np.abs(np.linalg.det(op)) > 1e-5:
-                # Only touch periodic dirs:
-                op = np.insert(op, nonperiodic, [0, 0], 0)
-                op = np.insert(op, nonperiodic, ~pbc, 1)
-                ops.append(np.array(op))
-
-    def allclose(a, b):
-        return np.allclose(a, b, atol=eps)
-
-    symrank = 0
-    for op in ops:
-        cell = Cell(op.dot(origcell))
-        cellpar = cell.cellpar()
-        angles = cellpar[3:]
-        # Find a, b and gamma
-        gamma = angles[~pbc][0]
-        a, b = cellpar[:3][pbc]
-
-        anglesm90 = np.abs(angles - 90)
-        # Maximum one angle different from 90 deg in 2d please
-        if np.sum(anglesm90 > eps) > 1:
-            continue
-
-        all_lengths_equal = abs(a - b) < eps
-
-        if all_lengths_equal:
-            if allclose(gamma, 90):
-                lat = SQR(a)
-                rank = 5
-            elif allclose(gamma, 120):
-                lat = HEX2D(a)
-                rank = 4
-            else:
-                lat = CRECT(a, gamma)
-                rank = 3
-        else:
-            if allclose(gamma, 90):
-                lat = RECT(a, b)
-                rank = 2
-            else:
-                lat = OBL(a, b, gamma)
-                rank = 1
-
-        op = lat.get_transformation(origcell, eps=eps)
-        if not allclose(np.dot(op, lat.tocell())[pbc][:, pbc],
-                        origcell.array[pbc][:, pbc]):
-            msg = ('Cannot recognize cell at all somehow! {}, {}, {}'.
-                   format(a, b, gamma))
-            raise RuntimeError(msg)
-        if rank > symrank:
-            finalop = op
-            symrank = rank
-            finallat = lat
-
-    return finallat, finalop.T
-
-
-def all_variants(include_blunt_angles=True):
+def all_variants():
     """For testing and examples; yield all variants of all lattices."""
     a, b, c = 3., 4., 5.
     alpha = 55.0
@@ -1572,14 +1478,12 @@ def all_variants(include_blunt_angles=True):
     assert tri2b.variant == 'TRI2b'
     yield tri2b
 
-    yield OBL(a, b, alpha=alpha)
+    # Choose an OBL lattice that round-trip-converts to itself.
+    # The default a/b/alpha parameters result in another representation
+    # of the same lattice.
+    yield OBL(a=3.0, b=3.35, alpha=77.85)
     yield RECT(a, b)
     yield CRECT(a, alpha=alpha)
     yield HEX2D(a)
     yield SQR(a)
     yield LINE(a)
-
-    if include_blunt_angles:
-        beta = 110
-        yield OBL(a, b, alpha=beta)
-        yield CRECT(a, alpha=beta)

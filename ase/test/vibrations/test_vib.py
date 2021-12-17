@@ -524,4 +524,4 @@ class TestSlab:
             assert_array_almost_equal(vibs.get_mode(i)[0], [0., 0., 0.])
 
             # The N atoms should have finite displacement
-            assert np.all(vibs.get_mode(i)[-2:, :])
+            assert np.all(np.any(vibs.get_mode(i)[-2:, :], axis=1))
