@@ -522,6 +522,13 @@ class BaseCalculator(GetPropertiesMixin):
     def export_properties(self):
         return Properties(self.results)
 
+    def _get_name(self) -> str:  # child class can override this
+        return self.__class__.__name__.lower()
+
+    @property
+    def name(self) -> str:
+        return self._get_name()
+
 
 class Calculator(BaseCalculator):
     """Base-class for all ASE calculators.
@@ -631,9 +638,6 @@ class Calculator(BaseCalculator):
                 atoms.cell = self.atoms.cell
 
         self.set(**kwargs)
-
-        if not hasattr(self, 'name'):
-            self.name = self.__class__.__name__.lower()
 
         if not hasattr(self, 'get_spin_polarized'):
             self.get_spin_polarized = self._deprecated_get_spin_polarized

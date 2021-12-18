@@ -171,7 +171,6 @@ class Gromacs(FileIOCalculator):
 
         # these below are required by qm/mm
         self.topology_filename = self.label + '.top'
-        self.name = 'Gromacs'
 
         # clean up gromacs backups
         if self.clean:
@@ -183,6 +182,9 @@ class Gromacs(FileIOCalculator):
         if self.do_qmmm:
             self.parameters['integrator'] = 'md'
             self.parameters['nsteps'] = '0'
+
+    def _get_name(self):
+        return 'Gromacs'
 
     def _execute_gromacs(self, command):
         """ execute gmx command
