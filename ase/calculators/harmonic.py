@@ -26,6 +26,7 @@ class HarmonicCalculator(BaseCalculator):
         self.harmonicforcefield = harmonicforcefield
 
     def calculate(self, atoms, properties, system_changes):
+        self.atoms = atoms.copy()  # for caching of results
         energy, forces_x = self.harmonicforcefield.get_energy_forces(atoms)
         self.results['energy'] = energy
         self.results['forces'] = forces_x
@@ -241,8 +242,8 @@ class HarmonicForceField:
                 # determine x0 for present orientation
                 x0 = self.back_transform(x, q, self.q0, atoms.copy())
                 ref_atoms = atoms.copy()
-                ref_atoms.set_positions(x0.reshape(int(len(x0) / 3), 3),
-                                        apply_constraint=False)
+                ref_atoms.set_positions(x0.reshape(int(len(x0) / 3), 3))
+                x0 = ref_atoms.get_positions().ravel()
                 # determine jac0 for present orientation
                 jac0 = self.get_jacobian(ref_atoms)
                 self.check_redundancy(jac0)  # check for coordinate failure
