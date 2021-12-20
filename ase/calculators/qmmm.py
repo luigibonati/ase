@@ -45,9 +45,10 @@ class SimpleQMMM(Calculator):
         self.qmatoms = None
         self.center = None
 
-        self.name = '{0}-{1}+{1}'.format(qmcalc.name, mmcalc1.name)
-
         Calculator.__init__(self)
+
+    def _get_name(self):
+        return f'{self.qmcalc.name}-{self.mmcalc1.name}+{self.mmcalc1.name}'
 
     def initialize_qm(self, atoms):
         constraints = atoms.constraints
@@ -134,13 +135,12 @@ class EIQMMM(Calculator, IOContext):
         self.mask = None
         self.center = None  # center of QM atoms in QM-box
 
-        self.name = '{0}+{1}+{2}'.format(qmcalc.name,
-                                         interaction.name,
-                                         mmcalc.name)
-
         self.output = self.openfile(output)
 
         Calculator.__init__(self)
+
+    def _get_name(self):
+        return f'{self.qmcalc.name}+{self.interaction.name}+{self.mmcalc.name}'
 
     def initialize(self, atoms):
         self.mask = np.zeros(len(atoms), bool)
