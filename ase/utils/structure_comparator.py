@@ -586,8 +586,8 @@ class SymmetryEquivalenceCheck:
         # XXX What do we know about the length/shape of refined_candidate_list?
         if len(refined_candidate_list) == 0:
             return None
-        elif len(refined_candidate_list) == 1:
-            inverted_trial = 1.0 / refined_candidate_list
+        # elif len(refined_candidate_list) == 1:
+        #     inverted_trial = 1.0 / refined_candidate_list
         else:
             inverted_trial = np.linalg.inv(refined_candidate_list)
 
