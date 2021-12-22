@@ -1832,8 +1832,6 @@ def prepare_structure_input(atoms: Atoms,
     #    pass
     #    ...    # another way of passing
 
-    #ATOMIC‌ POSITIONS
-
     atomic_positions_str = []
     atomic_pos_unit = ''
     if crystal_coordinates:
@@ -1842,7 +1840,7 @@ def prepare_structure_input(atoms: Atoms,
         atomic_pos_unit = 'angstrom'
     atomic_pos = {
         'ATOMIC_POSITIONS': (atomic_pos_unit, atomic_positions_str)
-    }  #add unit
+    }
 
     for atom in atoms:
         coords = atom.position
@@ -1874,7 +1872,7 @@ def prepare_structure_input(atoms: Atoms,
     return final_structure    
    
 def prepare_kpoint_input(kpts=None, koffset=None,  kspacing=None, atoms=None):
-    print(kpts)
+    
     kpoints_info={}
 
     if (kpts== None) or (kpts==(0.0,0.0,0.0)):
@@ -1882,17 +1880,27 @@ def prepare_kpoint_input(kpts=None, koffset=None,  kspacing=None, atoms=None):
         kpoints_info['KPOINTS'] = 'gamma'
     
     else:
+        
         kpoints_info['KPOINTS'] = kpts
     
     if koffset is None:
+
+        
         kpoints_info['koffset'] = (0,0,0) # or False
     else:
+        
         kpoints_info['koffset'] = (1, 1, 1)
 
-
-    if kspacing is not None:
-        raise ValueError('kspacing not implemented, FIX ME PLS!')
+    r_x, r_y, r_z = np.linalg.norm(atoms.cell.reciprocal(), axis=1) 
     
+    nk1, nk2, nk3 =[int(r_x / kspacing) + 1,
+                    int(r_y / kspacing) + 1,
+                    int(r_z / kspacing) + 1]
+
+    kpoint_grid = {'nk1': nk1 , 'nk2':nk2 , 'nk3':nk3 }
+    print(kpoint_grid)
+    kpoints_info['kpoint_grid': kpoint_grid ]
+   
     return kpoints_info
 
 
