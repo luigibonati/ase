@@ -9,7 +9,6 @@ Edits on (24.11.2021) by Thomas A. R. Purcell purcell@fhi-berlin.mpg.de
 
 import os
 import re
-from pathlib import Path
 
 import numpy as np
 
