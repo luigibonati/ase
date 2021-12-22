@@ -832,7 +832,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
 
         return [
             [float(inp) for inp in line.split()[-3:]]
-            for line in self.lines[line_start + 1 : line_start + 4]
+            for line in self.lines[line_start + 1:line_start + 4]
         ]
 
     @lazyproperty
@@ -847,7 +847,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
         cell = self.initial_cell
         positions = np.zeros((self.n_atoms, 3))
         symbols = [""] * self.n_atoms
-        for ll, line in enumerate(self.lines[line_start : line_start + self.n_atoms]):
+        for ll, line in enumerate(self.lines[line_start:line_start + self.n_atoms]):
             inp = line.split()
             positions[ll, :] = [float(pos) for pos in inp[4:7]]
             symbols[ll] = inp[3]
@@ -898,7 +898,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
 
         k_points = np.zeros((n_kpts, 3))
         k_point_weights = np.zeros((n_kpts))
-        for kk, line in enumerate(self.lines[line_start + 1 : line_end + 1]):
+        for kk, line in enumerate(self.lines[line_start + 1:line_end + 1]):
             k_points[kk] = [float(inp) for inp in line.split()[4:7]]
             k_point_weights[kk] = float(line.split()[-1])
 
@@ -1085,7 +1085,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         return np.array(
             [
                 [float(inp) for inp in line.split()[-3:]]
-                for line in self.lines[line_start : line_start + self.n_atoms]
+                for line in self.lines[line_start:line_start + self.n_atoms]
             ]
         )
 
@@ -1099,7 +1099,7 @@ class AimsOutCalcChunk(AimsOutChunk):
             return None
         line_start += 3
         stresses = []
-        for line in self.lines[line_start : line_start + self.n_atoms]:
+        for line in self.lines[line_start:line_start + self.n_atoms]:
             xx, yy, zz, xy, xz, yz = [float(d) for d in line.split()[2:8]]
             stresses.append([xx, yy, zz, yz, xz, xy])
 
@@ -1118,7 +1118,7 @@ class AimsOutCalcChunk(AimsOutChunk):
 
         stress = [
             [float(inp) for inp in line.split()[2:5]]
-            for line in self.lines[line_start + 5 : line_start + 8]
+            for line in self.lines[line_start + 5:line_start + 8]
         ]
         return full_3x3_to_voigt_6_stress(stress)
 
@@ -1260,7 +1260,7 @@ class AimsOutCalcChunk(AimsOutChunk):
 
         for occ_start, kpt_ind, spin in zip(occupation_block_start, kpt_inds, spins):
             for ll, line in enumerate(
-                self.lines[occ_start + 1 : occ_start + self.n_bands + 1]
+                self.lines[occ_start + 1:occ_start + self.n_bands + 1]
             ):
                 line = line.replace("**************", "         10000")
                 line = line.replace("***************", "          10000")
