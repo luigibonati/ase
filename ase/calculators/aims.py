@@ -50,58 +50,67 @@ class AimsTemplate(CalculatorTemplate):
 
         self.outputname = "aims.out"
 
-    def write_input(self, directory, atoms, parameters, properties):
-        """Write the geometry.in and control.in files for the caclulation
+    def update_parameters(self, properties, parameters):
+        """Check and update the parameters to match the desired calculation
 
         Parameters
         ----------
-        directory : str
-            The working directory to store the input files.
-        atoms : atoms.Atoms
-            The atoms object to perform the calculation on.
-        parameters: dict
-            The parameters used to perform teh calculation.
         properties: list of str
             The list of properties to calculate
+        parameters: dict
+            The parameters used to perform the calculation.
+
+        Returns
+        -------
+        dict
+            The updated parameters object
         """
         parameters = dict(parameters)
-        if isinstance(directory, str):
-            directory = Path(directory)
-
+        property_flags = {
+            "forces": "compute_forces",
+            "stress": "compute_analytical_stress",
+            "stresses": "compute_heat_flux",
+        }
         # Ensure FHI-aims will calculate all desired properties
-        if "forces" in properties:
-            parameters["compute_forces"] = True
-        elif parameters.get("compute_forces", False):
-            properties.append("forces")
-
-        if "stress" in properties:
-            parameters["compute_analytical_stress"] = True
-        elif parameters.get("compute_analytical_stress", False):
-            properties.append("stress")
-
-        if "stresses" in properties:
-            parameters["compute_heat_flux"] = True
-        elif parameters.get("compute_heat_flux", False):
-            properties.append("stresses")
+        for property in properties:
+            aims_name = property_flags.get(property, None)
+            if aims_name is not None:
+                parameters[aims_name] = True
 
         if "dipole" in properties:
             if "output" in parameters and "dipole" not in parameters["output"]:
                 parameters["output"] = list(parameters["output"])
                 parameters["output"].append("dipole")
             elif "output" not in parameters:
-                parameters["output"]["dipole"]
-        elif "dipole" in parameters.get("output", []):
-            properties.append("dipole")
+                parameters["output"] = ["dipole"]
+
+        return parameters
+
+    def write_input(self, directory, atoms, parameters, properties):
+        """Write the geometry.in and control.in files for the calculation
+
+        Parameters
+        ----------
+        directory : Path
+            The working directory to store the input files.
+        atoms : atoms.Atoms
+            The atoms object to perform the calculation on.
+        parameters: dict
+            The parameters used to perform the calculation.
+        properties: list of str
+            The list of properties to calculate
+        """
+        parameters = self.update_parameters(properties, parameters)
 
         ghosts = parameters.pop("ghosts", None)
         geo_constrain = parameters.pop("geo_constrain", None)
         scaled = parameters.pop("scaled", None)
-        velocities = parameters.pop("velocities", None)
+        write_velocities = parameters.pop("write_velocities", None)
 
         if scaled is None:
             scaled = np.all(atoms.pbc)
-        if velocities is None:
-            velocities = atoms.has("momenta")
+        if write_velocities is None:
+            write_velocities = atoms.has("momenta")
 
         if geo_constrain is None:
             geo_constrain = scaled and "relax_geometry" in parameters
@@ -120,7 +129,7 @@ class AimsTemplate(CalculatorTemplate):
             atoms,
             scaled,
             geo_constrain,
-            velocities=velocities,
+            write_velocities=write_velocities,
             ghosts=ghosts,
         )
 
