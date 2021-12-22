@@ -19,7 +19,7 @@ v_unit = Ang / (1000.0 * fs)
 LINE_NOT_FOUND = object()
 
 
-class AimsParserError(Exception):
+class AimsParseError(Exception):
     """Exception raised if an error occurs when parsing an Aims output file"""
 
     def __init__(self, message):
@@ -839,7 +839,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
         """Create an atoms object for the initial geometry.in structure from the aims.out file"""
         line_start = self.reverse_search_for(["Atomic structure:"]) + 2
         if line_start == LINE_NOT_FOUND:
-            raise AimsParserError("No structure information is inside the chunk.")
+            raise AimsParseError("No structure information is inside the chunk.")
 
         cell = self.initial_cell
         positions = np.zeros((self.n_atoms, 3))
@@ -916,7 +916,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
         """The number of atoms for the material"""
         n_atoms = self.parse_scalar("n_atoms")
         if n_atoms is None:
-            raise AimsParserError(
+            raise AimsParseError(
                 "No information about the number of atoms in the header."
             )
         return int(n_atoms)
@@ -927,7 +927,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
         line_start = self.reverse_search_for(scalar_property_to_line_key["n_bands"])
 
         if line_start == LINE_NOT_FOUND:
-            raise AimsParserError(
+            raise AimsParseError(
                 "No information about the number of Kohn-Sham states in the header."
             )
 
@@ -943,7 +943,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
         line_start = self.reverse_search_for(scalar_property_to_line_key["n_electrons"])
 
         if line_start == LINE_NOT_FOUND:
-            raise AimsParserError(
+            raise AimsParseError(
                 "No information about the number of electrons in the header."
             )
 
@@ -964,7 +964,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
         """The number of spin channels for the chunk"""
         n_spins = self.parse_scalar("n_spins")
         if n_spins is None:
-            raise AimsParserError(
+            raise AimsParseError(
                 "No information about the number of spin channels in the header."
             )
         return int(n_spins)
@@ -1066,7 +1066,7 @@ class AimsOutCalcChunk(AimsOutChunk):
             atoms.set_cell(np.array(cell))
             atoms.set_pbc([True, True, True])
         elif len(cell) != 0:
-            raise AimsParserError(
+            raise AimsParseError(
                 "Parsed geometry has incorrect number of lattice vectors."
             )
 
@@ -1142,7 +1142,7 @@ class AimsOutCalcChunk(AimsOutChunk):
         else:
             line_ind = self.reverse_search_for(["Total energy uncorrected"])
         if line_ind == len(self.lines):
-            raise AimsParserError("No energy is associated with the structure.")
+            raise AimsParseError("No energy is associated with the structure.")
 
         return float(self.lines[line_ind].split()[5])
 
