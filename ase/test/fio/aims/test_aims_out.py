@@ -6,11 +6,11 @@ from ase.stress import full_3x3_to_voigt_6_stress
 from numpy.linalg import norm
 from pathlib import Path
 
-parent = Path(__file__).parent
+parent = Path(__file__).parents[2]
 
 
 def test_parse_socketio(testdir):
-    traj = read(parent / "aims_out_files/socket.out", ":", format="aims-output")
+    traj = read(parent / "testdata/aims/socket.out", ":", format="aims-output")
     assert len(traj) == 6
     p0 = [[0.0, 0.0, 0.0], [0.9584, 0.0, 0.0], [-0.24, 0.9279, 0.0]]
     p1 = [
@@ -48,7 +48,7 @@ def test_parse_socketio(testdir):
 
 
 def test_parse_md(testdir):
-    traj = read(parent / "aims_out_files/md.out", ":", format="aims-output")
+    traj = read(parent / "testdata/aims/md.out", ":", format="aims-output")
     assert len(traj) == 5
     p0 = [[0.0, 0.0, 0.0], [0.9584, 0.0, 0.0], [-0.24, 0.9279, 0.0]]
     p1 = [
@@ -86,7 +86,7 @@ def test_parse_md(testdir):
 
 
 def test_parse_relax(testdir):
-    traj = read(parent / "aims_out_files/relax.out", ":", format="aims-output")
+    traj = read(parent / "testdata/aims/relax.out", ":", format="aims-output")
     assert len(traj) == 8
     p0 = [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]
     assert all([np.allclose(at.get_scaled_positions(), p0) for at in traj])
@@ -125,7 +125,7 @@ def test_parse_relax(testdir):
 
 
 def test_parse_singlepoint(testdir):
-    atoms = read(parent / "aims_out_files/singlepoint.out", format="aims-output")
+    atoms = read(parent / "testdata/aims/singlepoint.out", format="aims-output")
     p0 = [[0.0, 0.0, 0.0], [0.9584, 0.0, 0.0], [-0.24, 0.9279, 0.0]]
     assert np.allclose(atoms.get_positions(), p0)
 
@@ -136,6 +136,6 @@ def test_parse_singlepoint(testdir):
     ]
     assert np.allclose(atoms.get_forces(), f0)
 
-    results = read_aims_results(parent / "aims_out_files/singlepoint.out")
+    results = read_aims_results(parent / "testdata/aims/singlepoint.out")
     assert np.allclose(results["forces"], f0)
     assert np.abs(results["energy"] + 2.06302072675943e03) < 1e-15
