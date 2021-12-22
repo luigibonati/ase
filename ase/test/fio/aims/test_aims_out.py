@@ -1,5 +1,6 @@
 # flake8: noqa
 import numpy as np
+
 from ase.io import read
 from ase.io.aims import read_aims_results
 from ase.stress import full_3x3_to_voigt_6_stress
@@ -119,7 +120,6 @@ def test_parse_relax(testdir):
         [2.70950941, 0.00006393, 2.70950939],
         [2.70950941, 2.70950939, 0.00006393],
     ]
-    print(traj[-1].get_cell())
     assert np.allclose(traj[0].get_cell(), cell_0)
     assert np.allclose(traj[-1].get_cell(), cell_end)
 

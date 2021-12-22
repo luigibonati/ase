@@ -6,6 +6,7 @@ from ase.io.aims import (
     AimsOutChunk,
     AimsOutHeaderChunk,
     AimsOutCalcChunk,
+    LINE_NOT_FOUND,
 )
 from ase.stress import full_3x3_to_voigt_6_stress
 
@@ -27,10 +28,10 @@ def test_reverse_search_for(default_chunk):
     assert default_chunk.reverse_search_for(["TEST"]) == 2
     assert default_chunk.reverse_search_for(["TEST"], 1) == 2
 
-    assert default_chunk.reverse_search_for(["TEST A"]) == 4
+    assert default_chunk.reverse_search_for(["TEST A"]) == LINE_NOT_FOUND
 
     assert default_chunk.reverse_search_for(["A"]) == 1
-    assert default_chunk.reverse_search_for(["A"], 2) == 4
+    assert default_chunk.reverse_search_for(["A"], 2) == LINE_NOT_FOUND
 
 
 def test_search_for_all(default_chunk):
@@ -56,7 +57,7 @@ def empty_header_chunk():
         "n_bands",
         "n_electrons",
         "n_spins",
-        "atoms",
+        "initial_atoms",
     ],
 )
 def test_missing_parameter(attrname, empty_header_chunk):
@@ -69,7 +70,7 @@ def test_default_header_electronic_temperature(empty_header_chunk):
 
 
 def test_default_header_constraints(empty_header_chunk):
-    assert empty_header_chunk.constraints is []
+    assert empty_header_chunk.constraints == []
 
 
 def test_default_header_initial_cell(empty_header_chunk):
@@ -99,9 +100,11 @@ def test_default_header_k_point_weights(empty_header_chunk):
 @pytest.fixture
 def initial_cell():
     return np.array(
-        [1.00000000, 2.70300000, 3.70300000],
-        [4.70300000, 2.00000000, 6.70300000],
-        [8.70300000, 7.70300000, 3.00000000],
+        [
+            [1.00000000, 2.70300000, 3.70300000],
+            [4.70300000, 2.00000000, 6.70300000],
+            [8.70300000, 7.70300000, 3.00000000],
+        ]
     )
 
 
@@ -280,7 +283,7 @@ def test_header_transfer_n_atoms(empty_calc_chunk):
 
 
 def test_header_transfer_n_bands(empty_calc_chunk):
-    assert empty_calc_chunk.n_bands == 20
+    assert empty_calc_chunk.n_bands == 3
 
 
 def test_header_transfer_n_electrons(empty_calc_chunk):
@@ -339,42 +342,33 @@ def test_header_transfer_k_points(empty_calc_chunk, k_points):
 
 
 def test_default_calc_energy_raises_error(empty_calc_chunk):
-    with pytest.raises(AimsParseError, match="No information about"):
+    with pytest.raises(
+        AimsParseError, match="No energy is associated with the structure."
+    ):
         getattr(empty_calc_chunk, "energy")
 
-    assert "No energy is associated with the structure." in str(excinfo)
 
-
-def test_default_calc_forces(empty_calc_chunk):
-    assert empty_calc_chunk.forces is None
-
-
-def test_default_calc_stresses(empty_calc_chunk):
-    assert empty_calc_chunk.stresses is None
-
-
-def test_default_calc_stress(empty_calc_chunk):
-    assert empty_calc_chunk.stress is None
-
-
-def test_default_calc_free_energy(empty_calc_chunk):
-    assert empty_calc_chunk.free_energy is None
-
-
-def test_default_calc_n_iter(empty_calc_chunk):
-    assert empty_calc_chunk.n_iter is None
-
-
-def test_default_calc_magmom(empty_calc_chunk):
-    assert empty_calc_chunk.magmom is None
-
-
-def test_default_calc_E_f(empty_calc_chunk):
-    assert empty_calc_chunk.E_f is None
-
-
-def test_default_calc_dipole(empty_calc_chunk):
-    assert empty_calc_chunk.dipole is None
+@pytest.mark.parametrize(
+    "attrname",
+    [
+        "forces",
+        "stresses",
+        "stress",
+        "free_energy",
+        "n_iter",
+        "magmom",
+        "E_f",
+        "dipole",
+        "hirshfeld_charges",
+        "hirshfeld_volumes",
+        "hirshfeld_atomic_dipoles",
+        "hirshfeld_dipole",
+        "eigenvalues",
+        "occupancies",
+    ],
+)
+def test_chunk_defaults_none(attrname, empty_calc_chunk):
+    assert getattr(empty_calc_chunk, attrname) is None
 
 
 def test_default_calc_is_metallic(empty_calc_chunk):
@@ -383,30 +377,6 @@ def test_default_calc_is_metallic(empty_calc_chunk):
 
 def test_default_calc_converged(empty_calc_chunk):
     assert not empty_calc_chunk.converged
-
-
-def test_default_calc_hirshfeld_charges(empty_calc_chunk):
-    assert empty_calc_chunk.hirshfeld_charges is None
-
-
-def test_default_calc_hirshfeld_volumes(empty_calc_chunk):
-    assert empty_calc_chunk.hirshfeld_volumes is None
-
-
-def test_default_calc_hirshfeld_atomic_dipoles(empty_calc_chunk):
-    assert empty_calc_chunk.hirshfeld_atomic_dipoles is None
-
-
-def test_default_calc_hirshfeld_dipole(empty_calc_chunk):
-    assert empty_calc_chunk.hirshfeld_dipole is None
-
-
-def test_default_calc_eigenvalues(empty_calc_chunk):
-    assert empty_calc_chunk.eigenvalues is None
-
-
-def test_default_calc_occupancies(empty_calc_chunk):
-    assert empty_calc_chunk.occupancies is None
 
 
 @pytest.fixture
@@ -677,8 +647,8 @@ def test_calc_forces(calc_chunk):
 def test_calc_stresses(calc_chunk):
     stresses = np.array(
         [
-            [-10.0, -20.0, -30.0, -40.0, -50.0, -60.0],
-            [10.0, 20.0, 30.0, 40.0, 50.0, 60.0],
+            [-10.0, -20.0, -30.0, -60.0, -50.0, -40.0],
+            [10.0, 20.0, 30.0, 60.0, 50.0, 40.0],
         ]
     )
     assert np.allclose(calc_chunk.stresses, stresses)
@@ -702,7 +672,7 @@ def test_calc_stress(calc_chunk):
 
 
 def test_calc_free_energy(calc_chunk):
-    free_energy = -2.169503986610555e05
+    free_energy = -3.169503986610555e05
     assert np.abs(calc_chunk.free_energy - free_energy) < eps_hp
     assert (
         np.abs(calc_chunk.atoms.calc.get_property("free_energy") - free_energy) < eps_hp
@@ -711,7 +681,7 @@ def test_calc_free_energy(calc_chunk):
 
 
 def test_calc_energy(calc_chunk):
-    energy = -3.169503986610555e05
+    energy = -2.169503986610555e05
     assert np.abs(calc_chunk.energy - energy) < eps_hp
     assert np.abs(calc_chunk.atoms.get_potential_energy() - energy) < eps_hp
     assert np.abs(calc_chunk.results["energy"] - energy) < eps_hp
@@ -727,14 +697,12 @@ def test_calc_magnetic_moment(calc_chunk):
 def test_calc_n_iter(calc_chunk):
     n_iter = 58
     assert calc_chunk.n_iter == n_iter
-    assert calc_chunk.atoms.info["n_iter"] == n_iter
     assert calc_chunk.results["n_iter"] == n_iter
 
 
 def test_calc_fermi_energy(calc_chunk):
     Ef = -8.24271207
     assert np.abs(calc_chunk.E_f - Ef) < eps_lp
-    assert np.abs(calc_chunk.atoms.info["fermi_energy"] - Ef) < eps_lp
     assert np.abs(calc_chunk.results["fermi_energy"] - Ef) < eps_lp
 
 
@@ -753,23 +721,18 @@ def test_calc_converged(calc_chunk):
 def test_calc_hirshfeld_charges(calc_chunk):
     hirshfeld_charges = [0.20898543, -0.20840994]
     assert np.allclose(calc_chunk.hirshfeld_charges, hirshfeld_charges)
-    assert np.allclose(calc_chunk.atoms.info["hirshfeld_charges"], hirshfeld_charges)
     assert np.allclose(calc_chunk.results["hirshfeld_charges"], hirshfeld_charges)
 
 
 def test_calc_hirshfeld_volumes(calc_chunk):
     hirshfeld_volumes = [73.39467444, 62.86011074]
     assert np.allclose(calc_chunk.hirshfeld_volumes, hirshfeld_volumes)
-    assert np.allclose(calc_chunk.atoms.info["hirshfeld_volumes"], hirshfeld_volumes)
     assert np.allclose(calc_chunk.results["hirshfeld_volumes"], hirshfeld_volumes)
 
 
 def test_calc_hirshfeld_atomic_dipoles(calc_chunk):
     hirshfeld_atomic_dipoles = np.zeros((2, 3))
     assert np.allclose(calc_chunk.hirshfeld_atomic_dipoles, hirshfeld_atomic_dipoles)
-    assert np.allclose(
-        calc_chunk.atoms.info["hirshfeld_atomic_dipoles"], hirshfeld_atomic_dipoles
-    )
     assert np.allclose(
         calc_chunk.results["hirshfeld_atomic_dipoles"], hirshfeld_atomic_dipoles
     )
@@ -782,18 +745,12 @@ def test_calc_hirshfeld_dipole(calc_chunk):
 def test_calc_eigenvalues(calc_chunk, eigenvalues_occupancies):
     assert np.allclose(calc_chunk.eigenvalues, eigenvalues_occupancies[:, :, :, 1])
     assert np.allclose(
-        calc_chunk.atoms.info["eigenvalues"], eigenvalues_occupancies[:, :, :, 1]
-    )
-    assert np.allclose(
         calc_chunk.results["eigenvalues"], eigenvalues_occupancies[:, :, :, 1]
     )
 
 
 def test_calc_occupancies(calc_chunk, eigenvalues_occupancies):
     assert np.allclose(calc_chunk.occupancies, eigenvalues_occupancies[:, :, :, 0])
-    assert np.allclose(
-        calc_chunk.atoms.info["occupancies"], eigenvalues_occupancies[:, :, :, 0]
-    )
     assert np.allclose(
         calc_chunk.results["occupancies"], eigenvalues_occupancies[:, :, :, 0]
     )
@@ -835,36 +792,25 @@ def molecular_header_chunk():
     return AimsOutHeaderChunk(lines)
 
 
-def test_molecular_header_k_points(molecular_header_chunk):
-    assert molecular_header_chunk.k_points is None
-
-
-def test_molecular_header_k_point_weights(molecular_header_chunk):
-    assert molecular_header_chunk.k_point_weights is None
+@pytest.mark.parametrize(
+    "attrname",
+    [
+        "k_points",
+        "k_point_weights",
+        "initial_cell",
+        "n_k_points",
+    ],
+)
+def test_chunk_molecular_header_defaults_none(attrname, molecular_header_chunk):
+    assert getattr(molecular_header_chunk, attrname) is None
 
 
 def test_molecular_header_constraints(molecular_header_chunk):
-    assert molecular_header_chunk.constraints is None
-
-
-def test_molecular_header_initial_cell(molecular_header_chunk):
-    assert molecular_header_chunk.initial_cell is None
-
-
-def test_molecular_header_n_k_points(molecular_header_chunk):
-    assert molecular_header_chunk.n_k_points is None
+    assert molecular_header_chunk.constraints == []
 
 
 def test_molecular_header_n_bands(molecular_header_chunk):
     assert molecular_header_chunk.n_bands == 7
-
-
-def test_molecular_header_initial_cell(molecular_header_chunk):
-    assert molecular_header_chunk.initial_cell is None
-
-
-def test_molecular_header_initial_cell(molecular_header_chunk):
-    assert molecular_header_chunk.initial_cell is None
 
 
 def test_molecular_header_initial_atoms(molecular_header_chunk, molecular_positions):
@@ -994,12 +940,17 @@ def test_molecular_calc_forces(molecular_calc_chunk):
     assert np.allclose(molecular_calc_chunk.results["forces"], forces)
 
 
-def test_molecular_calc_stresses(molecular_calc_chunk):
-    assert molecular_calc_chunk.stresses is None
-
-
-def test_molecular_calc_stress(molecular_calc_chunk):
-    assert molecular_calc_chunk.stress is None
+@pytest.mark.parametrize(
+    "attrname",
+    [
+        "stresses",
+        "stress",
+        "magmom",
+        "E_f",
+    ],
+)
+def test_chunk_molecular_defaults_none(attrname, molecular_calc_chunk):
+    assert getattr(molecular_calc_chunk, attrname) is None
 
 
 def test_molecular_calc_free_energy(molecular_calc_chunk):
@@ -1021,19 +972,10 @@ def test_molecular_calc_energy(molecular_calc_chunk):
     assert np.abs(molecular_calc_chunk.results["energy"] - energy) < eps_hp
 
 
-def test_molecular_calc_magmom(molecular_calc_chunk):
-    assert molecular_calc_chunk.magmom is None
-
-
 def test_molecular_calc_n_iter(molecular_calc_chunk):
     n_iter = 7
     assert molecular_calc_chunk.n_iter == n_iter
     assert molecular_calc_chunk.results["n_iter"] == n_iter
-    assert molecular_calc_chunk.atoms.info["n_iter"] == n_iter
-
-
-def test_molecular_calc_fermi_energy(molecular_calc_chunk):
-    assert molecular_calc_chunk.E_f is None
 
 
 def test_molecular_calc_dipole(molecular_calc_chunk):
@@ -1065,10 +1007,6 @@ def test_molecular_calc_hirshfeld_charges(
     assert np.allclose(
         molecular_calc_chunk.results["hirshfeld_charges"], molecular_hirshfeld_charges
     )
-    assert np.allclose(
-        molecular_calc_chunk.atoms.info["hirshfeld_charges"],
-        molecular_hirshfeld_charges,
-    )
 
 
 def test_molecular_calc_hirshfeld_volumes(molecular_calc_chunk):
@@ -1076,9 +1014,6 @@ def test_molecular_calc_hirshfeld_volumes(molecular_calc_chunk):
     assert np.allclose(molecular_calc_chunk.hirshfeld_volumes, hirshfeld_volumes)
     assert np.allclose(
         molecular_calc_chunk.results["hirshfeld_volumes"], hirshfeld_volumes
-    )
-    assert np.allclose(
-        molecular_calc_chunk.atoms.info["hirshfeld_volumes"], hirshfeld_volumes
     )
 
 
@@ -1097,10 +1032,6 @@ def test_molecular_calc_hirshfeld_atomic_dipoles(molecular_calc_chunk):
         molecular_calc_chunk.results["hirshfeld_atomic_dipoles"],
         hirshfeld_atomic_dipoles,
     )
-    assert np.allclose(
-        molecular_calc_chunk.atoms.info["hirshfeld_atomic_dipoles"],
-        hirshfeld_atomic_dipoles,
-    )
 
 
 def test_molecular_calc_hirshfeld_dipole(
@@ -1112,9 +1043,6 @@ def test_molecular_calc_hirshfeld_dipole(
     assert np.allclose(molecular_calc_chunk.hirshfeld_dipole, hirshfeld_dipole)
     assert np.allclose(
         molecular_calc_chunk.results["hirshfeld_dipole"], hirshfeld_dipole
-    )
-    assert np.allclose(
-        molecular_calc_chunk.atoms.info["hirshfeld_dipole"], hirshfeld_dipole
     )
 
 
@@ -1132,9 +1060,6 @@ def test_molecular_calc_eigenvalues(molecular_calc_chunk):
     assert np.allclose(
         molecular_calc_chunk.results["eigenvalues"][0, :, 0], eigenvalues
     )
-    assert np.allclose(
-        molecular_calc_chunk.atoms.info["eigenvalues"][0, :, 0], eigenvalues
-    )
 
 
 def test_molecular_calc_occupancies(molecular_calc_chunk):
@@ -1150,7 +1075,4 @@ def test_molecular_calc_occupancies(molecular_calc_chunk):
     assert np.allclose(molecular_calc_chunk.occupancies[0, :, 0], occupancies)
     assert np.allclose(
         molecular_calc_chunk.results["occupancies"][0, :, 0], occupancies
-    )
-    assert np.allclose(
-        molecular_calc_chunk.atoms.info["occupancies"][0, :, 0], occupancies
     )

@@ -5,6 +5,7 @@ from ase.build import bulk
 from ase.atoms import Atoms
 from ase.io.aims import read_aims as read
 from ase.io.aims import parse_geometry_lines
+import pytest
 from pytest import approx
 from ase.constraints import (
     FixAtoms,
@@ -30,16 +31,16 @@ def H2O():
 
 def test_cartesian_Si(Si):
     """write cartesian coords and check if structure was preserved"""
-    atoms.write(file, format=format)
+    Si.write(file, format=format)
     new_atoms = read((file))
-    assert np.allclose(atoms.positions, new_atoms.positions)
+    assert np.allclose(Si.positions, new_atoms.positions)
 
 
 def test_scaled_Si(Si):
     """write fractional coords and check if structure was preserved"""
-    atoms.write(file, format=format, scaled=True, wrap=False)
+    Si.write(file, format=format, scaled=True, wrap=False)
     new_atoms = read(file)
-    assert np.allclose(atoms.positions, new_atoms.positions)
+    assert np.allclose(Si.positions, new_atoms.positions)
 
 
 def test_param_const_Si(Si):
@@ -77,13 +78,13 @@ def test_param_const_Si(Si):
         params=param_atom,
         expressions=expr_atom,
     )
-    atoms.set_constraint([constr_atom, constr_lat])
+    Si.set_constraint([constr_atom, constr_lat])
     with warnings.catch_warnings(record=True) as w:
         # Cause all warnings to always be triggered.
         warnings.simplefilter("always")
 
         # Attempt to write a molecular system with geo_constrain=True
-        atoms.write(file, geo_constrain=True)
+        Si.write(file, geo_constrain=True)
         assert len(w) == 1
         assert (
             str(w[-1].message)
@@ -91,58 +92,52 @@ def test_param_const_Si(Si):
         )
 
     new_atoms = read(file)
-    assert np.allclose(atoms.positions, new_atoms.positions)
-    assert len(atoms.constraints) == len(new_atoms.constraints)
-    assert str(atoms.constraints[0]) == str(new_atoms.constraints[1])
-    assert str(atoms.constraints[1]) == str(new_atoms.constraints[0])
+    assert np.allclose(Si.positions, new_atoms.positions)
+    assert len(Si.constraints) == len(new_atoms.constraints)
+    assert str(Si.constraints[0]) == str(new_atoms.constraints[1])
+    assert str(Si.constraints[1]) == str(new_atoms.constraints[0])
 
 
 def test_wrap_Si(Si):
     """write fractional coords and check if structure was preserved"""
-    atoms.positions[0, 0] -= 0.015625
-    atoms.write(file, format=format, scaled=True, wrap=True)
+    Si.positions[0, 0] -= 0.015625
+    Si.write(file, format=format, scaled=True, wrap=True)
 
     new_atoms = read(file)
 
     try:
-        assert np.allclose(atoms.positions, new_atoms.positions)
+        assert np.allclose(Si.positions, new_atoms.positions)
         raise ValueError("Wrapped atoms not passed to new geometry.in file")
     except AssertionError:
-        atoms.wrap()
-        assert np.allclose(atoms.positions, new_atoms.positions)
+        Si.wrap()
+        assert np.allclose(Si.positions, new_atoms.positions)
 
 
 def test_constraints_Si(Si):
     """Test that non-parmetric constraints are written and read in properly"""
-    atoms.set_constraint([FixAtoms(indices=[0]), FixCartesian(1, [1, 0, 1])])
-    atoms.write(file, format=format, scaled=True, wrap=False)
+    Si.set_constraint([FixAtoms(indices=[0]), FixCartesian(1, [1, 0, 1])])
+    Si.write(file, format=format, scaled=True, wrap=False)
     new_atoms = read(file)
-    assert np.allclose(atoms.positions, new_atoms.positions)
-    assert len(atoms.constraints) == len(new_atoms.constraints)
-    assert str(atoms.constraints[0]) == str(new_atoms.constraints[0])
-    assert str(atoms.constraints[1]) == str(new_atoms.constraints[1])
+    assert np.allclose(Si.positions, new_atoms.positions)
+    assert len(Si.constraints) == len(new_atoms.constraints)
+    assert str(Si.constraints[0]) == str(new_atoms.constraints[0])
+    assert str(Si.constraints[1]) == str(new_atoms.constraints[1])
 
 
 def test_cartesian_H2O(H2O):
     """write cartesian coords and check if structure was preserved for molecular systems"""
-    atoms.write(file, format=format)
+    H2O.write(file, format=format)
     new_atoms = read((file))
-    assert np.allclose(atoms.positions, new_atoms.positions)
+    assert np.allclose(H2O.positions, new_atoms.positions)
 
 
 def test_scaled_H2O(H2O):
     """Attempt to write fractional coordinates and see if scaled is set to False and can be written properly"""
-    with warnings.catch_warnings(record=True) as w:
-        # Cause all warnings to always be triggered.
-        warnings.simplefilter("always")
-
-        # Attempt to write a molecular system with scaled=True
-        atoms.write(file, format=format, scaled=True, wrap=False)
-        assert len(w) == 1
-        assert str(w[-1].message) == "Setting scaled to False for molecular system."
-
-    new_atoms = read(file)
-    assert np.allclose(atoms.positions, new_atoms.positions)
+    with pytest.raises(
+        ValueError,
+        match="Requesting scaled for a calculation where scaled=True, but the system is not periodic",
+    ):
+        H2O.write(file, format=format, scaled=True, wrap=False)
 
 
 def test_param_const_H2O(H2O):
@@ -152,7 +147,7 @@ def test_param_const_H2O(H2O):
         warnings.simplefilter("always")
 
         # Attempt to write a molecular system with geo_constrain=True
-        atoms.write(file, geo_constrain=True)
+        H2O.write(file, geo_constrain=True)
         assert len(w) == 1
         assert (
             str(w[-1].message)
@@ -160,26 +155,27 @@ def test_param_const_H2O(H2O):
         )
 
     new_atoms = read(file)
-    assert np.allclose(atoms.positions, new_atoms.positions)
+    assert np.allclose(H2O.positions, new_atoms.positions)
 
 
 def test_velocities_H2O(H2O):
     """Confirm that the velocities are passed to the geometry.in file and can be read back in"""
     velocities = [(1.0, 0.0, 0.0), (-1.0, 1.0, 0.0), (0.0, 0.0, 0.0)]
-    atoms.set_velocities(velocities)
-    atoms.write(file, format=format, scaled=False, velocities=True)
+    H2O.set_velocities(velocities)
+    H2O.write(file, format=format, scaled=False, write_velocities=True)
     new_atoms = read(file)
-    assert np.allclose(atoms.positions, new_atoms.positions)
-    assert np.allclose(atoms.get_velocities(), new_atoms.get_velocities())
+    assert np.allclose(H2O.positions, new_atoms.positions)
+    assert np.allclose(H2O.get_velocities(), new_atoms.get_velocities())
 
 
 def test_info_str(H2O):
     """Confirm that the passed info_str is passed to the geometry.in file"""
-    atoms.write(file, format=format, info_str="TEST INFO STR")
+    H2O.write(file, format=format, info_str="TEST INFO STR")
     with open(file, "r") as fd:
         geometry_lines = fd.readlines()
-        assert "# Additional information:" in geometry_lines[5]
-        assert "# TEST INFO STR" in geometry_lines[6]
+        print(geometry_lines)
+        assert "# Additional information:" in geometry_lines[6]
+        assert "# TEST INFO STR" in geometry_lines[7]
 
 
 sample_geometry_1 = """\
