@@ -1265,8 +1265,9 @@ class AimsOutCalcChunk(AimsOutChunk):
                 line = line.replace("**************", "         10000")
                 line = line.replace("***************", "          10000")
                 line = line.replace("****************", "           10000")
-                eigenvalues[kpt_ind, ll, spin] = float(line.split()[3])
-                occupancies[kpt_ind, ll, spin] = float(line.split()[1])
+                split_line = line.split()
+                eigenvalues[kpt_ind, ll, spin] = float(split_line[3])
+                occupancies[kpt_ind, ll, spin] = float(split_line[1])
         return {"eigenvalues": eigenvalues, "occupancies": occupancies}
 
     @lazyproperty
