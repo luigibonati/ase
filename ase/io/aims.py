@@ -1262,9 +1262,10 @@ class AimsOutCalcChunk(AimsOutChunk):
             for ll, line in enumerate(
                 self.lines[occ_start + 1:occ_start + self.n_bands + 1]
             ):
-                line = line.replace("**************", "         10000")
-                line = line.replace("***************", "          10000")
-                line = line.replace("****************", "           10000")
+                if "***" in line:
+                    warn_msg = f"The {ll+1}th eigenvalue for the {kpt_ind+1}th k-point and {spin}th channels could not be read (likely too large to be printed in the output file)"
+                    warnings.warn(warn_msg)
+                    continue
                 split_line = line.split()
                 eigenvalues[kpt_ind, ll, spin] = float(split_line[3])
                 occupancies[kpt_ind, ll, spin] = float(split_line[1])
