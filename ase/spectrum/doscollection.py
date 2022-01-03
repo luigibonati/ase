@@ -348,7 +348,7 @@ class DOSCollection(collections.abc.Sequence):
 
 
 @singledispatch
-def _add_to_collection(other: DOSCollection,
+def _add_to_collection(other: Union[DOSData, DOSCollection],
                        collection: DOSCollection) -> DOSCollection:
     if isinstance(other, type(collection)):
         return type(collection)(list(collection) + list(other))
