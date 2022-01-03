@@ -10,6 +10,7 @@ from ase.formula import Formula
 
 Integers = Union[Sequence[int], np.ndarray]
 
+
 def string2symbols(s: str) -> List[str]:
     """Convert string to list of chemical symbols."""
     return list(Formula(s))

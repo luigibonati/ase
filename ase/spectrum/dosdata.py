@@ -18,6 +18,7 @@ Info = Dict[str, str]
 # Still no good solution to type checking with arrays.
 Floats = Union[Sequence[float], np.ndarray]
 
+
 class DOSData(metaclass=ABCMeta):
     """Abstract base class for a single series of DOS-like data
 

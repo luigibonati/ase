@@ -21,6 +21,7 @@ _ZMatrixRow = namedtuple(
 
 ThreeFloats = Union[Tuple[float, float, float], np.ndarray]
 
+
 class _ZMatrixToAtoms:
     known_units = dict(
         distance={'angstrom': Angstrom, 'bohr': Bohr, 'au': Bohr, 'nm': nm},
