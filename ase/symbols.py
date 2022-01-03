@@ -8,6 +8,8 @@ from ase.data import atomic_numbers, chemical_symbols
 from ase.formula import Formula
 
 
+Integers = Union[Sequence[int], np.ndarray]
+
 def string2symbols(s: str) -> List[str]:
     """Convert string to list of chemical symbols."""
     return list(Formula(s))
@@ -153,7 +155,7 @@ class Symbols(collections.abc.Sequence):
 
         return formula
 
-    def search(self, symbols) -> Sequence[int]:
+    def search(self, symbols) -> Integers:
         """Return the indices of elements with given symbol or symbols."""
         numbers = set(symbols2numbers(symbols))
         indices = [i for i, number in enumerate(self.numbers)
@@ -164,7 +166,7 @@ class Symbols(collections.abc.Sequence):
         """Return unique symbols as a set."""
         return set(self)
 
-    def indices(self) -> Dict[str, Sequence[int]]:
+    def indices(self) -> Dict[str, Integers]:
         """Return dictionary mapping each unique symbol to indices.
 
         >>> from ase.build import molecule
