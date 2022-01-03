@@ -15,7 +15,7 @@ _re_defs = re.compile(r'\s*=\s*|\s+')
 
 
 _ZMatrixRow = namedtuple(
-    'ZMatrixRow', 'ind1 dist ind2 a_bend ind3 a_dihedral',
+    '_ZMatrixRow', 'ind1 dist ind2 a_bend ind3 a_dihedral',
 )
 
 
