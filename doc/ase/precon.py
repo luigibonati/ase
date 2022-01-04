@@ -17,11 +17,13 @@ energies = []
 log_calc = LoggingCalculator(EMT())
 
 for precon, label in [(None, 'None'), (Exp(A=3, mu=1.0), 'Exp(A=3)')]:
+    break  # XXX disabled due to #1022
     log_calc.label = label
     atoms = a0.copy()
     atoms.calc = log_calc
     opt = PreconLBFGS(atoms, precon=precon, use_armijo=True)
     opt.run(fmax=1e-3)
 
-log_calc.plot(markers=['r-', 'b-'], energy=False, lw=2)
+# XXX Temporarily disabled due to #1022
+# log_calc.plot(markers=['r-', 'b-'], energy=False, lw=2)
 plt.savefig('precon.png')
