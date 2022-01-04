@@ -1579,6 +1579,15 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
             constraint_mask[constraint.a] = constraint.mask
         else:
             warnings.warn('Ignored unknown constraint {}'.format(constraint))
+    masks = []
+    for atom in atoms:
+        # only inclued mask if something is fixed
+        if not all(constraint_mask[atom.index]):
+            mask = ' {mask[0]} {mask[1]} {mask[2]}'.format(
+                mask=constraint_mask[atom.index])
+        else:
+            mask = ''
+        masks.append(mask)
 
     # Species info holds the information on the pseudopotential and
     # associated for each element
@@ -1610,7 +1619,7 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
 
     if nspin == 2:
         # Spin on
-        for atom, magmom in zip(atoms, atoms.get_initial_magnetic_moments()):
+        for atom, mask, magmom in zip(atoms, masks, atoms.get_initial_magnetic_moments()):
             if (atom.symbol, magmom) not in atomic_species:
                 # spin as fraction of valence
                 fspin = float(magmom) / species_info[atom.symbol]['valence']
@@ -1628,35 +1637,19 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
                         pseudo=species_info[atom.symbol]['pseudo']))
             # lookup tidx to append to name
             sidx, tidx = atomic_species[(atom.symbol, magmom)]
-
-            # only inclued mask if something is fixed
-            if not all(constraint_mask[atom.index]):
-                mask = ' {mask[0]} {mask[1]} {mask[2]}'.format(
-                    mask=constraint_mask[atom.index])
-            else:
-                mask = ''
-
             # construct line for atomic positions
             atomic_positions_str.append(
                 format_atom_position(atom, crystal_coordinates, mask=mask, tidx=tidx)
             )
     else:
         # Do nothing about magnetisation
-        for atom in atoms:
+        for atom, mask in zip(atoms, masks):
             if atom.symbol not in atomic_species:
                 atomic_species[atom.symbol] = True  # just a placeholder
                 atomic_species_str.append(
                     '{species} {mass} {pseudo}\n'.format(
                         species=atom.symbol, mass=atom.mass,
                         pseudo=species_info[atom.symbol]['pseudo']))
-
-            # only inclued mask if something is fixed
-            if not all(constraint_mask[atom.index]):
-                mask = ' {mask[0]} {mask[1]} {mask[2]}'.format(
-                    mask=constraint_mask[atom.index])
-            else:
-                mask = ''
-
             # construct line for atomic positions
             atomic_positions_str.append(
                 format_atom_position(atom, crystal_coordinates, mask=mask)
