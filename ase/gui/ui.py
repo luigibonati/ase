@@ -53,6 +53,7 @@ def helpwindow(text):
     set_windowtype(win, 'dialog')
     win.add(Text(text))
 
+
 def set_windowtype(win, wmtype):
     #only on X11
     #WM_TYPE, for possible settings see
@@ -60,6 +61,7 @@ def set_windowtype(win, wmtype):
     #you want dialog, normal or utility most likely
     if win._windowingsystem == "x11":
         win.wm_attributes('-type', wmtype)
+
 
 class BaseWindow:
     def __init__(self, title, close=None, wmtype='normal'):
