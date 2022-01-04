@@ -1448,6 +1448,46 @@ def kspacing_to_grid(atoms, spacing, calculated_spacing=None):
 
     return kpoint_grid
 
+def format_atom_position(atom, crystal_coordinates, mask='', tidx=None):
+    """Format one line of atomic positions in
+    Quantum ESPRESSO ATOMIC_POSITIONS card.
+
+    >>> for atom in make_supercell(bulk('Li', 'bcc'), np.ones(3)-np.eye(3)):
+    >>>     format_atom_position(atom, True)
+    Li 0.0000000000 0.0000000000 0.0000000000 
+    Li 0.5000000000 0.5000000000 0.5000000000
+
+    Parameters
+    ----------
+    atom : Atom
+        A structure that has symbol and [position | (a, b, c)].
+    crystal_coordinates: bool
+        Whether the atomic positions should be written to the QE input file in
+        absolute (False, default) or relative (crystal) coordinates (True).
+    mask, optional : str
+        String of ndim=3 0 or 1 for constraining atomic positions.
+    tidx, optional : int
+        Magnetic type index.
+
+    Returns
+    -------
+    atom_line : str
+        Input line for atom position
+    """
+    if crystal_coordinates:
+        coords = [atom.a, atom.b, atom.c]
+    else:
+        coords = atom.position
+    line_fmt = '{atom.symbol}'
+    inps = dict(atom=atom)
+    if tidx is not None:
+      line_fmt += '{tidx}'
+      inps["tidx"] = tidx
+    line_fmt += ' {coords[0]:.10f} {coords[1]:.10f} {coords[2]:.10f} '
+    inps["coords"] = coords
+    line_fmt += ' ' + mask + '\n'
+    astr = line_fmt.format(**inps)
+    return astr
 
 def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
                       kspacing=None, kpts=None, koffset=(0, 0, 0),
@@ -1597,15 +1637,9 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
                 mask = ''
 
             # construct line for atomic positions
-            if crystal_coordinates:
-                coords = [atom.a, atom.b, atom.c]
-            else:
-                coords = atom.position
             atomic_positions_str.append(
-                '{atom.symbol}{tidx} '
-                '{coords[0]:.10f} {coords[1]:.10f} {coords[2]:.10f} '
-                '{mask}\n'.format(atom=atom, tidx=tidx, coords=coords, mask=mask))
-
+                format_atom_position(atom, crystal_coordinates, mask=mask, tidx=tidx)
+            )
     else:
         # Do nothing about magnetisation
         for atom in atoms:
@@ -1623,14 +1657,10 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
             else:
                 mask = ''
 
-            if crystal_coordinates:
-                coords = [atom.a, atom.b, atom.c]
-            else:
-                coords = atom.position
+            # construct line for atomic positions
             atomic_positions_str.append(
-                '{atom.symbol} '
-                '{coords[0]:.10f} {coords[1]:.10f} {coords[2]:.10f} '
-                '{mask}\n'.format(atom=atom, coords=coords, mask=mask))
+                format_atom_position(atom, crystal_coordinates, mask=mask)
+            )
 
     # Add computed parameters
     # different magnetisms means different types
