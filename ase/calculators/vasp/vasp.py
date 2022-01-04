@@ -1170,6 +1170,73 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                     i_freq.append(float(data[-2]))
         return freq, i_freq
 
+    def read_vib_modes(self, lines=None):
+        """Read vibrational modes.
+
+        Returns a list of tuples. Each tuple contains the eigenvalue
+        (i.e. the frequency of the mode in cm^-1) and the corresponding
+        eigenvector.
+
+        Note that the frequency can be a complex number.
+        """
+        modes = []
+
+        if not lines:
+            lines = self.load_file('OUTCAR')
+
+        nAtoms = len(self.atoms)
+        assert nAtoms > 0, "self.atoms seems to be empty."
+        i = 0
+        while i < len(lines):
+            data = lines[i].split()
+            if 'THz' in data:
+                #check that OUTCAR format has not changed
+                assert data[-3] == 'cm-1', "OUTCAR format changed/bad!"
+                freq = float(data[-4])
+                if 'f/i=' in data:
+                    freq = complex(0, freq)
+                matrix = []
+                i += 2
+                for j in range(nAtoms):
+                    data = lines[i+j].split()
+                    assert len(data) == 6, "Unexpected OUTCAR format"
+                    matrix.append([float(x) for x in data[-3:]])
+                i += j
+                modes.append((freq, np.array(matrix)[self.resort]))
+            i += 1
+        return modes
+
+    def get_vibrations(self, index=None, steps=5, factor=0.1, lines=None):
+        """
+        Get trajectories of the atomic motion representing the calculated
+        normal modes.
+
+        Select one or multiple normal modes using `index`.
+        The magnitude of the displacement can be controlled by setting the
+        number of `steps` and the `factor` multiplying the eigenvector.
+        The number of images will be `steps*2`
+
+        Returns a list of tuples containing the frequency (in cm^-1) and
+        a list of Atoms. The first Atoms object is a copy of `self.atoms`.
+        """
+
+        modes = self.read_vib_modes(lines=lines)
+        if index:
+            modes = modes[index]
+
+        vibrations = []
+        for mode in modes:
+            traj = [self.atoms]
+            for i in range(1, steps+1):
+                traj.append(self.atoms.copy())
+                traj[-1].positions += mode[1] * factor * i
+            #smooth backward motion
+            for i in range(1, steps):
+                traj.append(traj[steps-i])
+            vibrations.append((mode[0], traj))
+
+        return vibrations
+
     def get_nonselfconsistent_energies(self, bee_type):
         """ Method that reads and returns BEE energy contributions
             written in OUTCAR file.
