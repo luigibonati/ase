@@ -8,6 +8,7 @@ import pytest
 
 from ase.calculators.calculator import (names as calculator_names,
                                         get_calculator_class)
+from ase.calculators.genericfileio import read_stdout
 
 
 class NotInstalled(Exception):
@@ -69,28 +70,26 @@ class AbinitFactory:
         major_ver = int(version.split('.')[0])
         return major_ver < 9
 
-    def _base_kw(self, v8_legacy_format):
-        if v8_legacy_format:
-            command = f'{self.executable} < PREFIX.files > PREFIX.log'
-        else:
-            command = f'{self.executable} PREFIX.in > PREFIX.log'
-
-        return dict(command=command,
-                    v8_legacy_format=v8_legacy_format,
-                    pp_paths=self.pp_paths,
+    def _base_kw(self):
+        #command = f'{self.executable} PREFIX.in > PREFIX.log'
+        return dict(pp_paths=self.pp_paths,
                     ecut=150,
                     chksymbreak=0,
                     toldfe=1e-3)
 
     def calc(self, **kwargs):
-        from ase.calculators.abinit import Abinit
-        legacy = kwargs.pop('v8_legacy_format', None)
-        if legacy is None:
-            legacy = self.is_legacy_version()
+        from ase.calculators.abinit import Abinit, AbinitProfile
 
-        kw = self._base_kw(legacy)
+        profile = AbinitProfile([self.executable])
+
+        if self.is_legacy_version():
+            raise RuntimeError('Sorry, Abinit 9+ is required.')
+
+        kw = self._base_kw()
+        assert kw['pp_paths'] is not None
         kw.update(kwargs)
-        return Abinit(**kw)
+        assert kw['pp_paths'] is not None
+        return Abinit(profile=profile, **kw)
 
     @classmethod
     def fromconfig(cls, config):
@@ -108,10 +107,11 @@ class AimsFactory:
         # XXX pseudo_dir
 
     def calc(self, **kwargs):
-        from ase.calculators.aims import Aims
+        from ase.calculators.aims import Aims, AimsProfile
         kwargs1 = dict(xc='LDA')
         kwargs1.update(kwargs)
-        return Aims(command=self.executable, **kwargs1)
+        profile = AimsProfile([self.executable])
+        return Aims(profile=profile, **kwargs1)
 
     def version(self):
         from ase.calculators.aims import get_aims_version
@@ -185,8 +185,10 @@ class CastepFactory:
 
 @factory('dftb')
 class DFTBFactory:
-    def __init__(self, executable):
+    def __init__(self, executable, skt_paths):
         self.executable = executable
+        assert len(skt_paths) == 1
+        self.skt_path = skt_paths[0]
 
     def version(self):
         stdout = read_stdout([self.executable])
@@ -195,20 +197,15 @@ class DFTBFactory:
 
     def calc(self, **kwargs):
         from ase.calculators.dftb import Dftb
-        # XXX datafiles should be imported from datafiles project
-        # We should include more datafiles for DFTB there, and remove them
-        # from ASE's own datadir.
         command = f'{self.executable} > PREFIX.out'
-        datadir = Path(__file__).parent / 'testdata'
-        assert datadir.exists()
         return Dftb(
             command=command,
-            slako_dir=str(datadir) + '/',  # XXX not obvious
+            slako_dir=str(self.skt_path) + '/',  # XXX not obvious
             **kwargs)
 
     @classmethod
     def fromconfig(cls, config):
-        return cls(config.executables['dftb'])
+        return cls(config.executables['dftb'], config.datafiles['dftb'])
 
 
 @factory('dftd3')
@@ -223,24 +220,6 @@ class DFTD3Factory:
     @classmethod
     def fromconfig(cls, config):
         return cls(config.executables['dftd3'])
-
-
-def read_stdout(args, createfile=None):
-    import tempfile
-    from subprocess import Popen, PIPE
-    with tempfile.TemporaryDirectory() as directory:
-        if createfile is not None:
-            path = Path(directory) / createfile
-            path.touch()
-        proc = Popen(args,
-                     stdout=PIPE,
-                     stderr=PIPE,
-                     stdin=PIPE,
-                     cwd=directory,
-                     encoding='ascii')
-        stdout, _ = proc.communicate()
-        # Exit code will be != 0 because there isn't an input file
-    return stdout
 
 
 @factory('elk')
@@ -274,15 +253,16 @@ class EspressoFactory:
         from ase.units import Ry
         return dict(ecutwfc=300 / Ry)
 
+    def _profile(self):
+        from ase.calculators.espresso import EspressoProfile
+        return EspressoProfile([self.executable])
+
     def version(self):
-        stdout = read_stdout([self.executable])
-        match = re.match(r'\s*Program PWSCF\s*(\S+)', stdout, re.M)
-        assert match is not None
-        return match.group(1)
+        self._profile().version()
 
     def calc(self, **kwargs):
         from ase.calculators.espresso import Espresso
-        command = '{} -in PREFIX.pwi > PREFIX.pwo'.format(self.executable)
+
         pseudopotentials = {}
         for path in self.pseudo_dir.glob('*.UPF'):
             fname = path.name
@@ -292,7 +272,7 @@ class EspressoFactory:
 
         kw = self._base_kw()
         kw.update(kwargs)
-        return Espresso(command=command,
+        return Espresso(profile=self._profile(),
                         pseudo_dir=str(self.pseudo_dir),
                         pseudopotentials=pseudopotentials,
                         **kw)
@@ -363,6 +343,23 @@ class GPAWFactory:
         # XXX should be made non-pytest dependent
         if spec is None:
             raise NotInstalled('gpaw')
+        return cls()
+
+
+@factory('psi4')
+class Psi4Factory:
+    importname = 'psi4'
+
+    def calc(self, **kwargs):
+        from ase.calculators.psi4 import Psi4
+        return Psi4(**kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        try:
+            import psi4  # noqa
+        except ModuleNotFoundError:
+            raise NotInstalled('psi4')
         return cls()
 
 
@@ -476,15 +473,16 @@ class OctopusFactory:
     def __init__(self, executable):
         self.executable = executable
 
+    def _profile(self):
+        from ase.calculators.octopus import OctopusProfile
+        return OctopusProfile([self.executable])
+
     def version(self):
-        stdout = read_stdout([self.executable, '--version'])
-        match = re.match(r'octopus\s*(.+)', stdout)
-        return match.group(1)
+        return self._profile().version()
 
     def calc(self, **kwargs):
         from ase.calculators.octopus import Octopus
-        command = f'{self.executable} > stdout.log'
-        return Octopus(command=command, **kwargs)
+        return Octopus(profile=self._profile(), **kwargs)
 
     @classmethod
     def fromconfig(cls, config):
@@ -542,6 +540,26 @@ class NWChemFactory:
         return cls(config.executables['nwchem'])
 
 
+@factory('plumed')
+class PlumedFactory:
+    def __init__(self):
+        import plumed
+        self.path = plumed.__spec__.origin
+        
+    def calc(self, **kwargs):
+        from ase.calculators.plumed import Plumed
+        return Plumed(**kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        import importlib
+        spec = importlib.util.find_spec('plumed')
+        # XXX should be made non-pytest dependent
+        if spec is None:
+            raise NotInstalled('plumed')
+        return cls()
+
+
 class NoSuchCalculator(Exception):
     pass
 
@@ -572,7 +590,6 @@ class Factories:
         'mopac',
         'onetep',
         'orca',
-        'Psi4',
         'qchem',
         'turbomole',
     }

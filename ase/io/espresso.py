@@ -4,8 +4,9 @@ Read multiple structures and results from pw.x output files. Read
 structures from pw.x input files.
 
 Built for PWSCF v.5.3.0 but should work with earlier and later versions.
-Can deal with most major functionality, but might fail with ibrav =/= 0
-or crystal_sg positions.
+Can deal with most major functionality, with the notable exception of ibrav,
+for which we only support ibrav == 0 and force CELL_PARAMETERS to be provided
+explicitly.
 
 Units are converted using CODATA 2006, as used internally by Quantum
 ESPRESSO.
@@ -21,6 +22,7 @@ from os import path
 import numpy as np
 
 from ase.atoms import Atoms
+from ase.cell import Cell
 from ase.calculators.singlepoint import (SinglePointDFTCalculator,
                                          SinglePointKPoint)
 from ase.calculators.calculator import kpts2ndarray, kpts2sizeandoffsets
@@ -50,9 +52,16 @@ _PW_KPTS = 'number of k points='
 _PW_BANDS = _PW_END
 _PW_BANDSTRUCTURE = 'End of band structure calculation'
 
+# ibrav error message
+ibrav_error_message = 'ASE does not support ibrav != 0. Note that with ibrav ' \
+                      '== 0, Quantum ESPRESSO will still detect the symmetries ' \
+                      'of your system because the CELL_PARAMETERS are defined ' \
+                      'to a high level of precision.'
+
 
 class Namelist(OrderedDict):
     """Case insensitive dict that emulates Fortran Namelists."""
+
     def __contains__(self, key):
         return super(Namelist, self).__contains__(key.lower())
 
@@ -261,7 +270,7 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
         for magmoms_index in indexes[_PW_MAGMOM]:
             if image_index < magmoms_index < next_index:
                 magmoms = [
-                    float(mag_line.split()[5]) for mag_line
+                    float(mag_line.split()[-1]) for mag_line
                     in pwo_lines[magmoms_index + 1:
                                  magmoms_index + 1 + len(structure)]]
 
@@ -319,7 +328,12 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
 
         for bands_index in indexes[_PW_BANDS] + indexes[_PW_BANDSTRUCTURE]:
             if image_index < bands_index < next_index:
-                bands_index += 2
+                bands_index += 1
+                # skip over the lines with DFT+U occupation matrices
+                if 'enter write_ns' in pwo_lines[bands_index]:
+                    while 'exit write_ns' not in pwo_lines[bands_index]:
+                        bands_index += 1
+                bands_index += 1
 
                 if pwo_lines[bands_index].strip() == kpoints_warning:
                     continue
@@ -519,9 +533,9 @@ def read_espresso_in(fileobj):
             alat = data['system']['A']
         else:
             alat = None
-        cell, cell_alat = get_cell_parameters(card_lines, alat=alat)
+        cell, _ = get_cell_parameters(card_lines, alat=alat)
     else:
-        alat, cell = ibrav_to_cell(data['system'])
+        raise ValueError(ibrav_error_message)
 
     # species_info holds some info for each element
     species_card = get_atomic_species(card_lines, n_species=data['system']['ntyp'])
@@ -565,9 +579,8 @@ def ibrav_to_cell(system):
 
     Returns
     -------
-    alat, cell : float, np.array
-        Cell parameter in Angstrom, and
-        The 3x3 array representation of the cell.
+    cell : Cell
+        The cell as an ASE Cell object
 
     Raises
     ------
@@ -593,14 +606,9 @@ def ibrav_to_cell(system):
             cosab = system.get('celldm(6)', 0.0)
     elif 'a' in system:
         # a, b, c, cosAB, cosAC, cosBC in Angstrom
-        alat = system['a']
-        b_over_a = system.get('b', 0.0) / alat
-        c_over_a = system.get('c', 0.0) / alat
-        cosab = system.get('cosab', 0.0)
-        cosac = system.get('cosac', 0.0)
-        cosbc = system.get('cosbc', 0.0)
+        raise NotImplementedError('params_to_cell() does not yet support A/B/C/cosAB/cosAC/cosBC')
     else:
-        raise KeyError("Missing celldm(1) or a cell parameter.")
+        raise KeyError("Missing celldm(1)")
 
     if system['ibrav'] == 1:
         cell = np.identity(3) * alat
@@ -663,7 +671,7 @@ def ibrav_to_cell(system):
     elif system['ibrav'] == 11:
         cell = np.array([[1.0 / 2.0, b_over_a / 2.0, c_over_a / 2.0],
                          [-1.0 / 2.0, b_over_a / 2.0, c_over_a / 2.0],
-                         [-1.0, 2.0, -b_over_a / 2.0, c_over_a / 2.0]]) * alat
+                         [-1.0 / 2.0, -b_over_a / 2.0, c_over_a / 2.0]]) * alat
     elif system['ibrav'] == 12:
         sinab = (1.0 - cosab**2)**0.5
         cell = np.array([[1.0, 0.0, 0.0],
@@ -692,7 +700,7 @@ def ibrav_to_cell(system):
         raise NotImplementedError('ibrav = {0} is not implemented'
                                   ''.format(system['ibrav']))
 
-    return alat, cell
+    return Cell(cell)
 
 
 def get_pseudo_dirs(data):
@@ -1208,8 +1216,7 @@ KEYS = Namelist((
         'lelfield', 'nberrycyc', 'lorbm', 'lberry', 'gdir', 'nppstr',
         'lfcpopt', 'monopole']),
     ('SYSTEM', [
-        'ibrav', 'celldm', 'A', 'B', 'C', 'cosAB', 'cosAC', 'cosBC', 'nat',
-        'ntyp', 'nbnd', 'tot_charge', 'tot_magnetization',
+        'ibrav', 'nat', 'ntyp', 'nbnd', 'tot_charge', 'tot_magnetization',
         'starting_magnetization', 'ecutwfc', 'ecutrho', 'ecutfock', 'nr1',
         'nr2', 'nr3', 'nr1s', 'nr2s', 'nr3s', 'nosym', 'nosym_evc', 'noinv',
         'no_t_rev', 'force_symmorphic', 'use_all_frac', 'occupations',
@@ -1399,105 +1406,6 @@ def grep_valence(pseudopotential):
             raise ValueError('Valence missing in {}'.format(pseudopotential))
 
 
-def cell_to_ibrav(cell, ibrav):
-    """
-    Calculate the appropriate `celldm(..)` parameters for the given ibrav
-    using the given cell. The units for `celldm(..)` are Bohr.
-
-    Does minimal checking of the cell shape, so it is possible to create
-    a nonsense structure if the ibrav is inapproprite for the cell. These
-    are derived to be symmetric with the routine for constructing the cell
-    from ibrav parameters so directions of some vectors may be unexpected.
-
-    Parameters
-    ----------
-    cell : np.array
-        A 3x3 representation of a unit cell
-    ibrav : int
-        Bravais-lattice index according to the pw.x designations.
-
-    Returns
-    -------
-    parameters : dict
-        A dictionary with all the necessary `celldm(..)` keys assigned
-        necessary values (in units of Bohr). Also includes `ibrav` so it
-        can be passed back to `ibrav_to_cell`.
-
-    Raises
-    ------
-    NotImplementedError
-        Only a limited number of ibrav settings can be parsed. An error
-        is raised if the ibrav interpretation is not implemented.
-    """
-    parameters = {'ibrav': ibrav}
-
-    if ibrav == 1:
-        parameters['celldm(1)'] = cell[0][0] / units['Bohr']
-    elif ibrav in [2, 3, -3]:
-        parameters['celldm(1)'] = cell[0][2] * 2 / units['Bohr']
-    elif ibrav in [4, 6]:
-        parameters['celldm(1)'] = cell[0][0] / units['Bohr']
-        parameters['celldm(3)'] = cell[2][2] / cell[0][0]
-    elif ibrav in [5, -5]:
-        # Manually derive
-        a = np.linalg.norm(cell[0])
-        cosab = np.dot(cell[0], cell[1]) / (a ** 2)
-        parameters['celldm(1)'] = a / units['Bohr']
-        parameters['celldm(4)'] = cosab
-    elif ibrav == 7:
-        parameters['celldm(1)'] = cell[0][0] * 2 / units['Bohr']
-        parameters['celldm(3)'] = cell[2][2] / cell[0][0]
-    elif ibrav == 8:
-        parameters['celldm(1)'] = cell[0][0] / units['Bohr']
-        parameters['celldm(2)'] = cell[1][1] / cell[0][0]
-        parameters['celldm(3)'] = cell[2][2] / cell[0][0]
-    elif ibrav in [9, -9]:
-        parameters['celldm(1)'] = cell[0][0] * 2 / units['Bohr']
-        parameters['celldm(2)'] = cell[1][1] / cell[0][0]
-        parameters['celldm(3)'] = cell[2][2] * 2 / cell[0][0]
-    elif ibrav in [10, 11]:
-        parameters['celldm(1)'] = cell[0][0] * 2 / units['Bohr']
-        parameters['celldm(2)'] = cell[1][1] / cell[0][0]
-        parameters['celldm(3)'] = cell[2][2] / cell[0][0]
-    elif ibrav == 12:
-        # cos^2 + sin^2
-        b = (cell[1][0]**2 + cell[1][1]**2)**0.5
-        parameters['celldm(1)'] = cell[0][0] / units['Bohr']
-        parameters['celldm(2)'] = b / cell[0][0]
-        parameters['celldm(3)'] = cell[2][2] / cell[0][0]
-        parameters['celldm(4)'] = cell[1][0] / b
-    elif ibrav == -12:
-        # cos^2 + sin^2
-        c = (cell[2][0]**2 + cell[2][2]**2)**0.5
-        parameters['celldm(1)'] = cell[0][0] / units['Bohr']
-        parameters['celldm(2)'] = cell[1][1] / cell[0][0]
-        parameters['celldm(3)'] = c / cell[0][0]
-        parameters['celldm(4)'] = cell[2][0] / c
-    elif ibrav == 13:
-        b = (cell[1][0]**2 + cell[1][1]**2)**0.5
-        parameters['celldm(1)'] = cell[0][0] * 2 / units['Bohr']
-        parameters['celldm(2)'] = b / (cell[0][0] * 2)
-        parameters['celldm(3)'] = cell[2][2] / cell[0][0]
-        parameters['celldm(4)'] = cell[1][0] / b
-    elif ibrav == 14:
-        # Manually derive
-        a, b, c = np.linalg.norm(cell, axis=1)
-        cosbc = np.dot(cell[1], cell[2]) / (b * c)
-        cosac = np.dot(cell[0], cell[2]) / (a * c)
-        cosab = np.dot(cell[0], cell[1]) / (a * b)
-        parameters['celldm(1)'] = a / units['Bohr']
-        parameters['celldm(2)'] = b / a
-        parameters['celldm(3)'] = c / a
-        parameters['celldm(4)'] = cosbc
-        parameters['celldm(5)'] = cosac
-        parameters['celldm(6)'] = cosab
-    else:
-        raise NotImplementedError('ibrav = {0} is not implemented'
-                                  ''.format(ibrav))
-
-    return parameters
-
-
 def kspacing_to_grid(atoms, spacing, calculated_spacing=None):
     """
     Calculate the kpoint mesh that is equivalent to the given spacing
@@ -1528,6 +1436,10 @@ def kspacing_to_grid(atoms, spacing, calculated_spacing=None):
     kpoint_grid = [int(r_x / spacing) + 1,
                    int(r_y / spacing) + 1,
                    int(r_z / spacing) + 1]
+
+    for i, _ in enumerate(kpoint_grid):
+        if not atoms.pbc[i]:
+            kpoint_grid[i] = 1
 
     if calculated_spacing is not None:
         calculated_spacing[:] = [r_x / kpoint_grid[0],
@@ -1562,17 +1474,15 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
     - `starting_magnetization` derived from the `mgmoms` and pseudopotentials
       (searches default paths for pseudo files.)
     - Automatic assignment of options to their correct sections.
-    - Interpretation of ibrav (cell must exactly match the vectors defined
-      in the QE docs).
 
     Not implemented:
 
+    - Non-zero values of ibrav
     - Lists of k-points
     - Other constraints
     - Hubbard parameters
     - Validation of the argument types for input
     - Validation of required options
-    - Reorientation for ibrav settings
     - Noncollinear magnetism
 
     Parameters
@@ -1727,12 +1637,7 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
     if 'ibrav' in input_parameters['system']:
         ibrav = input_parameters['system']['ibrav']
         if ibrav != 0:
-            celldm = cell_to_ibrav(atoms.cell, ibrav)
-            regen_cell = ibrav_to_cell(celldm)[1]
-            if not np.allclose(atoms.cell, regen_cell):
-                warnings.warn('Input cell does not match requested ibrav'
-                              '{} != {}'.format(regen_cell, atoms.cell))
-            input_parameters['system'].update(celldm)
+            raise ValueError(ibrav_error_message)
     else:
         # Just use standard cell block
         input_parameters['system']['ibrav'] = 0

@@ -16,6 +16,13 @@ class GetPropertiesMixin(ABC):
     def get_property(self, name, atoms=None, allow_calculation=True):
         """Get the named property."""
 
+    def get_potential_energy(self, atoms=None, force_consistent=False):
+        if force_consistent:
+            name = 'free_energy'
+        else:
+            name = 'energy'
+        return self.get_property(name, atoms)
+
     def get_potential_energies(self, atoms=None):
         return self.get_property('energies', atoms)
 

@@ -1,4 +1,4 @@
-from ase.calculators.calculator import Calculator, all_changes
+from ase.calculators.calculator import BaseCalculator, Calculator, all_changes
 from ase.calculators.calculator import PropertyNotImplementedError
 
 
@@ -23,8 +23,8 @@ class LinearCombinationCalculator(Calculator):
             raise ValueError('The value of the calcs must be a list of Calculators')
 
         for calc in calcs:
-            if not isinstance(calc, Calculator):
-                raise ValueError('All the calculators should be inherited form the ase\'s Calculator class')
+            if not isinstance(calc, BaseCalculator):
+                raise ValueError('All the calculators should be inherited form the ase\'s BaseCalculator class')
 
         common_properties = set.intersection(*(set(calc.implemented_properties) for calc in calcs))
         self.implemented_properties = list(common_properties)

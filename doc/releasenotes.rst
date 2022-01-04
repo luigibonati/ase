@@ -9,6 +9,65 @@ Git master branch
 
 :git:`master <>`.
 
+* :func:`ase.build.bulk` now assigns initial magnetic moments
+  to BCC Fe, Co, and Ni.
+
+* :meth:`~ase.cell.Cell.mask` returns the mask of nonzero cell vectors,
+  an array of three booleans.
+
+* :meth:`~ase.cell.Cell.reciprocal` now guarantees that cell vectors
+  which are zero correspond to reciprocal cell vectors that are also
+  zero.  Previously the reciprocal cell vectors could have small
+  nonzero values due to floating point tolerance.
+
+* The :class:`~ase.cell.Cell` object now has
+  :meth:`~ase.cell.Cell.normal` and :meth:`~ase.cell.Cell.normals`
+  which calculate normal vectors to one or all pairs of cell vectors.
+  Also added
+  :meth:`~ase.cell.Cell.area` and
+  :meth:`~ase.cell.Cell.areas`, which return the area spanned by one
+  or all pairs of cell vectors.
+
+* New ``a2b`` and ``periodic`` formats for :class:`~ase.formula.Formula`
+  objects.  See :meth:`ase.formula.Formula.format`.  The ``abc`` format
+  has been renamed to ``ab2``.
+
+* IO formats can now be implemented in separate packages and registered
+  in ase with the entry point ``ase.ioformats`` in the external package
+  configuration. This entry point only accepts objects of the type
+  :class:`~ase.utils.plugins.ExternalIOFormat`.
+
+Calculators:
+
+* Created new module :mod:`ase.calculators.harmonic` with the
+  :class:`ase.calculators.harmonic.HarmonicCalculator`
+  for calculations with a Hessian-based harmonic force field. Can be used to
+  compute Anharmonic Corrections to the Harmonic Approximation.
+
+* Created new :class:`ase.calculators.plumed.Plumed` that is an interface
+  between ASE and Plumed_ for carrying out enhanced sampling methods and MD
+  postprocessing.
+
+* :class:`ase.calculators.kim.kimmodel.KIMModelCalculator` updated to allow
+  users to change the parameters of OpenKIM portable models at run time (see
+  https://openkim.org/doc/repository/kim-content/ for an explanation of types
+  of OpenKIM models).
+
+.. _Plumed: https://www.plumed.org/
+
+Version 3.22.1
+==============
+
+1 December 2021: :git:`3.22.1 <../3.22.1>`
+
+* Fixed compatibility of Brillouin zone plotting with matplotlib 3.5+.
+
+
+Version 3.22.0
+==============
+
+24 June 2021: :git:`3.22.0 <../3.22.0>`
+
 
 Calculators:
 
@@ -19,6 +78,18 @@ Calculators:
 * It is now possible to use :class:`~ase.calculators.abinit.Abinit`
   together with :class:`~ase.calculators.socketio.SocketIOCalculator`.
   Requires Abinit 9.4+.
+
+* It is now possible to pass a function to
+  :class:`~ase.calculators.socketio.SocketIOCalculator` to customize
+  startup of a socket client.  This decouples socket I/O calculators
+  from :class:`~ase.calculators.calculator.FileIOCalculator`.
+
+* Added :class:`~ase.calculators.socketio.PySocketIOClient`, a helper class
+  for using the socket I/O calculator with Python clients.
+
+* OpenKIM calculator updated to support kimpy 2.0.0.
+
+* DFTB+ calculator now reads dipole moments.
 
 Algorithms:
 
@@ -32,7 +103,18 @@ Algorithms:
 * :meth:`phonons.get_dos` now returns a DOS object based on the new
   framework in :mod:`ase.spectrum`.
 
-* Contour exploration [MJW please add description]
+* :class:`ase.vibrations.Vibrations` and :class:`ase.phonons.Phonons`
+  now use a simplified caching system where forces for each
+  displacement are saved in JSON files inside a subdirectory.  This
+  breaks old cached calculations.  Old vibrations calculations can be
+  ported using a migration tool; see ``python3 -m
+  ase.vibrations.pickle2json --help``.
+
+* Added :class:`ase.md.contour_exploration.ContourExploration`.
+  It evolves systems at fixed potential energy. This is useful for tracing
+  potential energy contour lines or rapidly exploring the potential
+  energy surface of a system and can be tuned to preferentially sample
+  highly curved regions of the potential energy surface.
 
 * :class:`ase.neb.NEB` has been overhauled and given support for
   preconditioning via a new `precon` argument to its constructor,
@@ -67,7 +149,7 @@ I/O:
 * Parsing an OUTCAR file will now produce an Atoms object
   with periodic boundary conditions.
 
-Breaking change:
+Breaking changes:
 
 * For security, ASE no longer uses pickle for any kind of file I/O.
   This is because a maliciously crafted pickle file can execute
@@ -104,6 +186,16 @@ Bug fixes:
   MD simulations.  As the interactions between MD and constraints are
   not trivial, users should in general verify carefully that simulations
   behave physically correctly.
+* Fix issue where occupancies in ``atoms.info`` would subtly change
+  type when saved to JSON and reloaded.
+
+
+Web-page:
+
+* There used to be two versions of the ASE web-page which was quite
+  confusing.  The https://wiki.fysik.dtu.dk/ase/dev/ web-page has now been
+  dropped.  There is now only https://wiki.fysik.dtu.dk/ase/ and it documents
+  the use of the in development version of ASE.
 
 
 Version 3.21.1
@@ -762,9 +854,6 @@ Algorithms:
 I/O:
 
 * Database supports user defined tables
-
-* Preliminary :class:`~ase.formula.Formula` type added.  Collects all
-  formula manipulation functionality in one place.
 
 * Support for reading and writing DL_POLY format.
 

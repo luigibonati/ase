@@ -15,8 +15,11 @@ _re_defs = re.compile(r'\s*=\s*|\s+')
 
 
 _ZMatrixRow = namedtuple(
-    'ZMatrixRow', 'ind1 dist ind2 a_bend ind3 a_dihedral',
+    '_ZMatrixRow', 'ind1 dist ind2 a_bend ind3 a_dihedral',
 )
+
+
+ThreeFloats = Union[Tuple[float, float, float], np.ndarray]
 
 
 class _ZMatrixToAtoms:
@@ -32,8 +35,8 @@ class _ZMatrixToAtoms:
         self.aconv = self.get_units('angle', aconv)  # type: float
         self.set_defs(defs)
         self.name_to_index: Optional[Dict[str, int]] = dict()
-        self.symbols = []  # type: List[str]
-        self.positions = []  # type: List[Tuple[float, float, float]]
+        self.symbols: List[str] = []
+        self.positions: List[ThreeFloats] = []
 
     @property
     def nrows(self):
@@ -113,7 +116,7 @@ class _ZMatrixToAtoms:
                              .format(self.nrows, indices))
 
     def parse_row(self, row: str) -> Tuple[
-            str, Union[_ZMatrixRow, Tuple[float, float, float]],
+            str, Union[_ZMatrixRow, ThreeFloats],
     ]:
         tokens = row.split()
         name = tokens[0]
@@ -149,7 +152,7 @@ class _ZMatrixToAtoms:
         return name, _ZMatrixRow(ind1, dist, ind2, a_bend, ind3,
                                  a_dihedral)
 
-    def add_atom(self, name: str, pos: Tuple[float, float, float]) -> None:
+    def add_atom(self, name: str, pos: ThreeFloats) -> None:
         """Sets the symbol and position of an atom."""
         self.symbols.append(
             ''.join([c for c in name if c not in digits]).capitalize()

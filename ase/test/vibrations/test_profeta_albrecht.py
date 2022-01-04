@@ -1,6 +1,7 @@
 """
 Test Placzek and Albrecht resonant Raman implementations
 """
+from pathlib import Path
 import pytest
 
 from ase.vibrations.resonant_raman import ResonantRamanCalculator
@@ -18,6 +19,11 @@ def test_compare_placzek_albrecht_intensities(testdir):
                                  overlap=lambda x, y: x.overlap(y),
                                  name=name, txt='-') as rmc:
         rmc.run()
+
+        # check overlap files to be at the correct place
+        assert (Path(name) / 'eq.ov.npy').is_file()
+        # check that there are no leftover files
+        assert len([x for x in Path(name).parent.iterdir()]) == 1
 
     om = 1
     gam = 0.1

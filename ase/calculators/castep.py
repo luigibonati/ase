@@ -85,8 +85,9 @@ def _parse_tss_block(value, scaled=False):
             raise TypeError('castep.cell.positions_abs/frac_intermediate/'
                             'product expects Atoms object or list of strings')
 
-        # First line must be Angstroms!
-        if (not scaled) and value[0].strip() != 'ang':
+        # First line must be Angstroms, or nothing
+        has_units = len(value[0].strip().split()) == 1
+        if (not scaled) and has_units and value[0].strip() != 'ang':
             raise RuntimeError('Only ang units currently supported in castep.'
                                'cell.positions_abs_intermediate/product')
         return '\n'.join(map(str.strip, value))
@@ -961,6 +962,8 @@ End CASTEP Interface Documentation
         kpoints = None
 
         positions_frac_list = []
+        mulliken_charges = []
+        spins = []
 
         out.seek(record_start)
         while True:
@@ -1306,8 +1309,6 @@ End CASTEP Interface Documentation
                 # extract info from the Mulliken analysis
                 elif 'Atomic Populations' in line:
                     # sometimes this appears twice in a castep file
-                    mulliken_charges = []
-                    spins = []
 
                     mulliken_analysis = True
                     # skip the separating line
@@ -1367,12 +1368,20 @@ End CASTEP Interface Documentation
         if not spin_polarized:
             # set to zero spin if non-spin polarized calculation
             spins = np.zeros(len(positions_frac))
+        elif len(spins) != len(positions_frac):
+            warnings.warn('Spins could not be read for the atoms despite'
+                          ' spin-polarized calculation; spins will be ignored')
+            spins = np.zeros(len(positions_frac))
 
         positions_frac_atoms = np.array(positions_frac)
         forces_atoms = np.array(forces)
         spins_atoms = np.array(spins)
 
         if mulliken_analysis:
+            if len(mulliken_charges) != len(positions_frac):
+                warnings.warn('Mulliken charges could not be read for the atoms;'
+                              ' charges will be ignored')
+                mulliken_charges = np.zeros(len(positions_frac))
             mulliken_charges_atoms = np.array(mulliken_charges)
         else:
             mulliken_charges_atoms = np.zeros(len(positions_frac))
@@ -2080,7 +2089,7 @@ End CASTEP Interface Documentation
         if attr in ['__repr__', '__str__']:
             raise AttributeError
         elif attr not in self.__dict__:
-            raise AttributeError
+            raise AttributeError('Attribute {0} not found'.format(attr))
         else:
             return self.__dict__[attr]
 
@@ -2273,33 +2282,6 @@ End CASTEP Interface Documentation
 
         # re.match return None is the string does not match
         return match is not None
-
-    # this could go into the Atoms() class at some point...
-    def _get_number_in_species(self, at, atoms=None):
-        """Return the number of the atoms within the set of it own
-        species. If you are an ASE commiter: why not move this into
-        ase.atoms.Atoms ?"""
-        if atoms is None:
-            atoms = self.atoms
-        numbers = atoms.get_atomic_numbers()
-        n = numbers[at]
-        nis = numbers.tolist()[:at + 1].count(n)
-        return nis
-
-    def _get_absolute_number(self, species, nic, atoms=None):
-        """This is the inverse function to _get_number in species."""
-        if atoms is None:
-            atoms = self.atoms
-        ch = atoms.get_chemical_symbols()
-        ch.reverse()
-        total_nr = 0
-        assert nic > 0, 'Number in species needs to be 1 or larger'
-        while True:
-            if ch.pop() == species:
-                if nic == 1:
-                    return total_nr
-                nic -= 1
-            total_nr += 1
 
     def _fetch_pspots(self, directory=None):
         """Put all specified pseudo-potentials into the working directory.

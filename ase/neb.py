@@ -271,9 +271,15 @@ class BaseNEB:
             if np.any(img.get_atomic_numbers() !=
                       images[0].get_atomic_numbers()):
                 raise ValueError('Images have atoms in different orders')
-            if np.any(np.abs(img.get_cell() - images[0].get_cell()) > 1e-8):
-                raise NotImplementedError("Variable cell NEB is not "
-                                          "implemented yet")
+            # check periodic cell directions
+            cell_ok = True
+            for pbc, vc, vc0 in zip(img.pbc, img.cell, images[0].cell):
+                if pbc and np.any(np.abs(vc - vc0) > 1e-8):
+                    cell_ok = False
+            if not cell_ok:
+                raise NotImplementedError(
+                    "Variable cell in periodic directions "
+                    "is not implemented yet for NEB")
 
         self.emax = np.nan
 

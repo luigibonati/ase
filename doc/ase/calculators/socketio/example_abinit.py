@@ -21,7 +21,6 @@ command = f'{exe} PREFIX.in --ipi {unixsocket}:UNIX > PREFIX.log'
 configuration_kwargs = dict(
     command=command,
     pp_paths=[pps],
-    v8_legacy_format=False,
 )
 
 

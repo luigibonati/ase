@@ -22,8 +22,8 @@ def axang_rotm(u, theta):
 
 def rand_rotm(rng=np.random.RandomState(0)):
     """Axis & angle rotations."""
-    u = rng.rand(3)
-    theta = rng.rand() * np.pi * 2
+    u = rng.random(3)
+    theta = rng.random() * np.pi * 2
 
     return axang_rotm(u, theta)
 
@@ -58,7 +58,7 @@ def test_quaternions_rotations(rng):
         assert np.allclose(rotm, q.rotation_matrix())
 
         # Now test this with a vector
-        v = rng.rand(3)
+        v = rng.random(3)
 
         vrotM = np.dot(rotm, v)
         vrotQ = q.rotate(v)
@@ -92,7 +92,7 @@ def test_quaternions_overload(rng):
         assert np.allclose(np.dot(rotm2, rotm1),
                            (q2 * q1).rotation_matrix())
         # Now test this with a vector
-        v = rng.rand(3)
+        v = rng.random(3)
 
         vrotM = np.dot(rotm2, np.dot(rotm1, v))
         vrotQ = (q2 * q1).rotate(v)
@@ -106,7 +106,7 @@ def test_quaternions_euler(rng):
     for mode in ['zyz', 'zxz']:
         for i in range(TEST_N):
 
-            abc = rng.rand(3) * 2 * np.pi
+            abc = rng.random(3) * 2 * np.pi
 
             q_eul = Quaternion.from_euler_angles(*abc, mode=mode)
             rot_eul = eulang_rotm(*abc, mode=mode)
