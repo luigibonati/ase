@@ -1448,6 +1448,7 @@ def kspacing_to_grid(atoms, spacing, calculated_spacing=None):
 
     return kpoint_grid
 
+
 def format_atom_position(atom, crystal_coordinates, mask='', tidx=None):
     """Format one line of atomic positions in
     Quantum ESPRESSO ATOMIC_POSITIONS card.
@@ -1481,13 +1482,14 @@ def format_atom_position(atom, crystal_coordinates, mask='', tidx=None):
     line_fmt = '{atom.symbol}'
     inps = dict(atom=atom)
     if tidx is not None:
-      line_fmt += '{tidx}'
-      inps["tidx"] = tidx
+        line_fmt += '{tidx}'
+        inps["tidx"] = tidx
     line_fmt += ' {coords[0]:.10f} {coords[1]:.10f} {coords[2]:.10f} '
     inps["coords"] = coords
     line_fmt += ' ' + mask + '\n'
     astr = line_fmt.format(**inps)
     return astr
+
 
 def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
                       kspacing=None, kpts=None, koffset=(0, 0, 0),
