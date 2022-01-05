@@ -20,6 +20,7 @@ Optional:
 
 * Flask_ for :mod:`ase.db` web-interface
 * pytest_ for running tests
+* pytest-mock_ for running some more tests
 * pytest-xdist_ for running tests in parallel
 * spglib_ for certain symmetry-related features
 
@@ -32,6 +33,7 @@ Optional:
 .. _PIP: https://pip.pypa.io/en/stable/
 .. _pytest: https://pypi.org/project/pytest/
 .. _pytest-xdist: https://pypi.org/project/pytest-xdist/
+.. _pytest-mock: https://pypi.org/project/pytest-mock/
 .. _spglib: https://pypi.org/project/spglib/
 
 Installation using system package managers
