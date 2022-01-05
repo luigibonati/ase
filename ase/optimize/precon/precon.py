@@ -22,35 +22,40 @@ import ase.units as units
 from ase.optimize.precon.neighbors import (get_neighbours,
                                            estimate_nearest_neighbour_distance)
 from ase.neighborlist import neighbor_list
+from ase.utils import tokenize_version
 
 try:
-    from pyamg import smoothed_aggregation_solver, __version__ as pyamg_version
-    from ase.utils import tokenize_version
-    have_pyamg = True
-    
-    def create_pyamg_solver(P, max_levels=15):
-        filter_key = 'filter'
-        if tokenize_version(pyamg_version) >= tokenize_version('4.2.1'):
-            filter_key = 'filter_entries'
-        return smoothed_aggregation_solver(
-            P, B=None,
-            strength=('symmetric', {'theta': 0.0}),
-            smooth=(
-                'jacobi', {filter_key: True, 'weighting': 'local'}),
-            improve_candidates=([('block_gauss_seidel',
-                                  {'sweep': 'symmetric', 'iterations': 4})] +
-                                [None] * (max_levels - 1)),
-            aggregate='standard',
-            presmoother=('block_gauss_seidel',
-                         {'sweep': 'symmetric', 'iterations': 1}),
-            postsmoother=('block_gauss_seidel',
-                          {'sweep': 'symmetric', 'iterations': 1}),
-            max_levels=max_levels,
-            max_coarse=300,
-            coarse_solver='pinv')
-    
+    import pyamg
 except ImportError:
     have_pyamg = False
+else:
+    have_pyamg = True
+
+    
+def create_pyamg_solver(P, max_levels=15):
+    if not have_pyamg:
+        raise RuntimeError('pyamg not available: install with `pip install pyamg`')
+    from pyamg import smoothed_aggregation_solver, __version__ as pyamg_version
+    filter_key = 'filter'
+    if tokenize_version(pyamg_version) >= tokenize_version('4.2.1'):
+        filter_key = 'filter_entries'
+    return smoothed_aggregation_solver(
+        P, B=None,
+        strength=('symmetric', {'theta': 0.0}),
+        smooth=(
+            'jacobi', {filter_key: True, 'weighting': 'local'}),
+        improve_candidates=([('block_gauss_seidel',
+                              {'sweep': 'symmetric', 'iterations': 4})] +
+                            [None] * (max_levels - 1)),
+        aggregate='standard',
+        presmoother=('block_gauss_seidel',
+                     {'sweep': 'symmetric', 'iterations': 1}),
+        postsmoother=('block_gauss_seidel',
+                      {'sweep': 'symmetric', 'iterations': 1}),
+        max_levels=max_levels,
+        max_coarse=300,
+        coarse_solver='pinv')
+
 
 THz = 1e12 * 1. / units.s
 
