@@ -24,15 +24,19 @@ from ase.optimize.precon.neighbors import (get_neighbours,
 from ase.neighborlist import neighbor_list
 
 try:
-    from pyamg import smoothed_aggregation_solver
+    from pyamg import smoothed_aggregation_solver, __version__ as pyamg_version
+    from packaging.version import parse
     have_pyamg = True
     
     def create_pyamg_solver(P, max_levels=15):
+        filter_key = 'filter'
+        if parse(pyamg_version) >= parse('4.2.1'):
+            filter_key = 'filter_elements'
         return smoothed_aggregation_solver(
             P, B=None,
             strength=('symmetric', {'theta': 0.0}),
             smooth=(
-                'jacobi', {'filter_entries': True, 'weighting': 'local'}),
+                'jacobi', {filter_key: True, 'weighting': 'local'}),
             improve_candidates=([('block_gauss_seidel',
                                   {'sweep': 'symmetric', 'iterations': 4})] +
                                 [None] * (max_levels - 1)),
