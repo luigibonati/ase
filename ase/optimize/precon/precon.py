@@ -35,11 +35,10 @@ else:
 def create_pyamg_solver(P, max_levels=15):
     if not have_pyamg:
         raise RuntimeError('pyamg not available: install with `pip install pyamg`')
-    from pyamg import smoothed_aggregation_solver, __version__ as pyamg_version
     filter_key = 'filter'
-    if tokenize_version(pyamg_version) >= tokenize_version('4.2.1'):
+    if tokenize_version(pyamg.__version__) >= tokenize_version('4.2.1'):
         filter_key = 'filter_entries'
-    return smoothed_aggregation_solver(
+    return pyamg.smoothed_aggregation_solver(
         P, B=None,
         strength=('symmetric', {'theta': 0.0}),
         smooth=(
