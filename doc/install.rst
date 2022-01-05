@@ -20,6 +20,7 @@ Optional:
 
 * Flask_ for :mod:`ase.db` web-interface
 * pytest_ for running tests
+* pytest-mock, also for running tests
 * pytest-xdist_ for running tests in parallel
 * spglib_ for certain symmetry-related features
 
