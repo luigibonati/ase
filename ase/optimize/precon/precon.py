@@ -25,12 +25,12 @@ from ase.neighborlist import neighbor_list
 
 try:
     from pyamg import smoothed_aggregation_solver, __version__ as pyamg_version
-    from packaging.version import parse
+    from ase.utils import tokenize_version
     have_pyamg = True
     
     def create_pyamg_solver(P, max_levels=15):
         filter_key = 'filter'
-        if parse(pyamg_version) >= parse('4.2.1'):
+        if tokenize_version(pyamg_version) >= tokenize_version('4.2.1'):
             filter_key = 'filter_entries'
         return smoothed_aggregation_solver(
             P, B=None,
