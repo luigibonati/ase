@@ -1,9 +1,9 @@
 """
 ASE Calculator for the ground state exciting DFT code
 """
+from abc import ABC
 from typing import Union, List, Optional
 from pathlib import Path
-import xml.etree.ElementTree as ET
 
 import ase
 from ase.calculators.genericfileio import (GenericFileIOCalculator, CalculatorTemplate)
@@ -11,7 +11,7 @@ from ase.calculators.exciting.runner import ExcitingRunner, SubprocessRunResults
 from ase.calculators.calculator import InputError, PropertyNotImplementedError
 
 from ase.calculators.exciting.input import query_exciting_version, ExcitingInput
-from ase.io.exciting import add_attributes_to_element_tree, prettify, initialise_input_xml, add_atoms_to_input_xml
+from ase.io.exciting import prettify, initialise_input_xml, structure_element_tree, dict_to_xml
 
 
 class ExcitingProfile:
@@ -29,7 +29,7 @@ class ExcitingProfile:
         self.version = query_exciting_version(exciting_root)
 
 
-class ExcitingGroundStateTemplate(CalculatorTemplate):
+class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
     """
     Template for Ground State Exciting Calculator,
     requiring implementations for the methods defined in CalculatorTemplate.
@@ -48,11 +48,8 @@ class ExcitingGroundStateTemplate(CalculatorTemplate):
         """
         super().__init__(self.program_name, self.implemented_properties)
 
-    def write_input(self,
-                    directory: Path,
-                    atoms: ase.Atoms,
-                    input_parameters: Union[dict, ExcitingInput],
-                    properties: List[str]):
+    def write_input(self, directory: Path, atoms: ase.Atoms,
+                    input_parameters: Union[dict, ExcitingInput], properties: List[str]):
         """
         Write an exciting input.xml file
 
@@ -62,22 +59,22 @@ class ExcitingGroundStateTemplate(CalculatorTemplate):
         :param List[str] properties: List of output properties.
         """
         root = initialise_input_xml()
-        structure = structure_element_tree(atoms,  autormt, species_path, tshift)
-        root.
+        structure = structure_element_tree(atoms)
+        root.append(structure)
+        dict_to_xml(input_parameters, root)
 
-        fileobj.write(prettify(input))
-
-
-
+        with open('input.xml', "w") as fileobj:
+            fileobj.write(prettify(root))
 
     def execute(self, directory, exciting_calculation: ExcitingRunner) -> SubprocessRunResults:
         """
         Given an exciting calculation profile, execute the calculation.
         Method could be static, but maintaining API consistent with CalculatorTemplate
 
+        :param self: self
         :param directory: Directory in which to execute the calculator
         :param ExcitingRunner exciting_calculation: Generic `execute` expects a profile, however
-         it is simply used to execute the program, therefore we just pass an ExcitingRunner.
+        it is simply used to execute the program, therefore we just pass an ExcitingRunner.
         :return SubprocessRunResults: Results of subprocess.run
         """
         return exciting_calculation.run(directory)
@@ -103,7 +100,7 @@ def check_key_present(key, exciting_input: Union[ExcitingInput, dict]) -> bool:
     else:
         keys = list(exciting_input)
 
-    #TODO FINISH ME
+    # TODO FINISH ME
 
     return key in keys
 
@@ -143,7 +140,6 @@ class ExcitingGroundStateResults:
 
     def stress(self):
         raise PropertyNotImplementedError
-
 
 
 class ExcitingGroundState(GenericFileIOCalculator):
@@ -227,5 +223,3 @@ class ExcitingGroundState(GenericFileIOCalculator):
     #
     # initialize not needed. atoms object injected into XML via the template's write
     # function
-
-

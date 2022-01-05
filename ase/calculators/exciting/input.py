@@ -17,7 +17,7 @@ class ExcitingInput:
         return dictionary
 
 
-def query_exciting_version():
+def query_exciting_version(exciting_root):
     """
     Query the exciting version
 

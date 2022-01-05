@@ -74,7 +74,7 @@ def structure_xml_to_ase_atoms(fileobj) -> ase.Atoms:
     return atoms
 
 
-def prettify(elem: ET.Element) -> ET.Element:
+def prettify(elem: ET.Element) -> str:
     """
     Make the XML elements prettier to read.
     """
@@ -108,76 +108,57 @@ def initialise_input_xml(title_text='') -> ET.Element:
     return root
 
 
-def structure_element_tree(atoms: ase.Atoms, autormt: bool, species_path: str, tshift: bool) ->ET.ElementTree:
+def structure_element_tree(atoms: ase.Atoms) -> ET.Element:
     """
 
     :param atoms: ASE atoms and lattice vectors
-    :param bool autormt: Exciting autmatically determines MT radii
-    :param str species_path: Path to species files
-    :param bool tshift: Crystal is shifted so closest atom to origin is now at origin.
+    """
+    structure = ET.Element('structure')
+    structure = add_atoms_to_structure_element_tree(structure, atoms)
+    return structure
+
+
+def add_atoms_to_structure_element_tree(structure: ET.Element, atoms: ase.Atoms) -> ET.Element:
     """
 
+    :param structure: et element for structure
+    :param atoms: ase atoms object
+    """
+    crystal = structure.find('crystal')
+    for vec in atoms.cell:
+        basevect = ET.SubElement(crystal, 'basevect')
+        # use f string here and fix this.
+        basevect.text = f'{vec[0] / Bohr:.14f} {vec[1] / Bohr:.14f} {vec[2] / Bohr:.14f}'
 
-    root.find('structure').attrib['speciespath'] = species_path
-    root.find('structure').attrib['autormt'] = str(
-        autormt).lower()
-
-    root.find('structure').attrib['tshift'] = str(
-        tshift).lower()
-
-    def add_atoms_to_element_tree(root: ET.Element, atoms: ase.Atoms) -> ET.Element:
-        """
-
-
-        """
-
-
-
-        for vec in atoms.cell:
-            basevect = ET.SubElement(crystal, 'basevect')
-            # use f string here and fix this.
-            basevect.text = f'{vec[0] / Bohr:.14f} {vec[1] / Bohr:.14f} {vec[2] / Bohr:.14f}'
-
-        oldsymbol = ''
-        oldrmt = -1  # The old radius of the muffin tin (rmt)
-        newrmt = -1
-        scaled_positions = atoms.get_scaled_positions()  # positions in fractions of the unit cell
-        # loop over the different elements and add corresponding species files
-        for aindex, symbol in enumerate(atoms.get_chemical_symbols()):
-            # TODO(speckhard): Check if rmt can be set
+    oldsymbol = ''
+    oldrmt = -1  # The old radius of the muffin tin (rmt)
+    newrmt = -1
+    scaled_positions = atoms.get_scaled_positions()  # positions in fractions of the unit cell
+    # loop over the different elements and add corresponding species files
+    for aindex, symbol in enumerate(atoms.get_chemical_symbols()):
+        # TODO(speckhard): Check if rmt can be set
+        if 'rmt' in atoms.arrays:
+            newrmt = atoms.get_array('rmt')[aindex] / Bohr
+        if symbol != oldsymbol or newrmt != oldrmt:
+            speciesnode = ET.SubElement(structure, 'species',
+                                        speciesfile=f'{symbol}.xml',
+                                        chemicalSymbol=symbol)
+            oldsymbol = symbol
             if 'rmt' in atoms.arrays:
-                newrmt = atoms.get_array('rmt')[aindex] / Bohr
-            if symbol != oldsymbol or newrmt != oldrmt:
-                speciesnode = ET.SubElement(structure, 'species',
-                                            speciesfile=f'{symbol}.xml',
-                                            chemicalSymbol=symbol)
-                oldsymbol = symbol
-                if 'rmt' in atoms.arrays:
-                    oldrmt = atoms.get_array('rmt')[aindex] / Bohr
-                    if oldrmt > 0:
-                        speciesnode.attrib['rmt'] = f'{oldrmt:.4f}'
+                oldrmt = atoms.get_array('rmt')[aindex] / Bohr
+                if oldrmt > 0:
+                    speciesnode.attrib['rmt'] = f'{oldrmt:.4f}'
 
-            atom = ET.SubElement(speciesnode, 'atom', coord=(f'{scaled_positions[aindex][0]:.14f} '
-                                                             f'{scaled_positions[aindex][1]:.14f} '
-                                                             f'{scaled_positions[aindex][2]:.14f}'))
-            # TODO(speckhard): Can momenta be set in arrays
-            if 'momenta' in atoms.arrays:
-                atom.attrib['bfcmt'] = (f'{atoms.get_array("momenta")[aindex][0]:.14f} '
-                                        f'{atoms.get_array("momenta")[aindex][1]:.14f} '
-                                        f'{atoms.get_array("momenta")[aindex][2]:.14f}')
+        atom = ET.SubElement(speciesnode, 'atom', coord=(f'{scaled_positions[aindex][0]:.14f} '
+                                                         f'{scaled_positions[aindex][1]:.14f} '
+                                                         f'{scaled_positions[aindex][2]:.14f}'))
+        # TODO(speckhard): Can momenta be set in arrays
+        if 'momenta' in atoms.arrays:
+            atom.attrib['bfcmt'] = (f'{atoms.get_array("momenta")[aindex][0]:.14f} '
+                                    f'{atoms.get_array("momenta")[aindex][1]:.14f} '
+                                    f'{atoms.get_array("momenta")[aindex][2]:.14f}')
 
-        return root
-
-
-    # # Assign dict key values to XML dom object root.
-    # if param_dict:
-    #     dict_to_xml(param_dict, root)
-    # else:
-    #     ET.SubElement(root, 'groundstate', tforce='true')
-    # return root
-
-
-
+    return structure
 
 
 def dict_to_xml(pdict: Dict, element):
