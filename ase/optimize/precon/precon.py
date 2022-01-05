@@ -31,7 +31,7 @@ try:
     def create_pyamg_solver(P, max_levels=15):
         filter_key = 'filter'
         if parse(pyamg_version) >= parse('4.2.1'):
-            filter_key = 'filter_elements'
+            filter_key = 'filter_entries'
         return smoothed_aggregation_solver(
             P, B=None,
             strength=('symmetric', {'theta': 0.0}),
