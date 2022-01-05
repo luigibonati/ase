@@ -32,7 +32,7 @@ try:
             P, B=None,
             strength=('symmetric', {'theta': 0.0}),
             smooth=(
-                'jacobi', {'filter': True, 'weighting': 'local'}),
+                'jacobi', {'filter_entries': True, 'weighting': 'local'}),
             improve_candidates=([('block_gauss_seidel',
                                   {'sweep': 'symmetric', 'iterations': 4})] +
                                 [None] * (max_levels - 1)),
