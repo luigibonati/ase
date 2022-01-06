@@ -43,6 +43,22 @@ def library_header():
         yield '{:24} {}'.format(name, path)
 
 
+def handle_path(path):
+    """Helper to handle all sorts of __path__
+
+    By definition, __path__ must be iterable and return strings.
+
+    If path has multiple elements, the first one is returned.
+    If it is empty, an empty string is returned.
+    Always returns a string.
+    """
+    p = list(path)
+    if p:
+        return str(p[0])
+    else:
+        return ''
+
+
 def calculators_header(config):
     try:
         factories = get_factories(config)
@@ -84,7 +100,7 @@ def calculators_header(config):
             if hasattr(factory, 'importname'):
                 import importlib
                 module = importlib.import_module(factory.importname)
-                configinfo = str(module.__path__[0])  # type: ignore
+                configinfo = handle_path(module.__path__)  # type: ignore
             else:
                 configtokens = []
                 for varname, variable in vars(factory).items():
@@ -337,7 +353,7 @@ def arbitrarily_seed_rng(request):
     #
     # In order not to generate all the same random numbers in every test,
     # we seed according to a kind of hash:
-    ase_path = ase.__path__[0]
+    ase_path = handle_path(ase.__path__)
     abspath = Path(request.module.__file__)
     relpath = abspath.relative_to(ase_path)
     module_identifier = relpath.as_posix()  # Same on all platforms
