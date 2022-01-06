@@ -23,7 +23,7 @@ __all__ = ['exec_', 'basestring', 'import_module', 'seterr', 'plural',
            'opencew', 'OpenLock', 'rotate', 'irotate', 'pbc2pbc', 'givens',
            'hsv2rgb', 'hsv', 'pickleload', 'FileNotFoundError',
            'formula_hill', 'formula_metal', 'PurePath', 'xwopen',
-           'tokenize_version']
+           'tokenize_version', 'handle_path']
 
 
 def tokenize_version(version_string: str):
@@ -470,6 +470,7 @@ class iofunction:
     """Decorate func so it accepts either str or file.
 
     (Won't work on functions that return a generator.)"""
+
     def __init__(self, mode):
         self.mode = mode
 
@@ -516,7 +517,7 @@ def read_json(cls, fd):
     """Read new instance from JSON file."""
     from ase.io.jsonio import read_json as _read_json
     obj = _read_json(fd)
-    assert type(obj) is cls
+    assert isinstance(obj, cls)
     return obj
 
 
@@ -641,3 +642,19 @@ class IOContext:
             return sys.stdout
 
         return self.closelater(open(file, mode=mode))
+
+
+def handle_path(path) -> str:
+    """Helper to handle all sorts of __path__
+
+    By definition, __path__ must be iterable and return strings.
+
+    If path has multiple elements, the first one is returned.
+    If it is empty, an empty string is returned.
+    Always returns a string.
+    """
+    p = list(path)
+    if p:
+        return str(p[0])
+    else:
+        return ''

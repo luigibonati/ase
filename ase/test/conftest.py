@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 
 import ase
-from ase.utils import workdir, seterr
+from ase.utils import workdir, seterr, handle_path
 from ase.test.factories import (CalculatorInputs,
                                 factory_classes,
                                 NoSuchCalculator,
@@ -41,22 +41,6 @@ def library_header():
     yield ''
     for name, path in all_dependencies():
         yield '{:24} {}'.format(name, path)
-
-
-def handle_path(path):
-    """Helper to handle all sorts of __path__
-
-    By definition, __path__ must be iterable and return strings.
-
-    If path has multiple elements, the first one is returned.
-    If it is empty, an empty string is returned.
-    Always returns a string.
-    """
-    p = list(path)
-    if p:
-        return str(p[0])
-    else:
-        return ''
 
 
 def calculators_header(config):
