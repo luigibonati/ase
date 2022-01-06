@@ -1,5 +1,5 @@
 import pytest
-from ase.utils import deprecated, devnull, tokenize_version
+from ase.utils import deprecated, devnull, tokenize_version, handle_path
 
 
 def test_deprecated_decorator():
@@ -37,3 +37,10 @@ def test_tokenize_version_lessthan(v1, v2):
 def test_tokenize_version_equal():
     version = '3.8x.xx'
     assert tokenize_version(version) == tokenize_version(version)
+
+
+def test_handle_path():
+    #all kinds of iterable
+    tests = [[1, 2, 3], 'asdf', {'asdf': 'bla', '1': 2}, []]
+    results = [handle_path(t) for t in tests]
+    assert all([isinstance(r, str) for r in results])
