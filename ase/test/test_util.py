@@ -39,24 +39,18 @@ def test_tokenize_version_equal():
     assert tokenize_version(version) == tokenize_version(version)
 
 
+class DummyIterator:
+    def __iter__(self):
+        yield from ["test", "bla"]
+
+
 class Dummy:
-    def __init__(self, path):
-        self.__path__ = path
+    @property
+    def __path__(self):
+        return DummyIterator()
 
 
-@pytest.fixture
-def iterables():
-    return [[1, 2, 3], 'asdf', {'asdf': 'bla', '1': 2}, []]
-
-
-@pytest.fixture
-def dummy_packages(iterables):
-    return [Dummy(item) for item in iterables]
-
-
-def test_get_python_package_path_description(dummy_packages):
-    #all kinds of iterable
-    results = [get_python_package_path_description(p) for p in dummy_packages]
-    assert all([isinstance(r, str) for r in results])
+def test_get_python_package_path_description():
+    assert isinstance(get_python_package_path_description(Dummy()), str)
     #test object not containing __path__
-    assert isinstance(get_python_package_path_description("asdf"), str)
+    assert isinstance(get_python_package_path_description(object()), str)
