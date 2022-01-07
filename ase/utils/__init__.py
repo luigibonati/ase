@@ -23,7 +23,7 @@ __all__ = ['exec_', 'basestring', 'import_module', 'seterr', 'plural',
            'opencew', 'OpenLock', 'rotate', 'irotate', 'pbc2pbc', 'givens',
            'hsv2rgb', 'hsv', 'pickleload', 'FileNotFoundError',
            'formula_hill', 'formula_metal', 'PurePath', 'xwopen',
-           'tokenize_version', 'handle_path']
+           'tokenize_version', 'get_python_package_path_description']
 
 
 def tokenize_version(version_string: str):
@@ -644,17 +644,19 @@ class IOContext:
         return self.closelater(open(file, mode=mode))
 
 
-def handle_path(path) -> str:
-    """Helper to handle all sorts of __path__
-
-    By definition, __path__ must be iterable and return strings.
+def get_python_package_path_description(package, default='module has no path') -> str:
+    """Helper to get path description of a python package/module
 
     If path has multiple elements, the first one is returned.
-    If it is empty, an empty string is returned.
+    If it is empty, the default is returned.
+    Exceptions are returned as strings default+(exception).
     Always returns a string.
     """
-    p = list(path)
-    if p:
-        return str(p[0])
-    else:
-        return ''
+    try:
+        p = list(package.__path__)
+        if p:
+            return str(p[0])
+        else:
+            return default
+    except Exception as ex:
+        return "{:} ({:})".format(default, ex)

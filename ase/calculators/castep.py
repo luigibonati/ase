@@ -41,7 +41,6 @@ from ase.parallel import paropen
 from ase.io.castep import read_param
 from ase.io.castep import read_bands
 from ase.constraints import FixCartesian
-from ase.utils import handle_path
 
 __all__ = [
     'Castep',
@@ -3065,9 +3064,8 @@ def import_castep_keywords(castep_command='',
     # Search for castep_keywords.json (or however it's called) in multiple
     # paths
 
-    searchpaths = [path,
-                   os.path.expanduser('~/.ase'),
-                   os.path.join(handle_path(ase.__path__), 'calculators')]
+    searchpaths = [path, os.path.expanduser('~/.ase'),
+                   os.path.expanduser('~/.config/ase')]
     try:
         kwfile = sum([glob.glob(os.path.join(sp, filename))
                       for sp in searchpaths], [])[0]
