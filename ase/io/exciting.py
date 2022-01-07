@@ -1,7 +1,15 @@
-"""
-This is the implementation of the exciting I/O functions
-The functions are called with read write using the format "exciting"
+"""This is the implementation of the exciting I/O functions.
 
+The main roles these functions do is write exciting ground state
+input files and read exciting ground state ouput files.
+
+Right now these functions all written without a class to wrap them. This
+could change in the future but was done to make things simpler.
+
+These functions are primarily called by the exciting caculator in
+ase/calculators/exciting/exciting.py.
+
+See the correpsonding test file in ase/test/io/test_exciting.py.
 """
 from os import path, PathLike
 
@@ -19,11 +27,10 @@ from ase.units import Bohr, Hartree
 def structure_xml_to_ase_atoms(fileobj) -> ase.Atoms:
     """Reads structure from input.xml file.
 
-    Parameters
-    ----------
-    fileobj: file object
-        File handle from which data should be read.
-
+    Args:
+        fileobj: File handle from which data should be read.
+    Returns:
+        ASE atoms object with all the relevant fields filled.
     """
     # Parse file into element tree
     doc = ET.parse(fileobj)
@@ -75,24 +82,23 @@ def structure_xml_to_ase_atoms(fileobj) -> ase.Atoms:
 
 
 def prettify(elem: ET.Element) -> str:
-    """
-    Make the XML elements prettier to read.
-    """
+    """Make the XML elements prettier to read."""
     rough_string = ET.tostring(elem, 'utf-8')
     reparsed = minidom.parseString(rough_string)
     return reparsed.toprettyxml(indent="\t")
 
 
 def initialise_input_xml(title_text='') -> ET.Element:
-    """
-    Initialise input.xml element tree for exciting
+    """Initialise input.xml element tree for exciting.
 
     Includes a required subelements:
         * structure
         * crystal
 
-    :param str title_text: Title for calculation
-    :return ET.Element root: Elememnt tree root
+    Args:
+        title_text: Title for calculation.
+    Returns:
+        root: Elememnt tree root.
     """
     root = ET.Element('input')
 
@@ -103,32 +109,43 @@ def initialise_input_xml(title_text='') -> ET.Element:
     title.text = title_text
 
     structure = ET.SubElement(root, 'structure')
-    ET.SubElement(structure, 'crystal')
+    crystal = ET.SubElement(structure, 'crystal')
 
     return root
 
 
 def structure_element_tree(atoms: ase.Atoms) -> ET.Element:
-    """
+    """Add structure to the XML element tree.
 
-    :param atoms: ASE atoms and lattice vectors
+    This function is basically a wrapper to call
+    add_atoms_to_structure_element_tree to add geometry/chemical information
+    about the system to the XML tree object.
+
+    Args:
+        atoms: ASE atoms and lattice vectors
+    Returns:
+        The XML element tree with structural information added.
     """
-    structure = ET.Element('structure')
+    structure = ET.Element('crystal')
     structure = add_atoms_to_structure_element_tree(structure, atoms)
     return structure
 
 
-def add_atoms_to_structure_element_tree(structure: ET.Element, atoms: ase.Atoms) -> ET.Element:
-    """
+def add_atoms_to_structure_element_tree(
+        structure: ET.Element, atoms: ase.Atoms) -> ET.Element:
+    """Adds lattice vectors, positions and elemental information to XML object.
 
-    :param structure: et element for structure
-    :param atoms: ase atoms object
+    Args:
+        structure: XML object that we will fill with structural information.
+        atoms: Contains all the structural information we need (e.g. lattice
+            vectors, element types, positions in unit cell).
+    Returns:
+        The XML object with the sturctural information added.
     """
-    crystal = structure.find('crystal')
+    crystal = structure.find('structure/crystal')
     for vec in atoms.cell:
-        basevect = ET.SubElement(crystal, 'basevect')
-        # use f string here and fix this.
-        basevect.text = f'{vec[0] / Bohr:.14f} {vec[1] / Bohr:.14f} {vec[2] / Bohr:.14f}'
+        base_vect = ET.SubElement(crystal, 'basevect')
+        base_vect.text = f'{vec[0] / Bohr:.14f} {vec[1] / Bohr:.14f} {vec[2] / Bohr:.14f}'
 
     oldsymbol = ''
     oldrmt = -1  # The old radius of the muffin tin (rmt)
@@ -164,6 +181,8 @@ def add_atoms_to_structure_element_tree(structure: ET.Element, atoms: ase.Atoms)
 def dict_to_xml(pdict: Dict, element):
     """Write dictionary k,v pairs to XML DOM object.
 
+    The element tree argument gets modified when this function is called.
+
     Args:
         pdict: k,v pairs that go into the xml like file.
         element: The XML object (XML DOM object) that we want to modify
@@ -191,9 +210,12 @@ def dict_to_xml(pdict: Dict, element):
 
 
 def parse_info_out_xml(directory: Union[PathLike, str]) -> dict:
-    """ Read total energy and forces from the info.xml output file
-    :param: directory: dir to the exciting calculation
-    :returns: dictionary with the outputs of the calculation
+    """Read total energy and forces from the info.xml output file.
+
+    Args:
+        directory: dir to the exciting calculation.
+    Returns:
+        dictionary with the outputs of the calculation.
     """
     # Probably return a dictionary as a free function.
     # Then have a light wrapper in class ExcitingGroundStateResults to call
@@ -248,9 +270,14 @@ def parse_info_out_xml(directory: Union[PathLike, str]) -> dict:
 
 
 def parse_eigval_xml(directory: Union[PathLike, str]) -> dict:
-    """ Read eigenvalues from the eigval.xml output file
-    :param: directory: dir to the exciting calculation
-    :returns: dictionary with the outputs of the calculation
+    """ Read eigenvalues from the eigval.xml output file.
+
+    This function was taking from the exciting repository.
+
+    Args:
+        directory: dir to the exciting calculation.
+    Rturns:
+        Dictionary with the eigenvalues at different k point keys.
     """
     output_file = directory + '/eigval.xml'
     root = ET.parse(output_file).getroot()

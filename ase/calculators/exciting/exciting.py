@@ -18,7 +18,7 @@ from ase.calculators.exciting.runner import ExcitingRunner, SubprocessRunResults
 from ase.calculators.calculator import InputError, PropertyNotImplementedError
 
 from ase.calculators.exciting.input import query_exciting_version, ExcitingInput
-from ase.io.exciting import prettify, initialise_input_xml, structure_element_tree, dict_to_xml
+# from ase.io.exciting import prettify, initialise_input_xml, structure_element_tree, dict_to_xml
 
 
 class ExcitingProfile:
