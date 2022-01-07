@@ -1,6 +1,13 @@
+"""ASE Calculator for the ground state exciting DFT code.
+
+Exciting calculator class in this file allow for writing exciting input
+files using ASE Atoms object that allow for the compiled exciting binary
+to run DFT on the geometry/material defined in the Atoms object. Also gives
+access to developor to a lightweight parser (lighter weight than NOMAD or
+the exciting parser in the exciting repository) to capture ground state
+properties.
 """
-ASE Calculator for the ground state exciting DFT code
-"""
+
 from abc import ABC
 from typing import Union, List, Optional
 from pathlib import Path
@@ -15,14 +22,12 @@ from ase.io.exciting import prettify, initialise_input_xml, structure_element_tr
 
 
 class ExcitingProfile:
-    """
-    A profile defines all quantities that are configurable (variable)
-    for a given machine or platform.
+    """Defines all quantities that are configurable (variable) for a given machine.
 
     This follows the generic pattern BUT currently not used by our calculator as:
-       * species_path is part of the input file in exciting
+       * species_path is part of the input file in exciting.
        * Only part of the profiled used in the base class is the run method,
-         which is part of the BinaryRunner class
+         which is part of the BinaryRunner class.
     """
     def __init__(self, exciting_root, species_path):
         self.species_path = species_path
@@ -30,9 +35,9 @@ class ExcitingProfile:
 
 
 class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
-    """
-    Template for Ground State Exciting Calculator,
-    requiring implementations for the methods defined in CalculatorTemplate.
+    """Template for Ground State Exciting Calculator,
+    
+    The class requires implementations for the methods defined in CalculatorTemplate.
     """
 
     program_name = 'exciting'
@@ -43,20 +48,18 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
     implemented_properties = ['energy', 'forces']
 
     def __init__(self):
-        """
-        Initialise with constant class attributes.
-        """
+        """Initialise with constant class attributes."""
         super().__init__(self.program_name, self.implemented_properties)
 
     def write_input(self, directory: Path, atoms: ase.Atoms,
                     input_parameters: Union[dict, ExcitingInput], properties: List[str]):
-        """
-        Write an exciting input.xml file
+        """Write an exciting input.xml file based on the input args.
 
-        :param Path directory: Directory in which to run calculator.
-        :param ase.Atoms atoms: ASE atoms object.
-        :param Union[dict, ExcitingInput] input_parameters: exciting groundstate input parameters
-        :param List[str] properties: List of output properties.
+        Args:
+            directory: Directory in which to run calculator.
+            atoms: ASE atoms object.
+            input_parameters: exciting groundstate input parameters
+            properties: List of output properties.
         """
         root = initialise_input_xml()
         structure = structure_element_tree(atoms)
@@ -67,21 +70,29 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
             fileobj.write(prettify(root))
 
     def execute(self, directory, exciting_calculation: ExcitingRunner) -> SubprocessRunResults:
-        """
-        Given an exciting calculation profile, execute the calculation.
+        """Given an exciting calculation profile, execute the calculation.
+        
         Method could be static, but maintaining API consistent with CalculatorTemplate
 
-        :param self: self
-        :param directory: Directory in which to execute the calculator
-        :param ExcitingRunner exciting_calculation: Generic `execute` expects a profile, however
-        it is simply used to execute the program, therefore we just pass an ExcitingRunner.
-        :return SubprocessRunResults: Results of subprocess.run
+        Args:
+            directory: Directory in which to execute the calculator
+            exciting_calculation: Generic `execute` expects a profile, however it is simply
+                used to execute the program, therefore we just pass an ExcitingRunner.
+        
+        Returns:
+            Results of subprocess.run
         """
         return exciting_calculation.run(directory)
 
     def read_results(self, directory: Path) -> dict:
-        """
-        Parse results from each ground state output file
+        """Parse results from each ground state output file.
+
+        Note we allow for the ability for there to be multiple output files.
+
+        Args:
+            directory: Directory path to output file from exciting simulation.
+        Returns:
+            Dictionary containing important output properties.
         """
         results = {}
         for file_name in self.output_names:
@@ -92,8 +103,17 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
 
 
 def check_key_present(key, exciting_input: Union[ExcitingInput, dict]) -> bool:
-    """
-    Check species path is specified in the exciting_input
+    """Checks key is specified in the ExcitingInput object.
+
+    One important use case is to check whether path to exciting species files is
+    specified.
+
+    Args:
+        key: Specific key we're looking for in the exciting_input object.
+        exciting_input: This object/dict contains much of the information we specify
+            about how we want the exciting input file to look like.
+    Returns:
+        True/False whether species path is specified by ExcitingInput object.
     """
     if isinstance(exciting_input, ExcitingInput):
         keys = ExcitingInput.__dict__
@@ -106,45 +126,54 @@ def check_key_present(key, exciting_input: Union[ExcitingInput, dict]) -> bool:
 
 
 class ExcitingGroundStateResults:
-    """
-    Exciting Ground State Results
-    """
+    """Exciting Ground State Results."""
     def __init__(self, results: dict) -> None:
         self.results = results
         self.completed = self.calculation_completed()
         self.converged = self.calculation_converged()
 
     def calculation_completed(self) -> bool:
+        """Check if calculation is complete."""
         # TODO(Alex) This will be returned by the runner object - need to propagate the result to here
         return False
 
     def calculation_converged(self) -> bool:
+        """Check if calculation is converged."""
         # TODO(Alex) This needs to parsed from INFO.OUT (or info.xml?)
         #  First check is that this file is written
         return False
 
     def potential_energy(self) -> float:
-        """
-        Return potential energy (be more specific)
+        """Return potential energy of system.
+        
+        TODO(Alex): Make the description of potential energy in physics terms more clear.
         """
         # TODO(Alex) We should a common list of keys somewhere
         # such that parser -> results -> getters are consistent
         return self.results['potential_energy'].copy()
 
     def forces(self):
-        """
-        Return forces
+        """Return forces present on the system.
+        
+        TODO(Dan): Add a bit more description here on how the forces are defiend
+            and returned.
+
+        Returns:
+            A copy of the forces present in the system.
         """
         # TODO(Alex) We should a common list of keys somewhere
         return self.results['forces'].copy()
 
     def stress(self):
+        """Get the stress on the system.
+
+        Right now exciting does not yet calculate the stress on the system so
+        this won't work for the time being."""
         raise PropertyNotImplementedError
 
 
 class ExcitingGroundState(GenericFileIOCalculator):
-    """
-    Exciting Ground StateCalculator Class.
+    """Class for the ground state calculation.
 
     Base class implements the calculate method.
 
@@ -174,9 +203,10 @@ class ExcitingGroundState(GenericFileIOCalculator):
 
     TODO(Alex) What methods do we need from our old calculator, and what exist in the base classes?
 
-     TODO(Alex) We could support a specific set of keyword args, then use either a) Input dict/object
-      or b) keywords
-      List of keyword inputs from the old calculator:
+    TODO(Alex) We could support a specific set of keyword args, then use either a) Input dict/object
+        or b) keywords
+        
+    List of keyword inputs from the old calculator:
         species_path, kpts, autormt, tshift
     """
 
@@ -203,14 +233,12 @@ class ExcitingGroundState(GenericFileIOCalculator):
                          directory=directory
                          )
 
-    # TODO(Alex) Would rather remove properties from our calculate API
+    # TODO(Alex) Would rather remove properties from our calculate API.
     def calculate(self,
                   atoms: ase.Atoms,
                   properties: Optional[List[str]] = None,
                   system_changes=None) -> ExcitingGroundStateResults:
-        """
-        Run an exciting calculation and capture the results in ExcitingGroundStateResults object.
-        """
+        """Run an exciting calculation and capture the results in ExcitingGroundStateResults object."""
         if properties is None:
             properties = self.template.implemented_properties
         super().calculate(atoms, properties, system_changes)
