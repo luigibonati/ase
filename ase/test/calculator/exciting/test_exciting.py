@@ -4,10 +4,80 @@ import numpy as np
 import pytest
 import ase
 from ase.build import bulk
-import ase.calculators.exciting
+import ase.calculators.exciting.exciting as exciting
 import xml.etree.ElementTree as ET
 from ase.calculators.calculator import PropertyNotImplementedError
 from ase.units import Bohr, Hartree
+
+
+def test_ExcitingProfile_init():
+    """Test initializing an ExcitingProfile object."""
+    exciting_root = 'testdir/nowhere/'
+    species_path = 'testdir/species/'
+    ex_profile_obj = exciting.ExcitingProfile(
+        exciting_root=exciting_root, species_path=species_path)
+    assert ex_profile_obj.species_path == species_path
+    # TODO(dts): Once the version reader function is fixed this test should be fixed.
+    assert ex_profile_obj.version == 'Not implemented'
+
+def test_ExcitingGroundStateTemplate_init():
+    gs_template_obj = exciting.ExcitingGroundStateTemplate()
+    assert gs_template_obj.name == 'exciting'
+    assert len(gs_template_obj.implemented_properties) == 2
+    assert list(gs_template_obj.implemented_properties)[0] == 'energy'
+    assert list(gs_template_obj.implemented_properties)[1] == 'forces'
+
+
+# TODO(dts): Used to be an io test.
+# def test_read_exciting():
+#     """Test reading a test xml output file for exciting."""
+#     input_string = """<?xml version="1.0" ?>
+# <input xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation=
+# "http://xml.exciting-code.org/excitinginput.xsd">
+#     <title/>
+#     <structure>
+#         <crystal>
+#             <basevect>3.77945225167386 3.77945225167386 0.00000000000000</basevect>
+#             <basevect>0.00000000000000 7.55890450334771 0.00000000000000</basevect>
+#             <basevect>0.00000000000000 0.00000000000000 11.33835675502157</basevect>
+#         </crystal>
+#         <species speciesfile="N.xml" chemicalSymbol="N">
+#             <atom coord="0.00000000000000 0.00000000000000 0.00000000000000"/>
+#         </species>
+#         <species speciesfile="O.xml" chemicalSymbol="O">
+#             <atom coord="0.50000000000000 0.50000000000000 0.00000000000000"/>
+#             <atom coord="0.00000000000000 0.00000000000000 0.16666666666667"/>
+#             <atom coord="0.25000000000000 0.00000000000000 0.08333333333333"/>
+#         </species>
+#     </structure>
+# </input>"""
+
+#     fileobj = io.StringIO(input_string)
+#     atoms = ase.io.exciting.read_exciting(fileobj)
+#     expected_cell = [[2, 2, 0], [0, 4, 0], [0, 0, 6]]
+#     assert np.allclose(atoms.get_cell().array, expected_cell)
+#     expected_positions = [(0, 0, 0), (1, 3, 0), (0, 0, 1), (0.5, 0.5, 0.5)]
+#     # potential problem with the atoms outside the unit cell. get_scaled_positions is mapped in the unit cell and
+#     # get_positions is not. So maybe wrap() before?
+#     assert np.allclose(atoms.get_positions(), expected_positions)
+#     expected_symbols = ['N', 'O', 'O', 'O']
+#     assert atoms.get_chemical_symbols() == expected_symbols
+
+# TODO(dts): Used to be an io test.
+# def test_add_attributes_to_element_tree(nitrogen_trioxide_atoms):
+#     species_path = 'fake_path'
+#     element_tree = ase.io.exciting.add_attributes_to_element_tree(
+#         atoms=nitrogen_trioxide_atoms, autormt=False,
+#         species_path=species_path, tshift=True,
+#         param_dict={'groundstate': {'nempty': '2'}})
+#     expected_chemical_symbols = ['N', 'O']
+#     species = element_tree.findall('./structure/species')
+#     for i in range(len(species)):
+#         assert species[i].get('chemicalSymbol') == expected_chemical_symbols[i]
+#     assert element_tree.findall('./structure')[0].get('tshift') == 'true'
+#     assert element_tree.findall('./structure')[0].get('autormt') == 'false'
+#     assert element_tree.findall('./groundstate')[0].get('nempty') == '2'
+#     assert element_tree.findall('./structure')[0].get('speciespath') == species_path
 
 
 # TODO(Alex/Dan) This needs a big refactor - mostly scrapping

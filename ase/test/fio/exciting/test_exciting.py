@@ -112,60 +112,10 @@ def test_dict_to_xml_wrong_arguments():
         ase.io.exciting.dict_to_xml(dictionary, element)
 
 
-# TODO(dts): Fix this test.
-# def test_add_attributes_to_element_tree(nitrogen_trioxide_atoms):
-#     species_path = 'fake_path'
-#     element_tree = ase.io.exciting.add_attributes_to_element_tree(
-#         atoms=nitrogen_trioxide_atoms, autormt=False,
-#         species_path=species_path, tshift=True,
-#         param_dict={'groundstate': {'nempty': '2'}})
-#     expected_chemical_symbols = ['N', 'O']
-#     species = element_tree.findall('./structure/species')
-#     for i in range(len(species)):
-#         assert species[i].get('chemicalSymbol') == expected_chemical_symbols[i]
-#     assert element_tree.findall('./structure')[0].get('tshift') == 'true'
-#     assert element_tree.findall('./structure')[0].get('autormt') == 'false'
-#     assert element_tree.findall('./groundstate')[0].get('nempty') == '2'
-#     assert element_tree.findall('./structure')[0].get('speciespath') == species_path
+def test_parse_info_out_xml():
+    """Tests parse method if info.xml does not exist."""
+    # RuntimeError should be raised when the xml file doesn't exist that we want to parse.
+    with pytest.raises(RuntimeError):
+        ase.io.exciting.parse_info_out_xml('input_not_exist.xml')
 
 
-# TODO(dts): Move this test to exciting calculator tests.
-# def test_read_exciting_file_does_not_exist():
-#     """Tests read method if info.xml does not exist."""
-#     with pytest.raises(FileNotFoundError):
-#         ase.io.exciting.read_exciting('input_not_exist.xml')
-
-# TODO(dts): Move this test to exciting calculator tests where the read function is now.
-# def test_read_exciting():
-#     """Test reading a test xml output file for exciting."""
-#     input_string = """<?xml version="1.0" ?>
-# <input xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation=
-# "http://xml.exciting-code.org/excitinginput.xsd">
-#     <title/>
-#     <structure>
-#         <crystal>
-#             <basevect>3.77945225167386 3.77945225167386 0.00000000000000</basevect>
-#             <basevect>0.00000000000000 7.55890450334771 0.00000000000000</basevect>
-#             <basevect>0.00000000000000 0.00000000000000 11.33835675502157</basevect>
-#         </crystal>
-#         <species speciesfile="N.xml" chemicalSymbol="N">
-#             <atom coord="0.00000000000000 0.00000000000000 0.00000000000000"/>
-#         </species>
-#         <species speciesfile="O.xml" chemicalSymbol="O">
-#             <atom coord="0.50000000000000 0.50000000000000 0.00000000000000"/>
-#             <atom coord="0.00000000000000 0.00000000000000 0.16666666666667"/>
-#             <atom coord="0.25000000000000 0.00000000000000 0.08333333333333"/>
-#         </species>
-#     </structure>
-# </input>"""
-
-#     fileobj = io.StringIO(input_string)
-#     atoms = ase.io.exciting.read_exciting(fileobj)
-#     expected_cell = [[2, 2, 0], [0, 4, 0], [0, 0, 6]]
-#     assert np.allclose(atoms.get_cell().array, expected_cell)
-#     expected_positions = [(0, 0, 0), (1, 3, 0), (0, 0, 1), (0.5, 0.5, 0.5)]
-#     # potential problem with the atoms outside the unit cell. get_scaled_positions is mapped in the unit cell and
-#     # get_positions is not. So maybe wrap() before?
-#     assert np.allclose(atoms.get_positions(), expected_positions)
-#     expected_symbols = ['N', 'O', 'O', 'O']
-#     assert atoms.get_chemical_symbols() == expected_symbols
