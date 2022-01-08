@@ -44,9 +44,10 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
     program_name = 'exciting'
     # TODO(Alex) Add parsers here i.e.
     # parser = {'info.xml': Callable[str, dict]}
-    parser = {'info.xml': lambda file_name: {}}
+    # parser = {'info.xml': lambda file_name: {}}
+    parser = {'info.xml': ase.io.exciting.parse_info_out_xml}
     output_names = list(parser)
-    implemented_properties = ['energy', 'forces']
+    implemented_properties = ['energy']
 
     def __init__(self):
         """Initialise with constant class attributes."""
@@ -100,7 +101,9 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
         """
         results = {}
         for file_name in self.output_names:
-            full_file_path = directory / file_name
+            print(file_name)
+            full_file_path = os.path.join(directory, file_name)
+            print(full_file_path)
             result: dict = self.parser[file_name](full_file_path)
             results.update(result)
         return results
@@ -160,7 +163,9 @@ class ExcitingGroundStateResults:
         """Return forces present on the system.
         
         TODO(Dan): Add a bit more description here on how the forces are defiend
-            and returned.
+            and returned. Right now I can't find forces in exciting test info.xml
+            files. So it looks like we shouldn't be parsing this all the time:
+            https://git.physik.hu-berlin.de/sol/exciting/-/blob/development/test/test_farm/groundstate/LDA_PW-PbTiO3/ref/info.xml
 
         Returns:
             A copy of the forces present in the system.

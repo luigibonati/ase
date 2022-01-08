@@ -19,6 +19,7 @@ def nitrogen_trioxide_atoms():
                                 (0, 0, 1), (0.5, 0.5, 0.5)],
                      pbc=True)
 
+
 def test_ExcitingProfile_init():
     """Test initializing an ExcitingProfile object."""
     exciting_root = 'testdir/nowhere/'
@@ -29,12 +30,13 @@ def test_ExcitingProfile_init():
     # TODO(dts): Once the version reader function is fixed this test should be fixed.
     assert ex_profile_obj.version == 'Not implemented'
 
+
 def test_ExcitingGroundStateTemplate_init():
     gs_template_obj = exciting.ExcitingGroundStateTemplate()
     assert gs_template_obj.name == 'exciting'
-    assert len(gs_template_obj.implemented_properties) == 2
+    assert len(gs_template_obj.implemented_properties) == 1
     assert 'energy' in gs_template_obj.implemented_properties
-    assert 'forces' in gs_template_obj.implemented_properties
+
 
 def test_write_input(tmp_path, nitrogen_trioxide_atoms):
     """Test the write input method of ExcitingGroundStateTemplate.
@@ -74,9 +76,44 @@ def test_write_input(tmp_path, nitrogen_trioxide_atoms):
     assert element_tree.getroot().attrib['tshift'] == 'True'
 
 
-def test_read_results():
+def test_read_results(tmp_path):
     """Test the read result method of ExcitingGroundStateTemplate."""
-    pass
+
+    # Grab the exciting info.xml from:
+    # https://git.physik.hu-berlin.de/sol/exciting/-/blob/development/test/test_farm/groundstate/LDA_PW-PbTiO3/ref/info.xml
+    input_string = """<?xml version="1.0"?>
+    <?xml-stylesheet href="http://xml.exciting-code.org/info.xsl" type="text/xsl"?>
+    <info date="2020-12-10" time="20:05:40" versionhash="1775bff4453c84689fb848894a9224f155377cfc" title="PbTiO3">
+    <groundstate status="finished">
+        <scl>
+        <iter iteration="1" rms="0.240509096538276" rmslog10="-0.618868493088" deltae="21958.9331756557" deltaelog10="4.34161123709" chgdst="4.795296521919598E-002" chgdstlog10="-1.31918453263" fermidos="0.00000000000">
+            <energies totalEnergy="-21958.9331757" fermiEnergy="0.276461898034" sum-of-eigenvalues="-13530.0092931" electronic-kinetic="25450.8254535" core-electron-kinetic="0.00000000000" Coulomb="-46966.0760553" Coulomb-potential="-38392.1732943" nuclear-nuclear="-1618.19059132" electron-nuclear="-52303.5976336" Hartree="6955.71216963" Madelung="-27769.9894081" xc-potential="-588.661452269" exchange="-431.539710366" correlation="-12.1428635285"/>
+            <charges totalcharge="128.0000000" core="62.00000000" core_leakage="0.8606037277E-05" valence="66.00000000" interstitial="8.298243449" muffin-tin-total="119.7017566">
+            <atom species="Pb" muffin-tin="76.65551143"/>
+            <atom species="Ti" muffin-tin="18.16311654"/>
+            <atom species="O" muffin-tin="8.294376196"/>
+            <atom species="O" muffin-tin="8.294376196"/>
+            <atom species="O" muffin-tin="8.294376196"/>
+            </charges>
+            <timing timetot="3.59698438644" timeinit="2.15422320366" timemat="0.251088857651" timefv="0.150968313217" timesv="0.00000000000" timerho="0.195154190063" timepot="0.845549821854" timefor="0.00000000000"/>
+        </iter>
+        </scl>
+    </groundstate>
+    </info>
+    """
+    # ASE doesn't want us to store any other files for test, so instead let's write
+    # a temporary XML file. We could write it with XML but easier to copy a good known
+    # XML file as a string above and write it directly to a file.
+    output_file_path = os.path.join(tmp_path, 'info.xml')
+    with open(output_file_path, "w") as xml_file:
+        xml_file.write(input_string)
+    assert os.path.exists(output_file_path)  # Ensure file has been written.
+
+    gs_template_obj = exciting.ExcitingGroundStateTemplate()
+    results = gs_template_obj.read_results(tmp_path)
+    print(results)
+    assert np.round(results['potential_energy']+597533.0073272572, 6) == 0.0
+
 
 # TODO(dts): Used to be an io test.
 # def test_read_exciting():
@@ -112,6 +149,7 @@ def test_read_results():
 #     assert np.allclose(atoms.get_positions(), expected_positions)
 #     expected_symbols = ['N', 'O', 'O', 'O']
 #     assert atoms.get_chemical_symbols() == expected_symbols
+
 
 # TODO(dts): Used to be an io test.
 # def test_add_attributes_to_element_tree(nitrogen_trioxide_atoms):
