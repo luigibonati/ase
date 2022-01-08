@@ -20,7 +20,7 @@ from xml.dom import minidom
 
 import ase
 from ase.atoms import Atoms
-from ase.calculators.exciting.exciting import ExcitingGroundStateResults
+# from ase.calculators.exciting.exciting import ExcitingGroundStateResults
 from ase.units import Bohr, Hartree
 
 
@@ -116,6 +116,8 @@ def initialise_input_xml(title_text='') -> ET.Element:
 
 def structure_element_tree(atoms: ase.Atoms) -> ET.Element:
     """Add structure to the XML element tree.
+
+    TODO(dts): I think we can remove this function, not sure why we need it.
 
     This function is basically a wrapper to call
     add_atoms_to_structure_element_tree to add geometry/chemical information

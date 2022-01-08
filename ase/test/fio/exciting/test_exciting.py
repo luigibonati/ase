@@ -28,26 +28,30 @@ def test_initialize_element_tree():
     assert initialized_element_tree.find('structure/crystal') is not None
 
 def test_structure_element_tree(nitrogen_trioxide_atoms):
+    """Test adding an ASE Atoms object to the XML element tree."""
+    # Check that the tree is initialized correctly before proceeding.
     initialized_element_tree = ase.io.exciting.initialise_input_xml()
     element_tree = ase.io.exciting.add_atoms_to_structure_element_tree(
         structure=initialized_element_tree, atoms=nitrogen_trioxide_atoms)
     assert element_tree.tag == 'input'
+    # Check the chidren has been added correctly.
     expected_children_tags = ['title', 'structure', 'species', 'species', 'species']
     for count, child in enumerate(element_tree):
         assert child.tag == expected_children_tags[count]
-    # TODO(Alex) Shouldn't convert in the reference data - should be correct by inspection
+    # TODO(Alex) Shouldn't convert in the reference data - should be correct by inspection.
+    # Check the lattice vectors have been added correctly to the XML object.
     expected_vectors = [[2 / Bohr, 2 / Bohr, 0], [0, 4 / Bohr, 0], [0, 0, 6 / Bohr]]
     basis_vector_list = element_tree.findall('./structure/crystal/basevect')
     for i in range(len(basis_vector_list)):
         float_vector = [float(x) for x in basis_vector_list[i].text.split()]
         assert len(float_vector) == len(expected_vectors[i])
         assert all([np.round(a - b, 14) == 0 for a, b in zip(float_vector, expected_vectors[i])])
-
+    # Ensure the species data has been added correctly.
     expected_chemical_symbols = ['N', 'O']
     species = element_tree.findall('./structure/species')
     for i in range(len(species)):
         assert species[i].get('chemicalSymbol') == expected_chemical_symbols[i]
-
+    # Ensure the coordinates of the atoms in the unit cell is correct.
     expected_coords = [[0, 0, 0], [0.5, 0.5, 0], [0, 0, 1 / 6], [0.25, 0, 1 / 12]]
     coords_list = element_tree.findall('./structure/species/atom')
     for i in range(len(coords_list)):

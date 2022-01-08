@@ -9,16 +9,17 @@ properties.
 """
 
 from abc import ABC
-from typing import Union, List, Optional
+import os
 from pathlib import Path
+from typing import Union, List, Optional
 
 import ase
+import ase.io.exciting
+
 from ase.calculators.genericfileio import (GenericFileIOCalculator, CalculatorTemplate)
 from ase.calculators.exciting.runner import ExcitingRunner, SubprocessRunResults
 from ase.calculators.calculator import InputError, PropertyNotImplementedError
-
 from ase.calculators.exciting.input import query_exciting_version, ExcitingInput
-# from ase.io.exciting import prettify, initialise_input_xml, structure_element_tree, dict_to_xml
 
 
 class ExcitingProfile:
@@ -52,22 +53,25 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
         super().__init__(self.program_name, self.implemented_properties)
 
     def write_input(self, directory: Path, atoms: ase.Atoms,
-                    input_parameters: Union[dict, ExcitingInput], properties: List[str]):
+                    input_parameters: Union[dict, ExcitingInput]):
         """Write an exciting input.xml file based on the input args.
+
+        TODO(dts): Figure out why previously this function had a properties argument
+            called properties: List[str]. I assume this was to target certain properties
+            but I thought ground state calcs will all get the same default properties.
 
         Args:
             directory: Directory in which to run calculator.
             atoms: ASE atoms object.
             input_parameters: exciting groundstate input parameters
-            properties: List of output properties.
         """
-        root = initialise_input_xml()
-        structure = structure_element_tree(atoms)
-        root.append(structure)
-        dict_to_xml(input_parameters, root)
+        root = ase.io.exciting.initialise_input_xml()
+        structure = ase.io.exciting.add_atoms_to_structure_element_tree(
+            structure=root, atoms=atoms)
+        ase.io.exciting.dict_to_xml(input_parameters, root)
 
-        with open('input.xml', "w") as fileobj:
-            fileobj.write(prettify(root))
+        with open(os.path.join(directory, 'input.xml'), "w") as fileobj:
+            fileobj.write(ase.io.exciting.prettify(root))
 
     def execute(self, directory, exciting_calculation: ExcitingRunner) -> SubprocessRunResults:
         """Given an exciting calculation profile, execute the calculation.

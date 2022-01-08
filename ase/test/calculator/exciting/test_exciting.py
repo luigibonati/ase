@@ -10,6 +10,15 @@ from ase.calculators.calculator import PropertyNotImplementedError
 from ase.units import Bohr, Hartree
 
 
+@pytest.fixture
+def nitrogen_trioxide_atoms():
+    """Pytest fixture that creates ASE Atoms cell for other tests."""
+    return ase.Atoms('NO3',
+                     cell=[[2, 2, 0], [0, 4, 0], [0, 0, 6]],
+                     positions=[(0, 0, 0), (1, 3, 0),
+                                (0, 0, 1), (0.5, 0.5, 0.5)],
+                     pbc=True)
+
 def test_ExcitingProfile_init():
     """Test initializing an ExcitingProfile object."""
     exciting_root = 'testdir/nowhere/'
@@ -24,9 +33,50 @@ def test_ExcitingGroundStateTemplate_init():
     gs_template_obj = exciting.ExcitingGroundStateTemplate()
     assert gs_template_obj.name == 'exciting'
     assert len(gs_template_obj.implemented_properties) == 2
-    assert list(gs_template_obj.implemented_properties)[0] == 'energy'
-    assert list(gs_template_obj.implemented_properties)[1] == 'forces'
+    assert 'energy' in gs_template_obj.implemented_properties
+    assert 'forces' in gs_template_obj.implemented_properties
 
+def test_write_input(tmp_path, nitrogen_trioxide_atoms):
+    """Test the write input method of ExcitingGroundStateTemplate.
+    
+    Args:
+        tmp_path: This tells pytest to create a temporary directory
+             in which we will store the exciting input file.
+        nitrogen_trioxide_atoms: pytest fixture to create ASE Atoms
+            unit cell composed of NO3.
+    """
+    expected_path = os.path.join(tmp_path, 'input.xml')
+
+    gs_template_obj = exciting.ExcitingGroundStateTemplate()
+    assert nitrogen_trioxide_atoms.cell is not None
+    gs_template_obj.write_input(directory=tmp_path, atoms=nitrogen_trioxide_atoms,
+        input_parameters={
+            'tshift': 'True',
+            'autormt': 'False'})
+    # Let's assert the file we just wrote exists.
+    os.path.exists(expected_path)
+    # Let's assert it's what we expect.
+    element_tree = ET.parse(expected_path)
+    # Ensure the coordinates of the atoms in the unit cell is correct.
+    # We could test the other parts of the input file related coming from
+    # the ASE Atoms object like species data but this is tested already in
+    # test/io/exciting/test_exciting.py.
+    expected_coords = [[0, 0, 0], [0.5, 0.5, 0], [0, 0, 1 / 6], [0.25, 0, 1 / 12]]
+    coords_list = element_tree.findall('./structure/species/atom')
+    for i in range(len(coords_list)):
+        float_vector = [float(x) for x in coords_list[i].get('coord').split()]
+        assert len(float_vector) == len(expected_coords[i])
+        assert all([np.round(a - b, 14) == 0 for a, b in zip(float_vector, expected_coords[i])])
+    # Ensure that the exciting calculator properites (e.g. tshift have been set).
+    assert element_tree.findall('input') is not None
+    assert element_tree.getroot().tag == 'input'
+    assert element_tree.getroot().attrib['autormt'] == 'False'
+    assert element_tree.getroot().attrib['tshift'] == 'True'
+
+
+def test_read_results():
+    """Test the read result method of ExcitingGroundStateTemplate."""
+    pass
 
 # TODO(dts): Used to be an io test.
 # def test_read_exciting():
