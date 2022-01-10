@@ -165,8 +165,6 @@ class TrajectoryWriter:
                 calc = OldCalculatorWrapper(calc)
             c = b.child('calculator')
             c.write(name=calc.name)
-            if hasattr(calc, 'todict'):
-                c.write(parameters=calc.todict())
             for prop in all_properties:
                 if prop in kwargs:
                     x = kwargs[prop]
@@ -277,9 +275,6 @@ class TrajectoryReader:
             calc = SinglePointCalculator(atoms, **results)
             calc.name = b.calculator.name
             calc.implemented_properties = implemented_properties
-
-            if 'parameters' in c:
-                calc.parameters.update(c.parameters)
             atoms.calc = calc
 
         return atoms

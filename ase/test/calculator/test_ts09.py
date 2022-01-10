@@ -31,26 +31,19 @@ class FakeDFTcalculator(EMT):
 
 
 def test_ts09(testdir):
-    a = 4.05  # Angstrom lattice spacing
-    al = bulk('Al', 'fcc', a=a)
+    al = bulk('Al')
 
     cc = FakeDFTcalculator()
     hp = FakeHirshfeldPartitioning(cc)
     c = vdWTkatchenko09prl(hp, [3])
     al.calc = c
-    al.get_potential_energy()
+    energy = al.get_potential_energy()
 
     fname = 'out.traj'
     al.write(fname)
 
-    # check that the output exists
-    io.read(fname)
-    # maybe assert something about what we just read?
-
-    p = io.read(fname).calc.parameters
-    p['calculator']
-    p['xc']
-    p['uncorrected_energy']
+    atoms = io.read(fname)
+    assert atoms.get_potential_energy() == pytest.approx(energy)
 
 
 def test_ts09_polarizability(testdir):
