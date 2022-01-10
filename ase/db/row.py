@@ -13,7 +13,6 @@ from ase.data import chemical_symbols, atomic_masses
 from ase.formula import Formula
 from ase.geometry import cell_to_cellpar
 from ase.io.jsonio import decode
-from ase.utils import deprecated
 
 
 class FancyDict(dict):
