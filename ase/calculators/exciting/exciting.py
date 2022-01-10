@@ -45,12 +45,18 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
     # TODO(Alex) Add parsers here i.e.
     # parser = {'info.xml': Callable[str, dict]}
     # parser = {'info.xml': lambda file_name: {}}
-    parser = {'info.xml': ase.io.exciting.parse_info_out_xml}
+    parser = {
+        'info.xml': ase.io.exciting.parse_info_out_xml}
     output_names = list(parser)
     implemented_properties = ['energy']
 
     def __init__(self):
-        """Initialise with constant class attributes."""
+        """Initialise with constant class attributes.
+
+        Args:
+            program_name: The DFT program, should always be exciting.
+            implmented_properties: What properties should exciting calculate/read from output.
+        """
         super().__init__(self.program_name, self.implemented_properties)
 
     def write_input(self, directory: Path, atoms: ase.Atoms,
@@ -69,6 +75,8 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
         root = ase.io.exciting.initialise_input_xml()
         structure = ase.io.exciting.add_atoms_to_structure_element_tree(
             structure=root, atoms=atoms)
+        if 'forces' in list(self.implemented_properties):
+            input_parameters['tforce'] = 'true'
         ase.io.exciting.dict_to_xml(input_parameters, root)
 
         with open(os.path.join(directory, 'input.xml'), "w") as fileobj:
@@ -76,6 +84,8 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
 
     def execute(self, directory, exciting_calculation: ExcitingRunner) -> SubprocessRunResults:
         """Given an exciting calculation profile, execute the calculation.
+
+        TODO(all): Not working.
         
         Method could be static, but maintaining API consistent with CalculatorTemplate
 
@@ -104,7 +114,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
             print(file_name)
             full_file_path = os.path.join(directory, file_name)
             print(full_file_path)
-            result: dict = self.parser[file_name](full_file_path)
+            result: dict = self.parser[file_name](full_file_path, self.implemented_properties)
             results.update(result)
         return results
 

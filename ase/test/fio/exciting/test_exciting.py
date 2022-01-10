@@ -1,7 +1,8 @@
 """Test file for exciting file input and output methods."""
+
+import os
 import pytest
-import tempfile  # Used to create temporary directories for tests.
-import io
+
 import numpy as np
 import xml.etree.ElementTree as ET
 
@@ -116,10 +117,87 @@ def test_dict_to_xml_wrong_arguments():
         ase.io.exciting.dict_to_xml(dictionary, element)
 
 
-def test_parse_info_out_xml():
+def test_parse_info_out_xml_file_does_not_exist():
     """Tests parse method if info.xml does not exist."""
     # RuntimeError should be raised when the xml file doesn't exist that we want to parse.
-    with pytest.raises(RuntimeError):
-        ase.io.exciting.parse_info_out_xml('input_not_exist.xml')
+    with pytest.raises(ValueError) as excinfo:
+        ase.io.exciting.parse_info_out_xml('input_not_exist.xml', implemented_properties=None)
+    
+    assert 'Output file input_not_exist.xml does not exist.' in str(excinfo.value)
 
+def test_parse_info_out_xml_not_converged(tmp_path):
+    """Tests parse method if info.xml shows the calc is not converged"""
+    # ASE doesn't want us to store any other files for test, so instead let's write
+    # a temporary XML file. We could write it with XML but easier to copy a good known
+    # XML file as a string above and write it directly to a file.
+    input_string = """<?xml version="1.0"?>
+    <?xml-stylesheet href="http://xml.exciting-code.org/info.xsl" type="text/xsl"?>
+    <info date="2020-12-10" time="20:05:40" versionhash="1775bff4453c84689fb848894a9224f155377cfc" title="PbTiO3">
+    <groundstate status="unfinished">
+    </groundstate>
+    </info>
+    """
+    output_file_path = os.path.join(tmp_path, 'info.xml')
+    with open(output_file_path, "w") as xml_file:
+        xml_file.write(input_string)
+    assert os.path.exists(output_file_path)  # Ensure file has been written.
 
+    # RuntimeError should be raised when the xml file doesn't exist that we want to parse.
+    with pytest.raises(RuntimeError) as excinfo:
+        ase.io.exciting.parse_info_out_xml(output_file_path, implemented_properties=None)
+    
+    assert 'Calculation did not converge.' in str(excinfo.value)
+
+def test_parse_info_out_xml_bogus_xml(tmp_path):
+    """Tests parse method raises error when xml file is improperly formatted."""
+    # ASE doesn't want us to store any other files for test, so instead let's write
+    # a temporary XML file. We could write it with XML but easier to copy a good known
+    # XML file as a string above and write it directly to a file.
+    input_string = """<bogus><bogus>"""
+    output_file_path = os.path.join(tmp_path, 'info.xml')
+    with open(output_file_path, "w") as xml_file:
+        xml_file.write(input_string)
+    assert os.path.exists(output_file_path)  # Ensure file has been written.
+
+    # RuntimeError should be raised when the xml file doesn't exist that we want to parse.
+    with pytest.raises(ET.ParseError):
+        ase.io.exciting.parse_info_out_xml(output_file_path, implemented_properties=None)
+
+def test_parse_info_out_energy(tmp_path):
+    # Grab the exciting info.xml from:
+    # https://git.physik.hu-berlin.de/sol/exciting/-/blob/development/test/test_farm/groundstate/LDA_PW-PbTiO3/ref/info.xml
+    # ASE doesn't want us to store any other files for test, so instead let's write
+    # a temporary XML file. We could write it with XML but easier to copy a good known
+    # XML file as a string above and write it directly to a file.
+    input_string = """<?xml version="1.0"?>
+    <?xml-stylesheet href="http://xml.exciting-code.org/info.xsl" type="text/xsl"?>
+    <info date="2020-12-10" time="20:05:40" versionhash="1775bff4453c84689fb848894a9224f155377cfc" title="PbTiO3">
+    <groundstate status="finished">
+        <scl>
+        <iter iteration="1" rms="0.240509096538276" rmslog10="-0.618868493088" deltae="21958.9331756557" deltaelog10="4.34161123709" chgdst="4.795296521919598E-002" chgdstlog10="-1.31918453263" fermidos="0.00000000000">
+            <energies totalEnergy="-21958.9331757" fermiEnergy="0.276461898034" sum-of-eigenvalues="-13530.0092931" electronic-kinetic="25450.8254535" core-electron-kinetic="0.00000000000" Coulomb="-46966.0760553" Coulomb-potential="-38392.1732943" nuclear-nuclear="-1618.19059132" electron-nuclear="-52303.5976336" Hartree="6955.71216963" Madelung="-27769.9894081" xc-potential="-588.661452269" exchange="-431.539710366" correlation="-12.1428635285"/>
+            <charges totalcharge="128.0000000" core="62.00000000" core_leakage="0.8606037277E-05" valence="66.00000000" interstitial="8.298243449" muffin-tin-total="119.7017566">
+            <atom species="Pb" muffin-tin="76.65551143"/>
+            <atom species="Ti" muffin-tin="18.16311654"/>
+            <atom species="O" muffin-tin="8.294376196"/>
+            <atom species="O" muffin-tin="8.294376196"/>
+            <atom species="O" muffin-tin="8.294376196"/>
+            </charges>
+            <timing timetot="3.59698438644" timeinit="2.15422320366" timemat="0.251088857651" timefv="0.150968313217" timesv="0.00000000000" timerho="0.195154190063" timepot="0.845549821854" timefor="0.00000000000"/>
+        </iter>
+        </scl>
+    </groundstate>
+    </info>
+    """
+    output_file_path = os.path.join(tmp_path, 'info.xml')
+    with open(output_file_path, "w") as xml_file:
+        xml_file.write(input_string)
+    assert os.path.exists(output_file_path)  # Ensure file has been written.
+    results = ase.io.exciting.parse_info_out_xml(
+        output_file_path, implemented_properties=['energy'])
+    assert np.round(results['potential_energy']+597533.0073272572, 6) == 0.
+
+# TODO(Fabian): Add a test for the eigenvalues.
+
+# TODO(Fabian/dts): Add a test to make sure forces are being parsed correctly.
+# I need a good exmaple file for this.

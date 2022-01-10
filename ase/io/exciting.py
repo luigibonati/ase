@@ -217,11 +217,16 @@ def dict_to_xml(pdict: Dict, element):
             raise TypeError(f'cannot deal with key: {key}, val: {value}')
 
 
-def parse_info_out_xml(full_file_path: Union[os.PathLike, str]) -> dict:
+def parse_info_out_xml(
+    full_file_path: Union[os.PathLike, str],
+    implemented_properties) -> dict:
     """Read total energy and forces from the info.xml output file.
 
     Args:
         full_file_path: Path to the exciting calculation input.xml file.
+        implemented_properties: Frozenset of properites that are calculated.
+            Right now the main use is to check if 'forces' is in the set and
+            if so we parse the forces from the info.xml file.
     Returns:
         Dictionary with the outputs of the calculation.
     """
@@ -230,14 +235,24 @@ def parse_info_out_xml(full_file_path: Union[os.PathLike, str]) -> dict:
     # parse_info_out_xml and pass the dictionary values to attributes
     # Check if calculation converged by inspecting WARNINGS.OUT
 
-    # Try to open the output file xml.
-    try:
-        with open(full_file_path, 'r') as outfile:
-            # Parse the XML output.
-            parsed_output = xml.etree.ElementTree.parse(outfile)
-    except IOError:
-        raise RuntimeError(
-            "Output file %s doesn't exist" % output_file)
+    # First check if the output file exists:
+    if not os.path.exists(full_file_path):
+        raise ValueError(
+            f'Output file {full_file_path} does not exist.')
+
+    # Try to open XML file. Previously we wrapped this in a try statement
+    # but the XML parser fails with a more informative error message and
+    # we don't want to continue if the parsing fails so we removed the try
+    # statement.
+    with open(full_file_path, 'r') as outfile:
+        # Parse the XML output.
+        parsed_output = xml.etree.ElementTree.parse(outfile)
+
+    # TODO: convergence check needed here? dts: Yes let's add this in.
+    # Check if the calculation converged.
+    if str(parsed_output.find('groundstate').attrib[
+               'status']) != 'finished':
+        raise RuntimeError('Calculation did not converge.')
 
     results = dict()
     # Find the last instance of 'totalEnergy'.
@@ -250,34 +265,21 @@ def parse_info_out_xml(full_file_path: Union[os.PathLike, str]) -> dict:
     # files:
     # https://git.physik.hu-berlin.de/sol/exciting/-/blob/development/test/test_farm/groundstate/LDA_PW-PbTiO3/ref/info.xml
     # So maybe we shouldn't be parsing this all the time.
-    # 
-    # # Initialize forces list.
-    # forces = []
-    # # final all instances of 'totalforce'.
-    # forcesnodes = parsed_output.findall(
-    #     'groundstate/scl/structure')[-1].findall(
-    #     'species/atom/forces/totalforce')
-    # # Go through each force in the found instances of 'total force'.
-    # for force in forcesnodes:
-    #     # Append the total force to the forces list.
-    #     forces.append(np.array(list(force.attrib.values())).astype(float))
-    # # Reshape forces so we get three columns (x,y,z) and scale units.
-    # forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
-    # results['forces'] = forces
-
-    # TODO: convergence check needed here? dts: Yes let's add this in.
-    """
-    # Check if the calculation converged.
-    if str(parsed_output.find('groundstate').attrib[
-               'status']) == 'finished':
-        converged = True
-    else:
-        # BAD - return the status as 'finished': False
-        # or converged: False
-        # or it's simply not the reson
-        # and the caller can decide how to handle the errors
-        raise RuntimeError('Calculation did not converge.')
-    """
+    
+    if 'forces' in list(implemented_properties):
+        # Initialize forces list.
+        forces = []
+        # final all instances of 'totalforce'.
+        forcesnodes = parsed_output.findall(
+            'groundstate/scl/structure')[-1].findall(
+            'species/atom/forces/totalforce')
+        # Go through each force in the found instances of 'total force'.
+        for force in forcesnodes:
+            # Append the total force to the forces list.
+            forces.append(np.array(list(force.attrib.values())).astype(float))
+        # Reshape forces so we get three columns (x,y,z) and scale units.
+        forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
+        results['forces'] = forces
     return results
 
 
