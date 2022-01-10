@@ -51,7 +51,7 @@ init_statements = [
     momenta BLOB,
     constraints TEXT,  -- constraints and calculator
     calculator TEXT,
-    calculator_parameters TEXT,
+    calculator_parameters TEXT, -- Deprecated.  This is always None now.
     energy REAL,  -- calculated properties
     free_energy REAL,
     forces BLOB,
@@ -305,7 +305,10 @@ class SQLite3Database(Database):
                   constraints)
 
         if 'calculator' in row:
-            values += (row.calculator, encode(row.calculator_parameters))
+            # We used to "save" the "calculator parameters", but we don't
+            # anymore because there isn't a way to do it reliably.
+            # Now we save None instead.
+            values += (row.calculator, None)
         else:
             values += (None, None)
 
@@ -479,7 +482,7 @@ class SQLite3Database(Database):
         if values[15] is not None:
             dct['calculator'] = values[15]
         if values[16] is not None:
-            dct['calculator_parameters'] = decode(values[16])
+            pass  # This used to be calculator_parameters.  We ignore it now.
         if values[17] is not None:
             dct['energy'] = values[17]
         if values[18] is not None:

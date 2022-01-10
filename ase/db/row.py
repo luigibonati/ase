@@ -13,6 +13,7 @@ from ase.data import chemical_symbols, atomic_masses
 from ase.formula import Formula
 from ase.geometry import cell_to_cellpar
 from ase.io.jsonio import decode
+from ase.utils import deprecated
 
 
 class FancyDict(dict):
@@ -52,7 +53,6 @@ def atoms2dict(atoms):
         dct['constraints'] = [c.todict() for c in atoms.constraints]
     if atoms.calc is not None:
         dct['calculator'] = atoms.calc.name.lower()
-        dct['calculator_parameters'] = atoms.calc.todict()
         if len(atoms.calc.check_state(atoms)) == 0:
             for prop in all_properties:
                 try:
@@ -69,12 +69,12 @@ class AtomsRow:
     def __init__(self, dct):
         if isinstance(dct, dict):
             dct = dct.copy()
-            if 'calculator_parameters' in dct:
-                # Earlier version of ASE would encode the calculator
-                # parameter dict again and again and again ...
-                while isinstance(dct['calculator_parameters'], str):
-                    dct['calculator_parameters'] = decode(
-                        dct['calculator_parameters'])
+            # Back in the days we saved "calculator_parameters".
+            # Doing so is fraught with trouble because those objects can
+            # be anything, and we have no way to restore them in general.
+            # So now we ignore them:
+            dct.pop('calculator_parameters', None)
+
         else:
             dct = atoms2dict(dct)
         assert 'numbers' in dct
