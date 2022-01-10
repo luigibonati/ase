@@ -32,10 +32,17 @@ Git master branch
   objects.  See :meth:`ase.formula.Formula.format`.  The ``abc`` format
   has been renamed to ``ab2``.
 
+IO:
+
 * IO formats can now be implemented in separate packages and registered
   in ase with the entry point ``ase.ioformats`` in the external package
   configuration. This entry point only accepts objects of the type
   :class:`~ase.utils.plugins.ExternalIOFormat`.
+
+* Calculator parameters are no longer saved to trajectories.
+  Since "parameters" can be anything, and not everything can be saved
+  to a file (e.g. open file handles), attempting to save all
+  parameters is unreliable.
 
 Calculators:
 
