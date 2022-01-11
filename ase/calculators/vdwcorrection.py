@@ -223,7 +223,7 @@ class vdWTkatchenko09prl(Calculator, IOContext):
             return
 
         self.timer.start('vdWTkatchenko09prl update')
-        self.timer.start('corrections')
+        self.timer.start('vdWTkatchenko09prl corrections')
         
         if atoms is None:
             atoms = self.calculator.get_atoms()
@@ -233,10 +233,12 @@ class vdWTkatchenko09prl(Calculator, IOContext):
             if name not in properties:
                 properties.append(name)
 
+        self.timer.start('vdWTkatchenko09prl calculator')
         for name in properties:
             self.results[name] = self.calculator.get_property(name, atoms)
         self.parameters['uncorrected_energy'] = self.results['energy']
         self.atoms = atoms.copy()
+        self.timer.stop('vdWTkatchenko09prl calculator')
 
         if self.vdwradii is not None:
             # external vdW radii
@@ -275,8 +277,8 @@ class vdWTkatchenko09prl(Calculator, IOContext):
                                    alpha_a[a] / alpha_a[b] * C6eff_a[b]))
                 C6eff_aa[b, a] = C6eff_aa[a, b]
 
-        self.timer.stop('corrections')
-        self.timer.start('pairing')
+        self.timer.stop('vdWTkatchenko09prl corrections')
+        self.timer.start('vdWTkatchenko09prl pairing')
         
         # New implementation by Miguel Caro
         # (complaints etc to mcaroba@gmail.com)
@@ -327,9 +329,9 @@ class vdWTkatchenko09prl(Calculator, IOContext):
                                for j in range(i + 1, len(atoms))])
                 # r_list.append( [[0,0,0] for j in range(i+1, len(atoms))])
                 # No PBC means we are in the same cell
-        self.timer.stop('pairing')
+        self.timer.stop('vdWTkatchenko09prl pairing')
         
-        self.timer.start('energy')
+        self.timer.start('vdWTkatchenko09prl energy')
         # Here goes the calculation, valid with and without
         # PBC because we loop over
         # independent pairwise *interactions*
@@ -377,7 +379,7 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         self.results['energy'] += EvdW
         self.results['forces'] += forces
 
-        self.timer.stop('energy')
+        self.timer.stop('vdWTkatchenko09prl energy')
 
         if self.txt:
             print(('\n' + self.__class__.__name__), file=self.txt)
