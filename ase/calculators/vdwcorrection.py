@@ -7,6 +7,7 @@ from scipy.special import erfinv, erfc
 from ase.neighborlist import neighbor_list
 from ase.parallel import world, myslice
 from ase.utils import IOContext
+from ase.utils.timing import Timer
 
 
 # dipole polarizabilities and C6 values from
@@ -160,6 +161,13 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         else:
             self.calculator = calculator
 
+        if hasattr(self.calculator, 'timer'):
+            self.timer = self.calculator.timer
+        else:
+            self.timer = Timer()
+
+        self.timer.start('vdWTkatchenko09prl initialize')
+
         if txt is None:
             txt = get_logging_file_descriptor(self.calculator)
         if hasattr(self.calculator, 'world'):
@@ -190,6 +198,8 @@ class vdWTkatchenko09prl(Calculator, IOContext):
 
         self.parameters['calculator'] = self.calculator.name
         self.parameters['xc'] = self.calculator.get_xc_functional()
+        
+        self.timer.stop('vdWTkatchenko09prl initialize')
 
     @property
     def implemented_properties(self):
@@ -212,6 +222,9 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         if not self.calculation_required(atoms, properties):
             return
 
+        self.timer.start('vdWTkatchenko09prl update')
+        self.timer.start('corrections')
+        
         if atoms is None:
             atoms = self.calculator.get_atoms()
 
@@ -262,6 +275,9 @@ class vdWTkatchenko09prl(Calculator, IOContext):
                                    alpha_a[a] / alpha_a[b] * C6eff_a[b]))
                 C6eff_aa[b, a] = C6eff_aa[a, b]
 
+        self.timer.stop('corrections')
+        self.timer.start('pairing')
+        
         # New implementation by Miguel Caro
         # (complaints etc to mcaroba@gmail.com)
         # If all 3 PBC are False, we do the summation over the atom
@@ -311,6 +327,9 @@ class vdWTkatchenko09prl(Calculator, IOContext):
                                for j in range(i + 1, len(atoms))])
                 # r_list.append( [[0,0,0] for j in range(i+1, len(atoms))])
                 # No PBC means we are in the same cell
+        self.timer.stop('pairing')
+        
+        self.timer.start('energy')
         # Here goes the calculation, valid with and without
         # PBC because we loop over
         # independent pairwise *interactions*
@@ -358,6 +377,8 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         self.results['energy'] += EvdW
         self.results['forces'] += forces
 
+        self.timer.stop('energy')
+
         if self.txt:
             print(('\n' + self.__class__.__name__), file=self.txt)
             print('vdW correction: %g' % (EvdW), file=self.txt)
@@ -370,6 +391,8 @@ class vdWTkatchenko09prl(Calculator, IOContext):
                       ((ia, symbol) + tuple(self.results['forces'][ia])),
                       file=self.txt)
             self.txt.flush()
+
+        self.timer.stop('vdWTkatchenko09prl update')
 
     def damping(self, RAB, R0A, R0B,
                 d=20,   # steepness of the step function for PBE
