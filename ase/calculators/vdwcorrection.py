@@ -5,7 +5,7 @@ from ase.calculators.calculator import Calculator
 from ase.calculators.polarizability import StaticPolarizabilityCalculator
 from scipy.special import erfinv, erfc
 from ase.neighborlist import neighbor_list
-from ase.parallel import world
+from ase.parallel import world, myslice
 from ase.utils import IOContext
 
 
@@ -163,10 +163,10 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         if txt is None:
             txt = get_logging_file_descriptor(self.calculator)
         if hasattr(self.calculator, 'world'):
-            myworld = self.calculator.world
+            self.comm = self.calculator.world
         else:
-            myworld = world  # the best we know
-        self.txt = self.openfile(txt, myworld)
+            self.comm = world  # the best we know
+        self.txt = self.openfile(txt, self.comm)
 
         self.vdwradii = vdwradii
         self.vdWDB_alphaC6 = vdWDB_alphaC6
@@ -314,7 +314,8 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         # Here goes the calculation, valid with and without
         # PBC because we loop over
         # independent pairwise *interactions*
-        for i in range(len(atoms)):
+        ms = myslice(len(atoms), self.comm)
+        for i in range(len(atoms))[ms]:
             # for j, r, vect, repl in zip(atom_list[i], d_list[i],
             #                             v_list[i], r_list[i]):
             for j, r, vect in zip(atom_list[i], d_list[i], v_list[i]):
@@ -351,6 +352,9 @@ class vdWTkatchenko09prl(Calculator, IOContext):
                     # Forces go both ways for every interaction
                     forces[i] += force_ij
                     forces[j] -= force_ij
+        EvdW = self.comm.sum(EvdW)
+        self.comm.sum(forces)
+        
         self.results['energy'] += EvdW
         self.results['forces'] += forces
 
