@@ -60,9 +60,9 @@ class Dynamics(IOContext):
             if isinstance(trajectory, str):
                 mode = "a" if append_trajectory else "w"
                 trajectory = self.closelater(Trajectory(
-                    trajectory, mode=mode, atoms=atoms, master=master
+                    trajectory, mode=mode, master=master
                 ))
-            self.attach(trajectory)
+            self.attach(trajectory, atoms=atoms)
 
     def get_number_of_steps(self):
         return self.nsteps
