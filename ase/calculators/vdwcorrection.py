@@ -218,7 +218,8 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         Calculator.calculate(self, atoms, properties, system_changes)
         self.update(atoms, properties)
 
-    def update(self, atoms=None, properties=['energy', 'forces']):
+    def update(self, atoms=None,
+               properties=['energy', 'free_energy', 'forces']):
         if not self.calculation_required(atoms, properties):
             return
 
@@ -229,7 +230,7 @@ class vdWTkatchenko09prl(Calculator, IOContext):
             atoms = self.calculator.get_atoms()
 
         properties = list(properties)
-        for name in 'energy', 'forces':
+        for name in 'energy', 'free_energy', 'forces':
             if name not in properties:
                 properties.append(name)
 
@@ -379,14 +380,15 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         self.comm.sum(forces)
         
         self.results['energy'] += EvdW
+        self.results['free_energy'] += EvdW
         self.results['forces'] += forces
 
         self.timer.stop('vdWTkatchenko09prl energy')
 
         if self.txt:
             print(('\n' + self.__class__.__name__), file=self.txt)
-            print('vdW correction: %g' % (EvdW), file=self.txt)
-            print('Energy:         %g' % self.results['energy'],
+            print(f'vdW correction: {EvdW}', file=self.txt)
+            print(f'Energy:         {self.results["energy"]}',
                   file=self.txt)
             print('\nForces in eV/Ang:', file=self.txt)
             symbols = self.atoms.get_chemical_symbols()
