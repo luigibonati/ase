@@ -249,6 +249,7 @@ class vdWTkatchenko09prl(Calculator, IOContext):
             for atom in atoms:
                 self.vdwradii.append(vdWDB_Grimme06jcc[atom.symbol][1])
 
+        self.timer.start('vdWTkatchenko09prl hirshfeld')
         if self.hirshfeld is None:
             volume_ratios = [1.] * len(atoms)
         elif hasattr(self.hirshfeld, '__len__'):  # a list
@@ -257,6 +258,7 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         else:  # should be an object
             self.hirshfeld.initialize()
             volume_ratios = self.hirshfeld.get_effective_volume_ratios()
+        self.timer.stop('vdWTkatchenko09prl hirshfeld')
 
         # correction for effective C6
         na = len(atoms)
