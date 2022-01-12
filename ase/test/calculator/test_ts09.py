@@ -47,12 +47,11 @@ def test_ts09(testdir):
     # check that the output exists
     atoms = io.read(fname)
     assert atoms.get_potential_energy() == al.get_potential_energy()
-    # maybe assert something about what we just read?
 
     p = atoms.calc.parameters
     assert p['calculator'] == cc.name
     assert p['xc'] == cc.get_xc_functional()
-    p['uncorrected_energy']
+    assert p['uncorrected_energy'] == pytest.approx(cc.get_potential_energy())
 
 
 def test_ts09_polarizability(testdir):
