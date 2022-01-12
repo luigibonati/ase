@@ -41,6 +41,9 @@ def test_ts09(testdir):
     al.calc = c
     al.get_potential_energy()
 
+    assert (al.get_potential_energy(force_consistent=False)
+            == al.get_potential_energy(force_consistent=True))
+    
     fname = 'out.traj'
     al.write(fname)
 
