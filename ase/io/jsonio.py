@@ -8,16 +8,18 @@ from ase.utils import reader, writer
 class MyEncoder(json.JSONEncoder):
     def default(self, obj):
         if hasattr(obj, 'todict'):
-            d = obj.todict()
+            dct = obj.todict()
 
-            if not isinstance(d, dict):
+            if not isinstance(dct, dict):
                 raise RuntimeError('todict() of {} returned object of type {} '
                                    'but should have returned dict'
-                                   .format(obj, type(d)))
+                                   .format(obj, type(dct)))
             if hasattr(obj, 'ase_objtype'):
-                d['__ase_objtype__'] = obj.ase_objtype
+                # We modify the dictionary, so it is wise to take a copy.
+                dct = dct.copy()
+                dct['__ase_objtype__'] = obj.ase_objtype
 
-            return d
+            return dct
         if isinstance(obj, np.ndarray):
             flatobj = obj.ravel()
             if np.iscomplexobj(obj):
