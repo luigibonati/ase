@@ -71,7 +71,7 @@ def test_write_read_with_calculator(db, h2o):
 
     uid = db.write(h2o)
 
-    h2o_db = db.get(id=uid).toatoms(attach_calculator=True)
+    h2o_db = db.get(id=uid).toatoms()
 
     calc_db = h2o_db.calc
     assert calc_db.parameters['dummy_param'] == 2.4
