@@ -325,11 +325,6 @@ If you want an :class:`~ase.Atoms` object insted of an
 
 >>> h2 = db.get_atoms(H=2)
 
-or if you want the original EMT calculator attached:
-
->>> h2 = db.get_atoms(H=2, attach_calculator=True)
-
-
 Add additional data
 -------------------
 
