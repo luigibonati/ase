@@ -112,6 +112,12 @@ def test_d3_zero_revpbe(factory, system):
     close(system.get_potential_energy(), -1.5274869363442936)
 
 
+def test_bad_xc(factory, system):
+    system.calc = factory.calc(xc='does_not_exist')
+    with pytest.raises(RuntimeError, match='Unknown DFTD3 functional name'):
+        system.get_potential_energy()
+
+
 def test_custom_damping(factory, system):
     system.calc = factory.calc(s6=1.1, sr6=1.1, s8=0.6, sr8=0.9, alpha6=13.0)
     close(system.get_potential_energy(), -1.082846357973487)
