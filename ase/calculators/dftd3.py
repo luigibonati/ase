@@ -332,21 +332,6 @@ class DFTD3(FileIOCalculator):
         self.results['energy'] = energy
         self.results['free_energy'] = energy
 
-        # FIXME: Calculator.get_potential_energy() simply inspects
-        # self.results for the free energy rather than calling
-        # Calculator.get_property('free_energy'). For example, GPAW does
-        # not actually present free_energy as an implemented property, even
-        # though it does calculate it. So, we are going to add in the DFT
-        # free energy to our own results if it is present in the attached
-        # calculator. TODO: Fix the Calculator interface!!!
-        if self.dft is not None:
-            try:
-                efree = self.dft.get_potential_energy(
-                    force_consistent=True)
-                self.results['free_energy'] += efree
-            except PropertyNotImplementedError:
-                pass
-
         if self.parameters['grad']:
             forces = self._read_dftd3_forces()
             self.results['forces'] = forces
