@@ -40,8 +40,6 @@ class DFTD3(FileIOCalculator):
                           'a2': None,
                           'beta': None}
 
-    dftd3_flags = ('grad', 'pbc', 'abc', 'old', 'tz')
-
     def __init__(self,
                  label='ase_dftd3',  # Label for dftd3 output files
                  command=None,  # Command for running dftd3
@@ -213,7 +211,11 @@ class DFTD3(FileIOCalculator):
         # Write XYZ or POSCAR file and .dftd3par.local file if we are using
         # custom damping parameters.
         self.write_input(self.atoms, properties, system_changes)
-        command = self._generate_command()
+        # command = self._generate_command()
+
+        inputs = DFTD3Inputs(command=self.command, prefix=self.label,
+                             atoms=self.atoms, parameters=self.parameters)
+        command = inputs.get_argv(custom_damp=self.custom_damp)
 
         # Finally, call dftd3 and parse results.
         # DFTD3 does not run in parallel
@@ -314,34 +316,52 @@ class DFTD3(FileIOCalculator):
         else:
             return dft_result + dftd3_result
 
-    def _generate_command(self):
-        command = self.command.split()
 
-        if any(self.atoms.pbc):
-            command.append(self.label + '.POSCAR')
+class DFTD3Inputs:
+    dftd3_flags = {'grad', 'pbc', 'abc', 'old', 'tz'}
+
+    def __init__(self, command, prefix, atoms, parameters):
+        self.command = command
+        self.prefix = prefix
+        self.atoms = atoms
+        self.parameters = parameters
+
+    @property
+    def pbc(self):
+        return any(self.atoms.pbc)
+
+    @property
+    def inputformat(self):
+        if self.pbc:
+            return 'POSCAR'
         else:
-            command.append(self.label + '.xyz')
+            return 'xyz'
 
-        if not self.custom_damp:
+    def get_argv(self, custom_damp):
+        argv = self.command.split()
+
+        argv.append(f'{self.prefix}.{self.inputformat}')
+
+        if not custom_damp:
             xc = self.parameters.get('xc')
             if xc is None:
                 xc = 'pbe'
-            command += ['-func', xc.lower()]
+            argv += ['-func', xc.lower()]
 
         for arg in self.dftd3_flags:
             if self.parameters.get(arg):
-                command.append('-' + arg)
+                argv.append('-' + arg)
 
-        if any(self.atoms.pbc):
-            command.append('-pbc')
+        if self.pbc:
+            argv.append('-pbc')
 
-        command += ['-cnthr', str(self.parameters['cnthr'] / Bohr)]
-        command += ['-cutoff', str(self.parameters['cutoff'] / Bohr)]
+        argv += ['-cnthr', str(self.parameters['cnthr'] / Bohr)]
+        argv += ['-cutoff', str(self.parameters['cutoff'] / Bohr)]
 
         if not self.parameters['old']:
-            command.append('-' + self.parameters['damping'])
+            argv.append('-' + self.parameters['damping'])
 
-        return command
+        return argv
 
 
 class DFTD3Output:
