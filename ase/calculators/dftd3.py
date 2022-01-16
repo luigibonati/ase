@@ -334,12 +334,10 @@ class DFTD3(FileIOCalculator):
 
         if self.parameters['grad']:
             # parse the forces
-            forces = np.zeros((len(self.atoms), 3))
             forcename = os.path.join(self.directory, 'dftd3_gradient')
             if self.comm.rank == 0:
                 with open(forcename, 'r') as fd:
-                    for i, line in enumerate(fd):
-                        forces[i] = np.array([float(x) for x in line.split()])
+                    forces = self._read_forces(fd)
                 forces *= -Hartree / Bohr
             self.comm.broadcast(forces, 0)
             if self.atoms.pbc.any():
@@ -349,17 +347,30 @@ class DFTD3(FileIOCalculator):
 
             if any(self.atoms.pbc):
                 # parse the stress tensor
-                stress = np.zeros((3, 3))
                 stressname = os.path.join(self.directory, 'dftd3_cellgradient')
                 if self.comm.rank == 0:
                     with open(stressname, 'r') as fd:
-                        for i, line in enumerate(fd):
-                            for j, x in enumerate(line.split()):
-                                stress[i, j] = float(x)
+                        stress = self._read_stress(fd)
                     stress *= Hartree / Bohr / self.atoms.get_volume()
-                    stress = np.dot(stress.T, self.atoms.cell)
+                    stress = stress.T @ self.atoms.cell
                 self.comm.broadcast(stress, 0)
                 self.results['stress'] = stress.flat[[0, 4, 8, 5, 2, 1]]
+
+    def _read_forces(self, fd):
+        forces = np.zeros((len(self.atoms), 3))
+        for i, line in enumerate(fd):
+            forces[i] = np.array([float(x) for x in line.split()])
+        # Check if file is longer?
+        return forces
+
+    def _read_stress(self, fd):
+        stress = np.zeros((3, 3))
+        for i, line in enumerate(fd):
+            for j, x in enumerate(line.split()):
+                stress[i, j] = float(x)
+        # Check if all stress elements are present?
+        # Check if file is longer?
+        return stress
 
     def get_property(self, name, atoms=None, allow_calculation=True):
         dft_result = None
