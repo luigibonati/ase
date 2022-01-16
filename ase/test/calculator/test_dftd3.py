@@ -155,3 +155,20 @@ def test_diamond_stress(factory, system):
     # by dftd3. So, use very loose comparison criteria.
     s_numer = system.calc.calculate_numerical_stress(system, d=1e-4)
     array_close(s_numer, s_ref, releps=1e-2, abseps=1e-3)
+
+
+def test_free_energy_bug(factory):
+    # Energy and free_energy should be close to equal.
+    # Due to a bug related to legacy free_energy property handling,
+    # it would double-count the free energy from the DFT calculation.
+    # This test protects against that.
+    from ase.calculators.emt import EMT
+    atoms = bulk('Au', cubic=True)
+    atoms.rattle(stdev=0.15)
+
+    dftd3 = factory.calc(dft=EMT())
+    atoms.calc = dftd3
+
+    e1, e2 = [atoms.get_potential_energy(force_consistent=x)
+              for x in [False, True]]
+    assert e1 == pytest.approx(e2, abs=1e-14)
