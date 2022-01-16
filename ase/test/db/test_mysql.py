@@ -73,11 +73,13 @@ def test_write_read_with_calculator(db, h2o):
 
     h2o_db = db.get(id=uid).toatoms()
 
-    calc_db = h2o_db.calc
-    assert calc_db.parameters['dummy_param'] == 2.4
+    # Back in the days we allowed reconstructing calculators.
+    # For security we don't anymore.
+    assert h2o_db.calc is None
 
     # Check that get_atoms function works
     db.get_atoms(H=2)
+    # XXX We should assert something should we not?
 
 
 def test_update(db, h2o):
