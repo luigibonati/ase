@@ -111,14 +111,14 @@ class DFTD3(FileIOCalculator):
         changed_parameters.update(FileIOCalculator.set(self, **kwargs))
 
         # Ensure damping method is valid (zero, bj, zerom, bjm).
-        if self.parameters['damping'] is not None:
-            self.parameters['damping'] = self.parameters['damping'].lower()
-        if self.parameters['damping'] not in self.damping_methods:
-            raise ValueError('Unknown damping method {}!'
-                             ''.format(self.parameters['damping']))
+        damping = self.parameters['damping']
+        if damping is not None:
+            damping = damping.lower()
+        if damping not in self.damping_methods:
+            raise ValueError(f'Unknown damping method {damping}!')
 
         # d2 only is valid with 'zero' damping
-        elif self.parameters['old'] and self.parameters['damping'] != 'zero':
+        elif self.parameters['old'] and damping != 'zero':
             raise ValueError('Only zero-damping can be used with the D2 '
                              'dispersion correction method!')
 
@@ -149,7 +149,7 @@ class DFTD3(FileIOCalculator):
         all_damppars = zero_damppars | bj_damppars | zerom_damppars
 
         self.custom_damp = False
-        damping = self.parameters['damping']
+
         damppars = set(kwargs) & all_damppars
         if damppars:
             self.custom_damp = True
