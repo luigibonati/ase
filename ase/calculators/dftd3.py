@@ -1,6 +1,7 @@
 import os
 import subprocess
 from warnings import warn
+from pathlib import Path
 
 import numpy as np
 from ase.calculators.calculator import (Calculator, FileIOCalculator,
@@ -245,57 +246,69 @@ class DFTD3(FileIOCalculator):
                  'of non-periodic or 3D-periodic systems. We will treat '
                  'this system as 3D-periodic!')
 
+        directory = Path(self.directory)
+
         if self.comm.rank == 0:
             if pbc:
-                fname = os.path.join(self.directory,
-                                     '{}.POSCAR'.format(self.label))
+                fname = directory / '{}.POSCAR'.format(self.label)
                 # We sort the atoms so that the atomtypes list becomes as
                 # short as possible.  The dftd3 program can only handle 10
                 # atomtypes
                 write_vasp(fname, atoms, sort=True)
             else:
-                fname = os.path.join(
-                    self.directory, '{}.xyz'.format(self.label))
+                fname = directory / '{}.xyz'.format(self.label)
                 write(fname, atoms, format='xyz', parallel=False)
 
         # Generate custom damping parameters file. This is kind of ugly, but
         # I don't know of a better way of doing this.
         if self.custom_damp:
-            damppars = []
-            # s6 is always first
-            damppars.append(str(float(self.parameters['s6'])))
-            # sr6 is the second value for zero{,m} damping, a1 for bj{,m}
-            if self.parameters['damping'] in ['zero', 'zerom']:
-                damppars.append(str(float(self.parameters['sr6'])))
-            elif self.parameters['damping'] in ['bj', 'bjm']:
-                damppars.append(str(float(self.parameters['a1'])))
-            # s8 is always third
-            damppars.append(str(float(self.parameters['s8'])))
-            # sr8 is fourth for zero, a2 for bj{,m}, beta for zerom
-            if self.parameters['damping'] == 'zero':
-                damppars.append(str(float(self.parameters['sr8'])))
-            elif self.parameters['damping'] in ['bj', 'bjm']:
-                damppars.append(str(float(self.parameters['a2'])))
-            elif self.parameters['damping'] == 'zerom':
-                damppars.append(str(float(self.parameters['beta'])))
-            # alpha6 is always fifth
-            damppars.append(str(int(self.parameters['alpha6'])))
-            # last is the version number
-            if self.parameters['old']:
-                damppars.append('2')
-            elif self.parameters['damping'] == 'zero':
-                damppars.append('3')
-            elif self.parameters['damping'] == 'bj':
-                damppars.append('4')
-            elif self.parameters['damping'] == 'zerom':
-                damppars.append('5')
-            elif self.parameters['damping'] == 'bjm':
-                damppars.append('6')
+            damppars = self._get_damppars()
 
             damp_fname = os.path.join(self.directory, '.dftd3par.local')
             if self.comm.rank == 0:
                 with open(damp_fname, 'w') as fd:
                     fd.write(' '.join(damppars))
+
+    def _get_damppars(self):
+        par = self.parameters
+        damping = par['damping']
+
+        damppars = []
+
+        # s6 is always first
+        damppars.append(str(float(par['s6'])))
+
+        # sr6 is the second value for zero{,m} damping, a1 for bj{,m}
+        if damping in ['zero', 'zerom']:
+            damppars.append(str(float(par['sr6'])))
+        elif damping in ['bj', 'bjm']:
+            damppars.append(str(float(par['a1'])))
+
+        # s8 is always third
+        damppars.append(str(float(par['s8'])))
+
+        # sr8 is fourth for zero, a2 for bj{,m}, beta for zerom
+        if damping == 'zero':
+            damppars.append(str(float(par['sr8'])))
+        elif damping in ['bj', 'bjm']:
+            damppars.append(str(float(par['a2'])))
+        elif damping == 'zerom':
+            damppars.append(str(float(par['beta'])))
+        # alpha6 is always fifth
+        damppars.append(str(int(par['alpha6'])))
+
+        # last is the version number
+        if par['old']:
+            damppars.append('2')
+        elif damping == 'zero':
+            damppars.append('3')
+        elif damping == 'bj':
+            damppars.append('4')
+        elif damping == 'zerom':
+            damppars.append('5')
+        elif damping == 'bjm':
+            damppars.append('6')
+        return damppars
 
     def _outname(self):
         return os.path.join(self.directory, self.label + '.out')
