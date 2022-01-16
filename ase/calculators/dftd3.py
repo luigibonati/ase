@@ -283,10 +283,10 @@ class DFTD3(FileIOCalculator):
     def _read_and_broadcast_results(self):
         from ase.parallel import broadcast
         if self.comm.rank == 0:
-            output = DFTD3Output(self.directory)
+            output = DFTD3Output(directory=self.directory,
+                                 stdout_path=self._outname())
             dct = output.read(atoms=self.atoms,
-                              read_forces=bool(self.parameters['grad']),
-                              stdout_path=self._outname())
+                              read_forces=bool(self.parameters['grad']))
         else:
             dct = None
 
@@ -345,15 +345,14 @@ class DFTD3(FileIOCalculator):
 
 
 class DFTD3Output:
-    stressname = 'dftd3_cellgradient'
-
-    def __init__(self, directory):
+    def __init__(self, directory, stdout_path):
         self.directory = Path(directory)
+        self.stdout_path = Path(stdout_path)
 
-    def read(self, *, atoms, read_forces, stdout_path):
+    def read(self, *, atoms, read_forces):
         results = {}
 
-        energy = self.read_energy(stdout_path)
+        energy = self.read_energy()
         results['energy'] = energy
         results['free_energy'] = energy
 
@@ -365,14 +364,17 @@ class DFTD3Output:
 
         return results
 
-    def read_energy(self, stdout_path) -> float:
-        with open(stdout_path) as fd:
+    def read_energy(self) -> float:
+        with self.stdout_path.open() as fd:
             return self.parse_energy(fd)
 
     def read_forces(self, atoms):
         forcename = self.directory / 'dftd3_gradient'
         with open(forcename) as fd:
             forces = self.parse_forces(fd)
+
+        assert len(forces) == len(atoms)
+
         forces *= -Hartree / Bohr
         # XXXX ordering!
         if any(atoms.pbc):
@@ -393,7 +395,7 @@ class DFTD3Output:
         return stress.flat[[0, 4, 8, 5, 2, 1]]
 
     def read_cellgradient(self):
-        with (self.directory / self.stressname).open() as fd:
+        with (self.directory / 'dftd3_cellgradient').open() as fd:
             return self.parse_cellgradient(fd)
 
     def parse_energy(self, fd):
