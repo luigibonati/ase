@@ -262,53 +262,12 @@ class DFTD3(FileIOCalculator):
         # Generate custom damping parameters file. This is kind of ugly, but
         # I don't know of a better way of doing this.
         if self.custom_damp:
-            damppars = self._get_damppars()
+            damppars = _get_damppars(self.parameters)
 
             damp_fname = os.path.join(self.directory, '.dftd3par.local')
             if self.comm.rank == 0:
                 with open(damp_fname, 'w') as fd:
                     fd.write(' '.join(damppars))
-
-    def _get_damppars(self):
-        par = self.parameters
-        damping = par['damping']
-
-        damppars = []
-
-        # s6 is always first
-        damppars.append(str(float(par['s6'])))
-
-        # sr6 is the second value for zero{,m} damping, a1 for bj{,m}
-        if damping in ['zero', 'zerom']:
-            damppars.append(str(float(par['sr6'])))
-        elif damping in ['bj', 'bjm']:
-            damppars.append(str(float(par['a1'])))
-
-        # s8 is always third
-        damppars.append(str(float(par['s8'])))
-
-        # sr8 is fourth for zero, a2 for bj{,m}, beta for zerom
-        if damping == 'zero':
-            damppars.append(str(float(par['sr8'])))
-        elif damping in ['bj', 'bjm']:
-            damppars.append(str(float(par['a2'])))
-        elif damping == 'zerom':
-            damppars.append(str(float(par['beta'])))
-        # alpha6 is always fifth
-        damppars.append(str(int(par['alpha6'])))
-
-        # last is the version number
-        if par['old']:
-            damppars.append('2')
-        elif damping == 'zero':
-            damppars.append('3')
-        elif damping == 'bj':
-            damppars.append('4')
-        elif damping == 'zerom':
-            damppars.append('5')
-        elif damping == 'bjm':
-            damppars.append('6')
-        return damppars
 
     def _outname(self):
         return os.path.join(self.directory, self.label + '.out')
@@ -447,3 +406,44 @@ class DFTD3(FileIOCalculator):
             command.append('-' + self.parameters['damping'])
 
         return command
+
+
+def _get_damppars(par):
+    damping = par['damping']
+
+    damppars = []
+
+    # s6 is always first
+    damppars.append(str(float(par['s6'])))
+
+    # sr6 is the second value for zero{,m} damping, a1 for bj{,m}
+    if damping in ['zero', 'zerom']:
+        damppars.append(str(float(par['sr6'])))
+    elif damping in ['bj', 'bjm']:
+        damppars.append(str(float(par['a1'])))
+
+    # s8 is always third
+    damppars.append(str(float(par['s8'])))
+
+    # sr8 is fourth for zero, a2 for bj{,m}, beta for zerom
+    if damping == 'zero':
+        damppars.append(str(float(par['sr8'])))
+    elif damping in ['bj', 'bjm']:
+        damppars.append(str(float(par['a2'])))
+    elif damping == 'zerom':
+        damppars.append(str(float(par['beta'])))
+    # alpha6 is always fifth
+    damppars.append(str(int(par['alpha6'])))
+
+    # last is the version number
+    if par['old']:
+        damppars.append('2')
+    elif damping == 'zero':
+        damppars.append('3')
+    elif damping == 'bj':
+        damppars.append('4')
+    elif damping == 'zerom':
+        damppars.append('5')
+    elif damping == 'bjm':
+        damppars.append('6')
+    return damppars
