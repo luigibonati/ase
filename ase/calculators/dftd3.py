@@ -299,44 +299,53 @@ class DFTD3(FileIOCalculator):
                 with open(damp_fname, 'w') as fd:
                     fd.write(' '.join(damppars))
 
-    def read_results(self):
-        # parse the energy
-        outname = os.path.join(self.directory, self.label + '.out')
-        energy = 0.0
+    def _outname(self):
+        return os.path.join(self.directory, self.label + '.out')
+
+    def _read_energy(self, fd, outname):
+        for line in fd:
+            if line.startswith(' program stopped'):
+                if 'functional name unknown' in line:
+                    message = ('Unknown DFTD3 functional name "{}". '
+                               'Please check the dftd3.f source file '
+                               'for the list of known functionals '
+                               'and their spelling.'
+                               ''.format(self.parameters['xc']))
+                else:
+                    message = ('dftd3 failed! Please check the {} '
+                               'output file and report any errors '
+                               'to the ASE developers.'
+                               ''.format(outname))
+                raise RuntimeError(message)
+
+            if line.startswith(' Edisp'):
+                # line looks something like this:
+                #
+                #     Edisp /kcal,au,ev: xxx xxx xxx
+                #
+                parts = line.split()
+                assert parts[1][0] == '/'
+                index = 2 + parts[1][1:-1].split(',').index('au')
+                e_dftd3 = float(parts[index]) * Hartree
+                return e_dftd3
+
+        raise RuntimeError('Could not parse energy from dftd3 '
+                           'output, see file {}'.format(outname))
+
+    def _read_dftd3_energy(self):
+        outname = self._outname()
         if self.comm.rank == 0:
             with open(outname, 'r') as fd:
-                for line in fd:
-                    if line.startswith(' program stopped'):
-                        if 'functional name unknown' in line:
-                            message = 'Unknown DFTD3 functional name "{}". ' \
-                                      'Please check the dftd3.f source file ' \
-                                      'for the list of known functionals ' \
-                                      'and their spelling.' \
-                                      ''.format(self.parameters['xc'])
-                        else:
-                            message = 'dftd3 failed! Please check the {} ' \
-                                      'output file and report any errors ' \
-                                      'to the ASE developers.' \
-                                      ''.format(outname)
-                        raise RuntimeError(message)
+                energy = self._read_energy(fd, outname)
+        else:
+            energy = 0.0
+        return self.comm.sum(energy)
 
-                    if line.startswith(' Edisp'):
-                        # line looks something like this:
-                        #
-                        #     Edisp /kcal,au,ev: xxx xxx xxx
-                        #
-                        parts = line.split()
-                        assert parts[1][0] == '/'
-                        index = 2 + parts[1][1:-1].split(',').index('au')
-                        e_dftd3 = float(parts[index]) * Hartree
-                        energy = e_dftd3
-                        break
-                else:
-                    raise RuntimeError('Could not parse energy from dftd3 '
-                                       'output, see file {}'.format(outname))
+    def read_results(self):
+        energy = self._read_dftd3_energy()
 
-        self.results['energy'] = self.comm.sum(energy)
-        self.results['free_energy'] = self.results['energy']
+        self.results['energy'] = energy
+        self.results['free_energy'] = energy
 
         # FIXME: Calculator.get_potential_energy() simply inspects
         # self.results for the free energy rather than calling
@@ -364,7 +373,7 @@ class DFTD3(FileIOCalculator):
                 forces *= -Hartree / Bohr
             self.comm.broadcast(forces, 0)
             if self.atoms.pbc.any():
-                ind = np.argsort(self.atoms.get_chemical_symbols())
+                ind = np.argsort(self.atoms.symbols)
                 forces[ind] = forces.copy()
             self.results['forces'] = forces
 
