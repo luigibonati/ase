@@ -272,7 +272,7 @@ class DFTD3(FileIOCalculator):
     def _outname(self):
         return os.path.join(self.directory, self.label + '.out')
 
-    def _read_energy(self, fd, outname):
+    def _parse_energy(self, fd, outname):
         for line in fd:
             if line.startswith(' program stopped'):
                 if 'functional name unknown' in line:
@@ -306,10 +306,25 @@ class DFTD3(FileIOCalculator):
         outname = self._outname()
         if self.comm.rank == 0:
             with open(outname, 'r') as fd:
-                energy = self._read_energy(fd, outname)
+                energy = self._parse_energy(fd, outname)
         else:
             energy = 0.0
         return self.comm.sum(energy)
+
+    def _read_dftd3_forces(self):
+        forcename = os.path.join(self.directory, 'dftd3_gradient')
+        if self.comm.rank == 0:
+            with open(forcename, 'r') as fd:
+                forces = self._parse_forces(fd)
+            forces *= -Hartree / Bohr
+        self.comm.broadcast(forces, 0)
+        if self.atoms.pbc.any():
+            # This seems to be due to vasp file sorting.
+            # If that sorting rule changes, we will get garbled
+            # forces!
+            ind = np.argsort(self.atoms.symbols)
+            forces[ind] = forces.copy()
+        return forces
 
     def read_results(self):
         energy = self._read_dftd3_energy()
@@ -333,37 +348,32 @@ class DFTD3(FileIOCalculator):
                 pass
 
         if self.parameters['grad']:
-            # parse the forces
-            forcename = os.path.join(self.directory, 'dftd3_gradient')
-            if self.comm.rank == 0:
-                with open(forcename, 'r') as fd:
-                    forces = self._read_forces(fd)
-                forces *= -Hartree / Bohr
-            self.comm.broadcast(forces, 0)
-            if self.atoms.pbc.any():
-                ind = np.argsort(self.atoms.symbols)
-                forces[ind] = forces.copy()
+            forces = self._read_dftd3_forces()
             self.results['forces'] = forces
 
             if any(self.atoms.pbc):
-                # parse the stress tensor
-                stressname = os.path.join(self.directory, 'dftd3_cellgradient')
-                if self.comm.rank == 0:
-                    with open(stressname, 'r') as fd:
-                        stress = self._read_stress(fd)
-                    stress *= Hartree / Bohr / self.atoms.get_volume()
-                    stress = stress.T @ self.atoms.cell
-                self.comm.broadcast(stress, 0)
+                stress = self._read_dftd3_stress()
                 self.results['stress'] = stress.flat[[0, 4, 8, 5, 2, 1]]
 
-    def _read_forces(self, fd):
+    def _read_dftd3_stress(self):
+        # parse the stress tensor
+        stressname = os.path.join(self.directory, 'dftd3_cellgradient')
+        if self.comm.rank == 0:
+            with open(stressname, 'r') as fd:
+                stress = self._parse_stress(fd)
+            stress *= Hartree / Bohr / self.atoms.get_volume()
+            stress = stress.T @ self.atoms.cell
+        self.comm.broadcast(stress, 0)
+        return stress
+
+    def _parse_forces(self, fd):
         forces = np.zeros((len(self.atoms), 3))
         for i, line in enumerate(fd):
             forces[i] = np.array([float(x) for x in line.split()])
         # Check if file is longer?
         return forces
 
-    def _read_stress(self, fd):
+    def _parse_stress(self, fd):
         stress = np.zeros((3, 3))
         for i, line in enumerate(fd):
             for j, x in enumerate(line.split()):
