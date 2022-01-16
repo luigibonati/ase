@@ -239,13 +239,11 @@ class DFTD3(FileIOCalculator):
         # dimensions. If the atoms object is periodic in only 1 or 2
         # dimensions, then treat it as a fully 3D periodic system, but warn
         # the user.
-        pbc = False
-        if any(atoms.pbc):
-            if not all(atoms.pbc):
-                warn('WARNING! dftd3 can only calculate the dispersion energy '
-                     'of non-periodic or 3D-periodic systems. We will treat '
-                     'this system as 3D-periodic!')
-            pbc = True
+        pbc = any(atoms.pbc)
+        if pbc and not all(atoms.pbc):
+            warn('WARNING! dftd3 can only calculate the dispersion energy '
+                 'of non-periodic or 3D-periodic systems. We will treat '
+                 'this system as 3D-periodic!')
 
         if self.comm.rank == 0:
             if pbc:
