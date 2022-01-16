@@ -240,34 +240,42 @@ class DFTD3(FileIOCalculator):
         # dimensions. If the atoms object is periodic in only 1 or 2
         # dimensions, then treat it as a fully 3D periodic system, but warn
         # the user.
+
+        if self.custom_damp:
+            damppars = _get_damppars(self.parameters)
+        else:
+            damppars = None
+
         pbc = any(atoms.pbc)
         if pbc and not all(atoms.pbc):
             warn('WARNING! dftd3 can only calculate the dispersion energy '
                  'of non-periodic or 3D-periodic systems. We will treat '
                  'this system as 3D-periodic!')
 
-        directory = Path(self.directory)
-
         if self.comm.rank == 0:
-            if pbc:
-                fname = directory / '{}.POSCAR'.format(self.label)
-                # We sort the atoms so that the atomtypes list becomes as
-                # short as possible.  The dftd3 program can only handle 10
-                # atomtypes
-                write_vasp(fname, atoms, sort=True)
-            else:
-                fname = directory / '{}.xyz'.format(self.label)
-                write(fname, atoms, format='xyz', parallel=False)
+            self._actually_write_input(
+                directory=Path(self.directory), atoms=atoms,
+                properties=properties, prefix=self.label,
+                damppars=damppars, pbc=pbc)
+
+    def _actually_write_input(self, directory, prefix, atoms, properties,
+                              damppars, pbc):
+        if pbc:
+            fname = directory / '{}.POSCAR'.format(prefix)
+            # We sort the atoms so that the atomtypes list becomes as
+            # short as possible.  The dftd3 program can only handle 10
+            # atomtypes
+            write_vasp(fname, atoms, sort=True)
+        else:
+            fname = directory / '{}.xyz'.format(prefix)
+            write(fname, atoms, format='xyz', parallel=False)
 
         # Generate custom damping parameters file. This is kind of ugly, but
         # I don't know of a better way of doing this.
-        if self.custom_damp:
-            damppars = _get_damppars(self.parameters)
-
-            damp_fname = os.path.join(self.directory, '.dftd3par.local')
-            if self.comm.rank == 0:
-                with open(damp_fname, 'w') as fd:
-                    fd.write(' '.join(damppars))
+        if damppars is not None:
+            damp_fname = directory / '.dftd3par.local'
+            with open(damp_fname, 'w') as fd:
+                fd.write(' '.join(damppars))
 
     def _outname(self):
         return os.path.join(self.directory, self.label + '.out')
