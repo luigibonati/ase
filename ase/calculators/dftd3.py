@@ -278,102 +278,24 @@ class DFTD3(FileIOCalculator):
                 fd.write(' '.join(damppars))
 
     def _outname(self):
-        return os.path.join(self.directory, self.label + '.out')
+        return Path(self.directory) / f'{self.label}.out'
 
-    def _parse_energy(self, fd, outname):
-        for line in fd:
-            if line.startswith(' program stopped'):
-                if 'functional name unknown' in line:
-                    message = ('Unknown DFTD3 functional name "{}". '
-                               'Please check the dftd3.f source file '
-                               'for the list of known functionals '
-                               'and their spelling.'
-                               ''.format(self.parameters['xc']))
-                else:
-                    message = ('dftd3 failed! Please check the {} '
-                               'output file and report any errors '
-                               'to the ASE developers.'
-                               ''.format(outname))
-                raise RuntimeError(message)
-
-            if line.startswith(' Edisp'):
-                # line looks something like this:
-                #
-                #     Edisp /kcal,au,ev: xxx xxx xxx
-                #
-                parts = line.split()
-                assert parts[1][0] == '/'
-                index = 2 + parts[1][1:-1].split(',').index('au')
-                e_dftd3 = float(parts[index]) * Hartree
-                return e_dftd3
-
-        raise RuntimeError('Could not parse energy from dftd3 '
-                           'output, see file {}'.format(outname))
-
-    def _read_dftd3_energy(self):
-        outname = self._outname()
+    def _read_and_broadcast_results(self):
+        from ase.parallel import broadcast
         if self.comm.rank == 0:
-            with open(outname, 'r') as fd:
-                energy = self._parse_energy(fd, outname)
+            output = DFTD3Output(self.directory)
+            dct = output.read(atoms=self.atoms,
+                              read_forces=bool(self.parameters['grad']),
+                              stdout_path=self._outname())
         else:
-            energy = 0.0
-        return self.comm.sum(energy)
+            dct = None
 
-    def _read_dftd3_forces(self):
-        forcename = os.path.join(self.directory, 'dftd3_gradient')
-        if self.comm.rank == 0:
-            with open(forcename, 'r') as fd:
-                forces = self._parse_forces(fd)
-            forces *= -Hartree / Bohr
-        self.comm.broadcast(forces, 0)
-        if self.atoms.pbc.any():
-            # This seems to be due to vasp file sorting.
-            # If that sorting rule changes, we will get garbled
-            # forces!
-            ind = np.argsort(self.atoms.symbols)
-            forces[ind] = forces.copy()
-        return forces
+        dct = broadcast(dct, root=0, comm=self.comm)
+        return dct
 
     def read_results(self):
-        energy = self._read_dftd3_energy()
-
-        self.results['energy'] = energy
-        self.results['free_energy'] = energy
-
-        if self.parameters['grad']:
-            forces = self._read_dftd3_forces()
-            self.results['forces'] = forces
-
-            if any(self.atoms.pbc):
-                stress = self._read_dftd3_stress()
-                self.results['stress'] = stress.flat[[0, 4, 8, 5, 2, 1]]
-
-    def _read_dftd3_stress(self):
-        # parse the stress tensor
-        stressname = os.path.join(self.directory, 'dftd3_cellgradient')
-        if self.comm.rank == 0:
-            with open(stressname, 'r') as fd:
-                stress = self._parse_stress(fd)
-            stress *= Hartree / Bohr / self.atoms.get_volume()
-            stress = stress.T @ self.atoms.cell
-        self.comm.broadcast(stress, 0)
-        return stress
-
-    def _parse_forces(self, fd):
-        forces = np.zeros((len(self.atoms), 3))
-        for i, line in enumerate(fd):
-            forces[i] = np.array([float(x) for x in line.split()])
-        # Check if file is longer?
-        return forces
-
-    def _parse_stress(self, fd):
-        stress = np.zeros((3, 3))
-        for i, line in enumerate(fd):
-            for j, x in enumerate(line.split()):
-                stress[i, j] = float(x)
-        # Check if all stress elements are present?
-        # Check if file is longer?
-        return stress
+        results = self._read_and_broadcast_results()
+        self.results = results
 
     def get_property(self, name, atoms=None, allow_calculation=True):
         dft_result = None
@@ -420,6 +342,105 @@ class DFTD3(FileIOCalculator):
             command.append('-' + self.parameters['damping'])
 
         return command
+
+
+class DFTD3Output:
+    stressname = 'dftd3_cellgradient'
+
+    def __init__(self, directory):
+        self.directory = Path(directory)
+
+    def read(self, *, atoms, read_forces, stdout_path):
+        results = {}
+
+        energy = self.read_energy(stdout_path)
+        results['energy'] = energy
+        results['free_energy'] = energy
+
+        if read_forces:
+            results['forces'] = self.read_forces(atoms)
+
+        if any(atoms.pbc):
+            results['stress'] = self.read_stress(atoms.cell)
+
+        return results
+
+    def read_energy(self, stdout_path) -> float:
+        with open(stdout_path) as fd:
+            return self.parse_energy(fd)
+
+    def read_forces(self, atoms):
+        forcename = self.directory / 'dftd3_gradient'
+        with open(forcename) as fd:
+            forces = self.parse_forces(fd)
+        forces *= -Hartree / Bohr
+        # XXXX ordering!
+        if any(atoms.pbc):
+            # This seems to be due to vasp file sorting.
+            # If that sorting rule changes, we will get garbled
+            # forces!
+            ind = np.argsort(atoms.symbols)
+            forces[ind] = forces.copy()
+        return forces
+
+    def read_stress(self, cell):
+        volume = cell.volume
+        assert volume > 0
+
+        stress = self.read_cellgradient()
+        stress *= Hartree / Bohr / volume
+        stress = stress.T @ cell
+        return stress.flat[[0, 4, 8, 5, 2, 1]]
+
+    def read_cellgradient(self):
+        with (self.directory / self.stressname).open() as fd:
+            return self.parse_cellgradient(fd)
+
+    def parse_energy(self, fd):
+        for line in fd:
+            if line.startswith(' program stopped'):
+                if 'functional name unknown' in line:
+                    # XXX would be helpful to include name in errmsg.
+                    message = ('Unknown DFTD3 functional name. '
+                               'Please check the dftd3.f source file '
+                               'for the list of known functionals '
+                               'and their spelling.')
+                               #''.format(self.parameters['xc']))
+                else:
+                    message = ('dftd3 failed! Please check the {} '
+                               'output file and report any errors '
+                               'to the ASE developers.'
+                               ''.format(outname))
+                raise RuntimeError(message)
+
+            if line.startswith(' Edisp'):
+                # line looks something like this:
+                #
+                #     Edisp /kcal,au,ev: xxx xxx xxx
+                #
+                parts = line.split()
+                assert parts[1][0] == '/'
+                index = 2 + parts[1][1:-1].split(',').index('au')
+                e_dftd3 = float(parts[index]) * Hartree
+                return e_dftd3
+
+        raise RuntimeError('Could not parse energy from dftd3 '
+                           'output, see file {}'.format(outname))
+
+    def parse_forces(self, fd):
+        forces = []
+        for i, line in enumerate(fd):
+            forces.append(line.split())
+        return np.array(forces, dtype=float)
+
+    def parse_cellgradient(self, fd):
+        stress = np.zeros((3, 3))
+        for i, line in enumerate(fd):
+            for j, x in enumerate(line.split()):
+                stress[i, j] = float(x)
+        # Check if all stress elements are present?
+        # Check if file is longer?
+        return stress
 
 
 def _get_damppars(par):
