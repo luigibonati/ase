@@ -4,9 +4,7 @@ from warnings import warn
 from pathlib import Path
 
 import numpy as np
-from ase.calculators.calculator import (Calculator, FileIOCalculator,
-                                        PropertyNotImplementedError,
-                                        all_changes)
+from ase.calculators.calculator import Calculator, FileIOCalculator
 from ase.io import write
 from ase.io.vasp import write_vasp
 from ase.parallel import world
@@ -195,8 +193,7 @@ class DFTD3(FileIOCalculator):
             self.results.clear()
         return changed_parameters
 
-    def calculate(self, atoms=None, properties=['energy'],
-                  system_changes=all_changes):
+    def calculate(self, atoms, properties, system_changes):
         # We don't call FileIOCalculator.calculate here, because that method
         # calls subprocess.call(..., shell=True), which we don't want to do.
         # So, we reproduce some content from that method here.
@@ -384,10 +381,6 @@ class DFTD3Output:
 
         return results
 
-    def read_energy(self) -> float:
-        with self.stdout_path.open() as fd:
-            return self.parse_energy(fd)
-
     def read_forces(self, atoms):
         forcename = self.directory / 'dftd3_gradient'
         with open(forcename) as fd:
@@ -418,16 +411,18 @@ class DFTD3Output:
         with (self.directory / 'dftd3_cellgradient').open() as fd:
             return self.parse_cellgradient(fd)
 
-    def parse_energy(self, fd):
+    def read_energy(self) -> float:
+        with self.stdout_path.open() as fd:
+            return self.parse_energy(fd, self.stdout_path)
+
+    def parse_energy(self, fd, outname):
         for line in fd:
             if line.startswith(' program stopped'):
                 if 'functional name unknown' in line:
-                    # XXX would be helpful to include name in errmsg.
                     message = ('Unknown DFTD3 functional name. '
                                'Please check the dftd3.f source file '
                                'for the list of known functionals '
                                'and their spelling.')
-                               #''.format(self.parameters['xc']))
                 else:
                     message = ('dftd3 failed! Please check the {} '
                                'output file and report any errors '
