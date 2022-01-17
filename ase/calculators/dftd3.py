@@ -9,18 +9,10 @@ from ase.io import write
 from ase.io.vasp import write_vasp
 from ase.parallel import world
 from ase.units import Bohr, Hartree
+from ase.calculators.mixing import SumCalculator
 
 
-class DFTD3(FileIOCalculator):
-    """Grimme DFT-D3 calculator"""
-
-    name = 'DFTD3'
-    command = 'dftd3'
-    dftd3_implemented_properties = ['energy', 'free_energy',
-                                    'forces', 'stress']
-
-    damping_methods = ['zero', 'bj', 'zerom', 'bjm']
-
+def dftd3_defaults():
     default_parameters = {'xc': None,  # PBE if no custom damping parameters
                           'grad': True,  # calculate forces/stress
                           'abc': False,  # ATM 3-body contribution
@@ -37,65 +29,91 @@ class DFTD3(FileIOCalculator):
                           'a1': None,
                           'a2': None,
                           'beta': None}
+    return default_parameters
+
+
+class DFTD3(SumCalculator):
+    """Grimme DFT-D3 calculator"""
+
+    name = 'dftd3'
 
     def __init__(self,
                  label='ase_dftd3',  # Label for dftd3 output files
                  command=None,  # Command for running dftd3
                  dft=None,  # DFT calculator
-                 atoms=None,
                  comm=world,
                  **kwargs):
 
-        self.dft = None
-        FileIOCalculator.__init__(self, restart=None,
-                                  label=label,
-                                  atoms=atoms,
-                                  command=command,
-                                  dft=dft,
-                                  **kwargs)
-
-        self.comm = comm
-
-    def set(self, **kwargs):
-        changed_parameters = {}
         # Convert from 'func' keyword to 'xc'. Internally, we only store
         # 'xc', but 'func' is also allowed since it is consistent with the
         # CLI dftd3 interface.
-        if kwargs.get('func'):
-            if kwargs.get('xc') and kwargs['func'] != kwargs['xc']:
+        func = kwargs.pop('func', None)
+        if func is not None:
+            if kwargs.get('xc') is not None:
                 raise RuntimeError('Both "func" and "xc" were provided! '
                                    'Please provide at most one of these '
                                    'two keywords. The preferred keyword '
                                    'is "xc"; "func" is allowed for '
                                    'consistency with the CLI dftd3 '
                                    'interface.')
-            if kwargs['func'] != self.parameters['xc']:
-                changed_parameters['xc'] = kwargs['func']
-            self.parameters['xc'] = kwargs['func']
-
-        # dftd3 only implements energy, forces, and stresses (for periodic
-        # systems). But, if a DFT calculator is attached, and that calculator
-        # implements more properties, we will expose those properties too.
-        if 'dft' in kwargs:
-            dft = kwargs.pop('dft')
-            if dft is not self.dft:
-                changed_parameters['dft'] = dft
-            if dft is None:
-                names = self.dftd3_implemented_properties
-            else:
-                names = dft.implemented_properties
-
-            self.implemented_properties = list(names)
-            self.dft = dft
+            kwargs['xc'] = func
 
         # If the user did not supply an XC functional, but did attach a
         # DFT calculator that has XC set, then we will use that. Note that
         # DFTD3's spelling convention is different from most, so in general
         # you will have to explicitly set XC for both the DFT calculator and
         # for DFTD3 (and DFTD3's will likely be spelled differently...)
-        if self.parameters['xc'] is None and self.dft is not None:
-            if self.dft.parameters.get('xc'):
-                self.parameters['xc'] = self.dft.parameters['xc']
+        if dft is not None and kwargs.get('xc') is None:
+            dft_xc = dft.parameters.get('xc')
+            if dft_xc is not None:
+                kwargs['xc'] = dft_xc
+
+        # dftd3 only implements energy, forces, and stresses (for periodic
+        # systems). But, if a DFT calculator is attached, and that calculator
+        # implements more properties, we expose those properties.
+        # dftd3 contributions for those properties will be zero.
+        dftd3 = PureDFTD3(label=label, command=command, comm=comm, **kwargs)
+        if dft is not None:
+            dftd3.implemented_properties = list(dft.implemented_properties)
+
+        calculators = [dftd3]
+
+        if dft is not None:
+            calculators.append(dft)
+
+        super().__init__(calculators)
+
+        self.dftd3 = dftd3
+        self.dft = dft
+
+
+class PureDFTD3(FileIOCalculator):
+    """DFTD3 calculator without corresponding DFT contribution.
+
+    This class is an implementation detail."""
+
+    name = 'puredftd3'
+    command = 'dftd3'
+
+    implemented_properties = ['energy', 'free_energy', 'forces', 'stress']
+    default_parameters = dftd3_defaults()
+    damping_methods = {'zero', 'bj', 'zerom', 'bjm'}
+
+    def __init__(self,
+                 *,
+                 label='ase_dftd3',  # Label for dftd3 output files
+                 command=None,  # Command for running dftd3
+                 comm=world,
+                 **kwargs):
+
+        super().__init__(label=label,
+                         command=command,
+                         **kwargs)
+
+        self.comm = comm
+
+    def set(self, **kwargs):
+        changed_parameters = {}
 
         # Check for unknown arguments. Don't raise an error, just let the
         # user know that we don't understand what they're asking for.
