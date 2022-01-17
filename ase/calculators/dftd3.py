@@ -4,12 +4,12 @@ from warnings import warn
 from pathlib import Path
 
 import numpy as np
-from ase.calculators.calculator import Calculator, FileIOCalculator
+from ase.calculators.calculator import (BaseCalculator, FileIOCalculator,
+                                        Calculator)
 from ase.io import write
 from ase.io.vasp import write_vasp
 from ase.parallel import world
 from ase.units import Bohr, Hartree
-from ase.calculators.mixing import SumCalculator
 
 
 def dftd3_defaults():
@@ -32,7 +32,7 @@ def dftd3_defaults():
     return default_parameters
 
 
-class DFTD3(SumCalculator):
+class DFTD3(BaseCalculator):
     """Grimme DFT-D3 calculator"""
 
     name = 'dftd3'
@@ -68,24 +68,45 @@ class DFTD3(SumCalculator):
             if dft_xc is not None:
                 kwargs['xc'] = dft_xc
 
+        dftd3 = PureDFTD3(label=label, command=command, comm=comm, **kwargs)
+
         # dftd3 only implements energy, forces, and stresses (for periodic
         # systems). But, if a DFT calculator is attached, and that calculator
         # implements more properties, we expose those properties.
         # dftd3 contributions for those properties will be zero.
-        dftd3 = PureDFTD3(label=label, command=command, comm=comm, **kwargs)
-        if dft is not None:
-            dftd3.implemented_properties = list(dft.implemented_properties)
+        if dft is None:
+            self.implemented_properties = list(dftd3.dftd3_properties)
+        else:
+            self.implemented_properties = list(dft.implemented_properties)
 
-        calculators = [dftd3]
-
-        if dft is not None:
-            calculators.append(dft)
-
-        super().__init__(calculators)
+        # Should our arguments be "parameters" (passed to superclass)
+        # or are they not really "parameters"?
+        #
+        # That's not really well defined.  Let's not do anything then.
+        super().__init__()
 
         self.dftd3 = dftd3
         self.dft = dft
 
+    def calculate(self, atoms, properties, system_changes):
+        for name in properties:
+            contributions = []
+
+            if self.dft is not None:
+                dft_prop = self.dft.get_property(name, atoms)
+                contributions.append(dft_prop)
+
+            if name in self.dftd3.dftd3_properties:
+                dftd3_prop = self.dftd3.get_property(name, atoms)
+                contributions.append(dftd3_prop)
+
+            # We only advertise properties as "implemented" if we
+            # can actually provide them, or the DFT calculator can.
+            # So no less than one contribution should exist:
+            assert len(contributions) > 0
+
+            value = sum(contributions)
+            self.results[name] = value
 
 class PureDFTD3(FileIOCalculator):
     """DFTD3 calculator without corresponding DFT contribution.
@@ -95,7 +116,8 @@ class PureDFTD3(FileIOCalculator):
     name = 'puredftd3'
     command = 'dftd3'
 
-    implemented_properties = ['energy', 'free_energy', 'forces', 'stress']
+    dftd3_properties = {'energy', 'free_energy', 'forces', 'stress'}
+    implemented_properties = list(dftd3_properties)
     default_parameters = dftd3_defaults()
     damping_methods = {'zero', 'bj', 'zerom', 'bjm'}
 
@@ -151,10 +173,10 @@ class PureDFTD3(FileIOCalculator):
         # stresses) can be bypassed. This will greatly speed up calculations
         # in dense 3D-periodic systems with three-body corrections. But, we
         # can no longer say that we implement forces and stresses.
-        if not self.parameters['grad']:
-            for val in ['forces', 'stress']:
-                if val in self.implemented_properties:
-                    self.implemented_properties.remove(val)
+        #if not self.parameters['grad']:
+        #    for val in ['forces', 'stress']:
+        #        if val in self.implemented_properties:
+        #            self.implemented_properties.remove(val)
 
         # Check to see if we're using custom damping parameters.
         zero_damppars = {'s6', 'sr6', 's8', 'sr8', 'alpha6'}
@@ -313,23 +335,6 @@ class PureDFTD3(FileIOCalculator):
     def read_results(self):
         results = self._read_and_broadcast_results()
         self.results = results
-
-    def get_property(self, name, atoms=None, allow_calculation=True):
-        dft_result = None
-        if self.dft is not None:
-            dft_result = self.dft.get_property(name, atoms, allow_calculation)
-
-        dftd3_result = FileIOCalculator.get_property(self, name, atoms,
-                                                     allow_calculation)
-
-        if dft_result is None and dftd3_result is None:
-            return None
-        elif dft_result is None:
-            return dftd3_result
-        elif dftd3_result is None:
-            return dft_result
-        else:
-            return dft_result + dftd3_result
 
 
 class DFTD3Inputs:

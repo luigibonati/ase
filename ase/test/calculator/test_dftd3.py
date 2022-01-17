@@ -3,6 +3,8 @@ import numpy as np
 
 from ase.data.s22 import create_s22_system
 from ase.build import bulk
+from ase.calculators.emt import EMT
+from ase.calculators.test import numeric_stress, numeric_forces
 
 releps = 1e-6
 abseps = 1e-8
@@ -73,7 +75,7 @@ def test_forces(factory, system):
 
     # calculate numerical forces, but use very loose comparison criteria!
     # dftd3 doesn't print enough digits to stdout to get good convergence
-    f_numer = system.calc.calculate_numerical_forces(system, d=1e-4)
+    f_numer = numeric_forces(system, d=1e-4)
     array_close(f_numer, f_ref, releps=1e-2, abseps=1e-3)
 
 
@@ -153,7 +155,7 @@ def test_diamond_stress(factory, system):
     # As with numerical forces, numerical stresses will not be very well
     # converged due to the limited number of digits printed to stdout
     # by dftd3. So, use very loose comparison criteria.
-    s_numer = system.calc.calculate_numerical_stress(system, d=1e-4)
+    s_numer = numeric_stress(system, d=1e-4)
     array_close(s_numer, s_ref, releps=1e-2, abseps=1e-3)
 
 
@@ -162,7 +164,6 @@ def test_free_energy_bug(factory):
     # Due to a bug related to legacy free_energy property handling,
     # it would double-count the free energy from the DFT calculation.
     # This test protects against that.
-    from ase.calculators.emt import EMT
     atoms = bulk('Au', cubic=True)
     atoms.rattle(stdev=0.15)
 
@@ -172,3 +173,30 @@ def test_free_energy_bug(factory):
     e1, e2 = [atoms.get_potential_energy(force_consistent=x)
               for x in [False, True]]
     assert e1 == pytest.approx(e2, abs=1e-14)
+
+
+class EMTWithMagmoms(EMT):
+    implemented_properties = [*EMT.implemented_properties, 'magmoms']
+
+    def dummy_magmoms(self, atoms):
+        return 1.234 + np.arange(len(atoms))
+
+    def calculate(self, atoms, *args, **kwargs):
+        super().calculate(atoms, *args, **kwargs)
+        self.results['magmoms'] = self.dummy_magmoms(atoms)
+
+
+def test_non_dftd3_property(factory):
+    from ase.calculators.singlepoint import SinglePointCalculator
+
+    dft = EMTWithMagmoms()
+    calc = factory.calc(dft=dft)
+
+    # Our DFTD3 calculator should advertise that it supports this property:
+    assert 'magmoms' in calc.implemented_properties
+
+    atoms = bulk('Au', cubic=True)
+    atoms.calc = calc
+    magmoms = atoms.get_magnetic_moments()
+    assert magmoms == pytest.approx(dft.dummy_magmoms(atoms))
+    print('magmoms', magmoms)
