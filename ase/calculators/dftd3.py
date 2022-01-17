@@ -108,6 +108,7 @@ class DFTD3(BaseCalculator):
             value = sum(contributions)
             self.results[name] = value
 
+
 class PureDFTD3(FileIOCalculator):
     """DFTD3 calculator without corresponding DFT contribution.
 

@@ -187,8 +187,6 @@ class EMTWithMagmoms(EMT):
 
 
 def test_non_dftd3_property(factory):
-    from ase.calculators.singlepoint import SinglePointCalculator
-
     dft = EMTWithMagmoms()
     calc = factory.calc(dft=dft)
 
