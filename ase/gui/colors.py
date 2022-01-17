@@ -14,7 +14,7 @@ class ColorWindow:
 
     def reset(self, gui):
         """create a new color window"""
-        self.win = ui.Window(_('Colors'))
+        self.win = ui.Window(_('Colors'), wmtype='utility')
         self.gui = gui
         self.win.add(ui.Label(_('Choose how the atoms are colored:')))
         values = ['jmol', 'tag', 'force', 'velocity',

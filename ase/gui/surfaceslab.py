@@ -62,7 +62,7 @@ class SetupSurfaceSlab:
         self.vacuum = ui.SpinBox(5, 0, 40, 0.01, self.make)
         self.description = ui.Label('')
 
-        win = self.win = ui.Window(_('Surface'))
+        win = self.win = ui.Window(_('Surface'), wmtype='utility')
         win.add(ui.Text(introtext))
         win.add(self.element)
         win.add([_('Structure:'), self.structure, self.structure_warn])
