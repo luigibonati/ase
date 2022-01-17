@@ -152,7 +152,8 @@ class ASENEBMethod(NEBMethod):
 
     def add_image_force(self, state, tangential_force, tangent, imgforce,
                         spring1, spring2, i):
-        tangent_mag = np.vdot(tangent, tangent)  # Magnitude for normalizing
+        # Magnitude for normalizing. Ensure it is not 0
+        tangent_mag = np.vdot(tangent, tangent) or 1
         factor = tangent / tangent_mag
         imgforce -= tangential_force * factor
         imgforce -= np.vdot(

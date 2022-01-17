@@ -356,3 +356,16 @@ def test_constraints(constraint):
         assert np.all(constraint2[0].mask == constraint[0].mask)
         assert np.all(constraint2[1].mask)
         assert np.all(constraint2[2].mask == constraint[1].mask)
+
+
+def test_constraints_int():
+    # check for regressions of issue #1015
+    Path('movemask.xyz').write_text("""3
+Properties=species:S:1:pos:R:3:move_mask:I:1 pbc="F F F"
+O        0.00000000       0.00000000       0.11926200  1
+H        0.00000000       0.76323900      -0.47704700  0
+H        0.00000000      -0.76323900      -0.47704700  0""")
+        
+    a = ase.io.read('movemask.xyz')
+    assert isinstance(a.constraints[0], FixAtoms)
+    assert np.all(a.constraints[0].index == [1, 2])
