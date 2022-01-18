@@ -88,6 +88,9 @@ class DFTD3(BaseCalculator):
         self.dftd3 = dftd3
         self.dft = dft
 
+    def todict(self):
+        return {}
+
     def calculate(self, atoms, properties, system_changes):
         for name in properties:
             contributions = []
