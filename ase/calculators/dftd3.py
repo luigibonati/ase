@@ -35,8 +35,6 @@ def dftd3_defaults():
 class DFTD3(BaseCalculator):
     """Grimme DFT-D3 calculator"""
 
-    name = 'dftd3'
-
     def __init__(self,
                  label='ase_dftd3',  # Label for dftd3 output files
                  command=None,  # Command for running dftd3
@@ -92,24 +90,38 @@ class DFTD3(BaseCalculator):
         return {}
 
     def calculate(self, atoms, properties, system_changes):
+        common_props = set(self.dftd3.dftd3_properties) & set(properties)
+        dftd3_results = self._get_properties(atoms, common_props, self.dftd3)
+
+        if self.dft is None:
+            results = dftd3_results
+        else:
+            dft_results = self._get_properties(atoms, properties, self.dft)
+            results = dict(dft_results)
+            for name in set(results) & set(dftd3_results):
+                assert np.shape(results[name]) == np.shape(dftd3_results[name])
+                results[name] += dftd3_results[name]
+
+            # Although DFTD3 may have calculated quantities not provided
+            # by the calculator (e.g. stress), it would be wrong to
+            # return those!  Return only what corresponds to the DFT calc.
+            assert set(results) == set(dft_results)
+        self.results = results
+
+    def _get_properties(self, atoms, properties, calc):
+        # We want any and all properties that the calculator
+        # normally produces.  So we intend to rob the calc.results
+        # dictionary instead of only getting the requested properties.
+
+        import copy
         for name in properties:
-            contributions = []
+            calc.get_property(name, atoms)
+            assert name in calc.results
 
-            if self.dft is not None:
-                dft_prop = self.dft.get_property(name, atoms)
-                contributions.append(dft_prop)
-
-            if name in self.dftd3.dftd3_properties:
-                dftd3_prop = self.dftd3.get_property(name, atoms)
-                contributions.append(dftd3_prop)
-
-            # We only advertise properties as "implemented" if we
-            # can actually provide them, or the DFT calculator can.
-            # So no less than one contribution should exist:
-            assert len(contributions) > 0
-
-            value = sum(contributions)
-            self.results[name] = value
+        # XXX maybe use get_properties() when that makes sense.
+        results = copy.deepcopy(calc.results)
+        assert set(properties) <= set(results)
+        return results
 
 
 class PureDFTD3(FileIOCalculator):
