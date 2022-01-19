@@ -448,9 +448,7 @@ class BaseCalculator(GetPropertiesMixin):
     # any other object (such as None).
     _deprecated = object()
 
-    def __init__(self,
-                 parameters: Dict[str, Any] = None,
-                 use_cache: bool = True):
+    def __init__(self, parameters=None, use_cache=True):
         if parameters is None:
             parameters = {}
 
