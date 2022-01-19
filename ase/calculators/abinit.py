@@ -55,7 +55,6 @@ class AbinitTemplate(CalculatorTemplate):
 
     def write_input(self, directory, atoms, parameters, properties):
         directory = Path(directory)
-        directory.mkdir(exist_ok=True, parents=True)
         parameters = dict(parameters)
         pp_paths = parameters.pop('pp_paths', None)
         assert pp_paths is not None
