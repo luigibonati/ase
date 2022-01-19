@@ -50,7 +50,7 @@ class CalculatorTemplate(ABC):
 
 
 class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
-    def __init__(self, *, template, profile, directory='.', parameters=None):
+    def __init__(self, *, template, profile, directory, parameters=None):
         self.template = template
         self.profile = profile
 
@@ -79,6 +79,7 @@ class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
         self.atoms = atoms.copy()
 
         directory = self.directory
+        directory.mkdir(exist_ok=True, parents=True)
 
         self.template.write_input(directory, atoms, self.parameters,
                                   properties)
