@@ -79,6 +79,7 @@ class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
         self.atoms = atoms.copy()
 
         directory = self.directory
+        directory.mkdir(exist_ok=True, parents=True)
 
         self.template.write_input(directory, atoms, self.parameters,
                                   properties)
