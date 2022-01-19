@@ -448,12 +448,16 @@ class BaseCalculator(GetPropertiesMixin):
     # any other object (such as None).
     _deprecated = object()
 
-    def __init__(self, parameters=None):
+    def __init__(self,
+                 parameters: Dict[str, Any] = None,
+                 use_cache: bool = True):
         if parameters is None:
             parameters = {}
+
         self.parameters = dict(parameters)
         self.atoms = None
         self.results = {}
+        self.use_cache = use_cache
 
     def calculate_properties(self, atoms, properties):
         """This method is experimental; currently for internal use."""
@@ -477,7 +481,10 @@ class BaseCalculator(GetPropertiesMixin):
 
     def check_state(self, atoms, tol=1e-15):
         """Check for any system changes since last calculation."""
-        return compare_atoms(self.atoms, atoms, tol=tol)
+        if self.use_cache:
+            return compare_atoms(self.atoms, atoms, tol=tol)
+        else:
+            return all_changes
 
     def get_property(self, name, atoms=None, allow_calculation=True):
         if name not in self.implemented_properties:
@@ -489,6 +496,7 @@ class BaseCalculator(GetPropertiesMixin):
             system_changes = []
         else:
             system_changes = self.check_state(atoms)
+
             if system_changes:
                 self.atoms = None
                 self.results = {}
@@ -496,6 +504,10 @@ class BaseCalculator(GetPropertiesMixin):
         if name not in self.results:
             if not allow_calculation:
                 return None
+
+            if self.use_cache:
+                self.atoms = atoms.copy()
+
             self.calculate(atoms, [name], system_changes)
 
         if name not in self.results:
@@ -642,6 +654,10 @@ class Calculator(BaseCalculator):
         if not hasattr(self, 'get_spin_polarized'):
             self.get_spin_polarized = self._deprecated_get_spin_polarized
         # XXX We are very naughty and do not call super constructor!
+
+        # For historical reasons we have a particular caching protocol.
+        # We disable the superclass' optional cache.
+        self.use_cache = False
 
     @property
     def directory(self) -> str:

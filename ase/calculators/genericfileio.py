@@ -76,8 +76,6 @@ class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
         return self.template.name
 
     def calculate(self, atoms, properties, system_changes):
-        self.atoms = atoms.copy()
-
         directory = self.directory
 
         self.template.write_input(directory, atoms, self.parameters,
