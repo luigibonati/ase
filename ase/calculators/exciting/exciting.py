@@ -3,7 +3,7 @@
 Exciting calculator class in this file allow for writing exciting input
 files using ASE Atoms object that allow for the compiled exciting binary
 to run DFT on the geometry/material defined in the Atoms object. Also gives
-access to developor to a lightweight parser (lighter weight than NOMAD or
+access to developer to a lightweight parser (lighter weight than NOMAD or
 the exciting parser in the exciting repository) to capture ground state
 properties.
 """
@@ -11,7 +11,8 @@ properties.
 from abc import ABC
 import os
 from pathlib import Path
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Mapping
+from xml.etree import ElementTree as ET
 
 import ase
 import ase.io.exciting
@@ -19,7 +20,16 @@ import ase.io.exciting
 from ase.calculators.genericfileio import (GenericFileIOCalculator, CalculatorTemplate)
 from ase.calculators.exciting.runner import ExcitingRunner, SubprocessRunResults
 from ase.calculators.calculator import InputError, PropertyNotImplementedError
-from ase.calculators.exciting.input import query_exciting_version, ExcitingInput
+
+try:
+    __import__('excitingtools')
+    from excitingtools.input.base_class import query_exciting_version
+    from excitingtools.input.input import exciting_input_xml
+    from excitingtools.input.ground_state import ExcitingGroundStateInput
+    from excitingtools.input.structure import ExcitingStructure
+except ModuleNotFoundError:
+    message = """excitingtools must be installed. TODO Make available via wheels"""
+    raise ModuleNotFoundError(message)
 
 
 class ExcitingProfile:
@@ -27,7 +37,7 @@ class ExcitingProfile:
 
     This follows the generic pattern BUT currently not used by our calculator as:
        * species_path is part of the input file in exciting.
-       * Only part of the profiled used in the base class is the run method,
+       * Only part of the profile used in the base class is the run method,
          which is part of the BinaryRunner class.
     """
     def __init__(self, exciting_root, species_path):
@@ -36,110 +46,112 @@ class ExcitingProfile:
 
 
 class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
-    """Template for Ground State Exciting Calculator,
-    
-    The class requires implementations for the methods defined in CalculatorTemplate.
-    """
+    """Template for Ground State Exciting Calculator
 
+    Abstract methods inherited from the base class:
+        * write_input
+        * execute
+        * read_results
+    """
     program_name = 'exciting'
-    # TODO(Alex) Add parsers here i.e.
-    # parser = {'info.xml': Callable[str, dict]}
-    # parser = {'info.xml': lambda file_name: {}}
-    parser = {
-        'info.xml': ase.io.exciting.parse_info_out_xml}
+    parser = {'info.xml': ase.io.exciting.parse_info_out_xml}
     output_names = list(parser)
-    implemented_properties = ['energy']
+    implemented_properties = ['energy', 'tforce']
 
     def __init__(self):
         """Initialise with constant class attributes.
 
         Args:
             program_name: The DFT program, should always be exciting.
-            implmented_properties: What properties should exciting calculate/read from output.
+            implemented_properties: What properties should exciting calculate/read from output.
         """
         super().__init__(self.program_name, self.implemented_properties)
 
-    def write_input(self, directory: Path, atoms: ase.Atoms,
-                    input_parameters: Union[dict, ExcitingInput]):
+    @staticmethod
+    def _require_forces(input_parameters: Union[dict, ExcitingGroundStateInput]):
+        """Expect that ASE always wants forces, so enforce the setting in input_parameters.
+
+        Args:
+            input_parameters: exciting ground state input parameters, either as a dictionary or ExcitingGroundStateInput
+        Returns:
+            input_parameters: Ground state input parameters, with "compute forces" set to true
+        """
+        if isinstance(input_parameters, dict):
+            input_parameters['tforce'] = True
+        elif isinstance(input_parameters, ExcitingGroundStateInput):
+            input_parameters.__dict__['tforce'] = True
+        else:
+            raise ValueError('exciting input_parameters must be type [dict, ExcitingGroundStateInput]')
+        return input_parameters
+
+
+    def write_input(self,
+                    directory: Path,
+                    atoms: ase.Atoms,
+                    input_parameters: dict,
+                    properties):
         """Write an exciting input.xml file based on the input args.
 
-        TODO(dts): Figure out why previously this function had a properties argument
+        TODO(dts, AlexB): Figure out why previously this function had a properties argument
             called properties: List[str]. I assume this was to target certain properties
             but I thought ground state calcs will all get the same default properties.
+            (Alex) Added it back in so API is consistent
+        TODO(dts, Alex) Consider correct way to pass input XML's title
 
         Args:
             directory: Directory in which to run calculator.
             atoms: ASE atoms object.
-            input_parameters: exciting groundstate input parameters
+            input_parameters: exciting ground state input parameters, in a dictionary.
+            Expect species_path, title and ground_state data, either in an object or as dict
+            properties: ADD ME
         """
-        root = ase.io.exciting.initialise_input_xml()
-        structure = ase.io.exciting.add_atoms_to_structure_element_tree(
-            structure=root, atoms=atoms)
-        if 'forces' in list(self.implemented_properties):
-            input_parameters['tforce'] = 'true'
-        ase.io.exciting.dict_to_xml(input_parameters, root)
+        assert set(input_parameters.keys()) == {'title', 'species_path', 'ground_state_input'}, \
+            'Keys should be defined by ExcitingGroundState calculator'
 
-        with open(os.path.join(directory, 'input.xml'), "w") as fileobj:
-            fileobj.write(ase.io.exciting.prettify(root))
+        file_name = directory / 'input.xml'
+        species_path = input_parameters.pop('species_path')
+        structure = ExcitingStructure(atoms, species_path=species_path)
+        title = input_parameters.pop('title')
+
+        input_parameters = self._require_forces(input_parameters['ground_state_input'])
+        if isinstance(input_parameters, dict):
+            ground_state = ExcitingGroundStateInput(**input_parameters)
+        else:
+            ground_state = input_parameters
+
+        input_xml: ET.ElementTree = exciting_input_xml(structure, title=title, groundstate=ground_state)
+        input_xml.write(file_name)
 
     def execute(self, directory, exciting_calculation: ExcitingRunner) -> SubprocessRunResults:
         """Given an exciting calculation profile, execute the calculation.
-
         TODO(all): Not working.
-        
-        Method could be static, but maintaining API consistent with CalculatorTemplate
 
         Args:
             directory: Directory in which to execute the calculator
-            exciting_calculation: Generic `execute` expects a profile, however it is simply
+            exciting_calculation: Base method `execute` expects a profile, however it is simply
                 used to execute the program, therefore we just pass an ExcitingRunner.
-        
+
         Returns:
             Results of subprocess.run
         """
         return exciting_calculation.run(directory)
 
-    def read_results(self, directory: Path) -> dict:
+    def read_results(self, directory: Path) -> Mapping[str, any]:
         """Parse results from each ground state output file.
 
-        Note we allow for the ability for there to be multiple output files.
+          Note we allow for the ability for there to be multiple output files.
 
-        Args:
-            directory: Directory path to output file from exciting simulation.
-        Returns:
-            Dictionary containing important output properties.
+          Args:
+              directory: Directory path to output file from exciting simulation.
+          Returns:
+              Dictionary (technically abc.Mapping) containing important output properties.
         """
         results = {}
         for file_name in self.output_names:
-            print(file_name)
-            full_file_path = os.path.join(directory, file_name)
-            print(full_file_path)
-            result: dict = self.parser[file_name](full_file_path, self.implemented_properties)
+            full_file_path = directory / file_name
+            result: dict = self.parser[file_name](full_file_path)
             results.update(result)
         return results
-
-
-def check_key_present(key, exciting_input: Union[ExcitingInput, dict]) -> bool:
-    """Checks key is specified in the ExcitingInput object.
-
-    One important use case is to check whether path to exciting species files is
-    specified.
-
-    Args:
-        key: Specific key we're looking for in the exciting_input object.
-        exciting_input: This object/dict contains much of the information we specify
-            about how we want the exciting input file to look like.
-    Returns:
-        True/False whether species path is specified by ExcitingInput object.
-    """
-    if isinstance(exciting_input, ExcitingInput):
-        keys = ExcitingInput.__dict__
-    else:
-        keys = list(exciting_input)
-
-    # TODO FINISH ME
-
-    return key in keys
 
 
 class ExcitingGroundStateResults:
@@ -162,7 +174,7 @@ class ExcitingGroundStateResults:
 
     def potential_energy(self) -> float:
         """Return potential energy of system.
-        
+
         TODO(Alex): Make the description of potential energy in physics terms more clear.
         """
         # TODO(Alex) We should a common list of keys somewhere
@@ -171,7 +183,7 @@ class ExcitingGroundStateResults:
 
     def forces(self):
         """Return forces present on the system.
-        
+
         TODO(Dan): Add a bit more description here on how the forces are defiend
             and returned. Right now I can't find forces in exciting test info.xml
             files. So it looks like we shouldn't be parsing this all the time:
@@ -195,6 +207,7 @@ class ExcitingGroundState(GenericFileIOCalculator):
     """Class for the ground state calculation.
 
     Base class implements the calculate method.
+    TODO(Alex) Revise the documentation
 
     Must supply to the constructor:
         * runner: ExcitingRunner: This should be a `profile` which is the machine-specific
@@ -220,53 +233,41 @@ class ExcitingGroundState(GenericFileIOCalculator):
         * parameters     exciting_input. Can be defined as a class or Object. Responsibility
                          of the specialised write method.
 
-    TODO(Alex) What methods do we need from our old calculator, and what exist in the base classes?
-
-    TODO(Alex) We could support a specific set of keyword args, then use either a) Input dict/object
-        or b) keywords
-        
     List of keyword inputs from the old calculator:
         species_path, kpts, autormt, tshift
     """
-
-    # Input options that must be present in the exciting_input
-    required_inputs = ['species_path']
+    default_title = 'ASE-generated input'
 
     def __init__(self, *,
                  runner: ExcitingRunner,
-                 exciting_input: Union[ExcitingInput, dict],
-                 directory='./'):
+                 ground_state_input: Union[dict, ExcitingGroundStateInput],
+                 directory='./',
+                 species_path='./',
+                 title=default_title):
 
         self.runner = runner
-        self.exciting_input = exciting_input
+        # Data to be passed to ExcitingGroundStateTemplate.write_input(..., input_parameters, ...)
+        # Structure not included, as it's passed when one calls .calculate method directly
+        self.exciting_inputs = {'title': title, 'species_path': species_path, 'ground_state_input': ground_state_input}
         self.directory = directory
         self.template = ExcitingGroundStateTemplate()
 
-        for key in self.required_inputs:
-            if not check_key_present(key, self.exciting_input):
-                raise InputError(f'Key missing from exciting input: {key}')
-
         super().__init__(profile=runner,
                          template=self.template,
-                         parameters=exciting_input,
+                         parameters=self.exciting_inputs,
                          directory=directory
                          )
 
-    # TODO(Alex) Would rather remove properties from our calculate API.
     def calculate(self,
                   atoms: ase.Atoms,
                   properties: Optional[List[str]] = None,
                   system_changes=None) -> ExcitingGroundStateResults:
-        """Run an exciting calculation and capture the results in ExcitingGroundStateResults object."""
+        """Run an exciting calculation and capture the results in ExcitingGroundStateResults object.
+
+        TODO(Alex) Would rather remove properties from our calculate API.
+        TODO(All) Document
+        """
         if properties is None:
             properties = self.template.implemented_properties
         super().calculate(atoms, properties, system_changes)
         return ExcitingGroundStateResults(self.results)
-
-    # TODO(Alex) Note to remove once confirmed.
-    # update method not copied. Calculator class stores atoms in the BaseCalculator
-    # but we don't need any API to interact with this.
-    # One can just pass an updated atoms object to .calculate(atoms)
-    #
-    # initialize not needed. atoms object injected into XML via the template's write
-    # function

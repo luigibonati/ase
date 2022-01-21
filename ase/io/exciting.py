@@ -11,18 +11,26 @@ ase/calculators/exciting/exciting.py.
 
 See the correpsonding test file in ase/test/io/test_exciting.py.
 """
-
-import os
-
 import numpy as np
-from typing import Dict, Union
+from typing import Dict
 import xml.etree.ElementTree
-from xml.dom import minidom
 
 import ase
 from ase.atoms import Atoms
-# from ase.calculators.exciting.exciting import ExcitingGroundStateResults
 from ase.units import Bohr, Hartree
+
+try:
+    __import__('excitingtools')
+    from excitingtools.parser.groundstate_parser import parse_info_xml, parse_eigval
+
+except ModuleNotFoundError:
+    message = """excitingtools must be installed. TODO Make available via wheels"""
+    raise ModuleNotFoundError(message)
+
+
+# TODO Maybe add wrapper for parse_info_xml
+
+# TODO Maybe add wrapper for parse_eigval
 
 
 def structure_xml_to_ase_atoms(fileobj) -> ase.Atoms:
@@ -82,109 +90,6 @@ def structure_xml_to_ase_atoms(fileobj) -> ase.Atoms:
     return atoms
 
 
-def prettify(elem: xml.etree.ElementTree.Element) -> str:
-    """Make the XML elements prettier to read."""
-    rough_string = xml.etree.ElementTree.tostring(elem, 'utf-8')
-    reparsed = minidom.parseString(rough_string)
-    return reparsed.toprettyxml(indent="\t")
-
-
-def initialise_input_xml(title_text='') -> xml.etree.ElementTree.Element:
-    """Initialise input.xml element tree for exciting.
-
-    Includes a required subelements:
-        * structure
-        * crystal
-
-    Args:
-        title_text: Title for calculation.
-    Returns:
-        root: Elememnt tree root.
-    """
-    root = xml.etree.ElementTree.Element('input')
-
-    root.set(
-        '{http://www.w3.org/2001/XMLSchema-instance}noNamespaceSchemaLocation',
-        'http://xml.exciting-code.org/excitinginput.xsd')
-    title = xml.etree.ElementTree.SubElement(root, 'title')
-    title.text = title_text
-
-    structure = xml.etree.ElementTree.SubElement(root, 'structure')
-    crystal = xml.etree.ElementTree.SubElement(structure, 'crystal')
-
-    return root
-
-
-def structure_element_tree(atoms: ase.Atoms) -> xml.etree.ElementTree.Element:
-    """Add structure to the XML element tree.
-
-    TODO(dts): I think we can remove this function, not sure why we need it.
-
-    This function is basically a wrapper to call
-    add_atoms_to_structure_element_tree to add geometry/chemical information
-    about the system to the XML tree object.
-
-    Args:
-        atoms: ASE atoms and lattice vectors
-    Returns:
-        The XML element tree with structural information added.
-    """
-    structure = xml.etree.ElementTree.Element('crystal')
-    structure = add_atoms_to_structure_element_tree(structure, atoms)
-    return structure
-
-
-def add_atoms_to_structure_element_tree(
-        structure: xml.etree.ElementTree.Element,
-        atoms: ase.Atoms) -> xml.etree.ElementTree.Element:
-    """Adds lattice vectors, positions and elemental information to XML object.
-
-    Args:
-        structure: XML object that we will fill with structural information.
-        atoms: Contains all the structural information we need (e.g. lattice
-            vectors, element types, positions in unit cell).
-    Returns:
-        The XML object with the sturctural information added.
-    """
-    crystal = structure.find('structure/crystal')
-    for vec in atoms.cell:
-        base_vect = xml.etree.ElementTree.SubElement(crystal, 'basevect')
-        base_vect.text = f'{vec[0] / Bohr:.14f} {vec[1] / Bohr:.14f} {vec[2] / Bohr:.14f}'
-
-    oldsymbol = ''
-    oldrmt = -1  # The old radius of the muffin tin (rmt)
-    newrmt = -1
-    scaled_positions = atoms.get_scaled_positions()  # positions in fractions of the unit cell
-    # loop over the different elements and add corresponding species files
-    for aindex, symbol in enumerate(atoms.get_chemical_symbols()):
-        # TODO(speckhard): Check if rmt can be set
-        if 'rmt' in atoms.arrays:
-            newrmt = atoms.get_array('rmt')[aindex] / Bohr
-        if symbol != oldsymbol or newrmt != oldrmt:
-            speciesnode = xml.etree.ElementTree.SubElement(structure, 'species',
-                                        speciesfile=f'{symbol}.xml',
-                                        chemicalSymbol=symbol)
-            oldsymbol = symbol
-            if 'rmt' in atoms.arrays:
-                oldrmt = atoms.get_array('rmt')[aindex] / Bohr
-                if oldrmt > 0:
-                    speciesnode.attrib['rmt'] = f'{oldrmt:.4f}'
-
-        atom = xml.etree.ElementTree.SubElement(
-            speciesnode, 'atom',
-            coord=(
-                f'{scaled_positions[aindex][0]:.14f} '
-                f'{scaled_positions[aindex][1]:.14f} '
-                f'{scaled_positions[aindex][2]:.14f}'))
-        # TODO(speckhard): Can momenta be set in arrays
-        if 'momenta' in atoms.arrays:
-            atom.attrib['bfcmt'] = (f'{atoms.get_array("momenta")[aindex][0]:.14f} '
-                                    f'{atoms.get_array("momenta")[aindex][1]:.14f} '
-                                    f'{atoms.get_array("momenta")[aindex][2]:.14f}')
-
-    return structure
-
-
 def dict_to_xml(pdict: Dict, element):
     """Write dictionary k,v pairs to XML DOM object.
 
@@ -206,7 +111,7 @@ def dict_to_xml(pdict: Dict, element):
         elif isinstance(value, list):
             for item in value:
                 dict_to_xml(item, xml.etree.ElementTree.SubElement(element, key))
-        # Otherwise if the value is a dictionary.
+        # Otherwise, if the value is a dictionary.
         elif isinstance(value, dict):
             if not element.findall(key):
                 dict_to_xml(value, xml.etree.ElementTree.SubElement(
@@ -217,100 +122,153 @@ def dict_to_xml(pdict: Dict, element):
             raise TypeError(f'cannot deal with key: {key}, val: {value}')
 
 
-def parse_info_out_xml(
-    full_file_path: Union[os.PathLike, str],
-    implemented_properties) -> dict:
-    """Read total energy and forces from the info.xml output file.
+# Stuff we may want to scrap/redo
 
-    Args:
-        full_file_path: Path to the exciting calculation input.xml file.
-        implemented_properties: Frozenset of properites that are calculated.
-            Right now the main use is to check if 'forces' is in the set and
-            if so we parse the forces from the info.xml file.
-    Returns:
-        Dictionary with the outputs of the calculation.
-    """
-    # Probably return a dictionary as a free function.
-    # Then have a light wrapper in class ExcitingGroundStateResults to call
-    # parse_info_out_xml and pass the dictionary values to attributes
-    # Check if calculation converged by inspecting WARNINGS.OUT
+# def add_atoms_to_structure_element_tree(
+#         structure: xml.etree.ElementTree.Element,
+#         atoms: ase.Atoms) -> xml.etree.ElementTree.Element:
+#     """Adds lattice vectors, positions and elemental information to XML object.
+#
+#     Args:
+#         structure: XML object that we will fill with structural information.
+#         atoms: Contains all the structural information we need (e.g. lattice
+#             vectors, element types, positions in unit cell).
+#     Returns:
+#         The XML object with the sturctural information added.
+#     """
+#     crystal = structure.find('structure/crystal')
+#     for vec in atoms.cell:
+#         base_vect = xml.etree.ElementTree.SubElement(crystal, 'basevect')
+#         base_vect.text = f'{vec[0] / Bohr:.14f} {vec[1] / Bohr:.14f} {vec[2] / Bohr:.14f}'
+#
+#     oldsymbol = ''
+#     oldrmt = -1  # The old radius of the muffin tin (rmt)
+#     newrmt = -1
+#     scaled_positions = atoms.get_scaled_positions()  # positions in fractions of the unit cell
+#     # loop over the different elements and add corresponding species files
+#     for aindex, symbol in enumerate(atoms.get_chemical_symbols()):
+#         # TODO(speckhard): Check if rmt can be set
+#         if 'rmt' in atoms.arrays:
+#             newrmt = atoms.get_array('rmt')[aindex] / Bohr
+#         if symbol != oldsymbol or newrmt != oldrmt:
+#             speciesnode = xml.etree.ElementTree.SubElement(structure, 'species',
+#                                         speciesfile=f'{symbol}.xml',
+#                                         chemicalSymbol=symbol)
+#             oldsymbol = symbol
+#             if 'rmt' in atoms.arrays:
+#                 oldrmt = atoms.get_array('rmt')[aindex] / Bohr
+#                 if oldrmt > 0:
+#                     speciesnode.attrib['rmt'] = f'{oldrmt:.4f}'
+#
+#         atom = xml.etree.ElementTree.SubElement(
+#             speciesnode, 'atom',
+#             coord=(
+#                 f'{scaled_positions[aindex][0]:.14f} '
+#                 f'{scaled_positions[aindex][1]:.14f} '
+#                 f'{scaled_positions[aindex][2]:.14f}'))
+#         # TODO(speckhard): Can momenta be set in arrays
+#         if 'momenta' in atoms.arrays:
+#             atom.attrib['bfcmt'] = (f'{atoms.get_array("momenta")[aindex][0]:.14f} '
+#                                     f'{atoms.get_array("momenta")[aindex][1]:.14f} '
+#                                     f'{atoms.get_array("momenta")[aindex][2]:.14f}')
+#
+#     return structure
 
-    # First check if the output file exists:
-    if not os.path.exists(full_file_path):
-        raise ValueError(
-            f'Output file {full_file_path} does not exist.')
+# Replace with wrapper, but note the API and any important points
+# def parse_info_out_xml(
+#     full_file_path: Union[os.PathLike, str],
+#     implemented_properties) -> dict:
+#     """Read total energy and forces from the info.xml output file.
+#
+#     Args:
+#         full_file_path: Path to the exciting calculation input.xml file.
+#         implemented_properties: Frozenset of properites that are calculated.
+#             Right now the main use is to check if 'forces' is in the set and
+#             if so we parse the forces from the info.xml file.
+#     Returns:
+#         Dictionary with the outputs of the calculation.
+#     """
+#     # Probably return a dictionary as a free function.
+#     # Then have a light wrapper in class ExcitingGroundStateResults to call
+#     # parse_info_out_xml and pass the dictionary values to attributes
+#     # Check if calculation converged by inspecting WARNINGS.OUT
+#
+#     # First check if the output file exists:
+#     if not os.path.exists(full_file_path):
+#         raise ValueError(
+#             f'Output file {full_file_path} does not exist.')
+#
+#     # Try to open XML file. Previously we wrapped this in a try statement
+#     # but the XML parser fails with a more informative error message and
+#     # we don't want to continue if the parsing fails so we removed the try
+#     # statement.
+#     with open(full_file_path, 'r') as outfile:
+#         # Parse the XML output.
+#         parsed_output = xml.etree.ElementTree.parse(outfile)
+#
+#     # TODO: convergence check needed here? dts: Yes let's add this in.
+#     # Check if the calculation converged.
+#     if str(parsed_output.find('groundstate').attrib[
+#                'status']) != 'finished':
+#         raise RuntimeError('Calculation did not converge.')
+#
+#     results = dict()
+#     # Find the last instance of 'totalEnergy'.
+#     energy = float(parsed_output.findall(
+#         'groundstate/scl/iter/energies')[-1].attrib[
+#                             'totalEnergy']) * Hartree
+#     results['potential_energy'] = energy
+#
+#     # TODO(dts): Doesn't seem like forces are present in test exciting info.xml
+#     # files:
+#     # https://git.physik.hu-berlin.de/sol/exciting/-/blob/development/test/test_farm/groundstate/LDA_PW-PbTiO3/ref/info.xml
+#     # So maybe we shouldn't be parsing this all the time.
+#
+#     if 'forces' in list(implemented_properties):
+#         # Initialize forces list.
+#         forces = []
+#         # final all instances of 'totalforce'.
+#         forcesnodes = parsed_output.findall(
+#             'groundstate/scl/structure')[-1].findall(
+#             'species/atom/forces/totalforce')
+#         # Go through each force in the found instances of 'total force'.
+#         for force in forcesnodes:
+#             # Append the total force to the forces list.
+#             forces.append(np.array(list(force.attrib.values())).astype(float))
+#         # Reshape forces so we get three columns (x,y,z) and scale units.
+#         forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
+#         results['forces'] = forces
+#     return results
 
-    # Try to open XML file. Previously we wrapped this in a try statement
-    # but the XML parser fails with a more informative error message and
-    # we don't want to continue if the parsing fails so we removed the try
-    # statement.
-    with open(full_file_path, 'r') as outfile:
-        # Parse the XML output.
-        parsed_output = xml.etree.ElementTree.parse(outfile)
-
-    # TODO: convergence check needed here? dts: Yes let's add this in.
-    # Check if the calculation converged.
-    if str(parsed_output.find('groundstate').attrib[
-               'status']) != 'finished':
-        raise RuntimeError('Calculation did not converge.')
-
-    results = dict()
-    # Find the last instance of 'totalEnergy'.
-    energy = float(parsed_output.findall(
-        'groundstate/scl/iter/energies')[-1].attrib[
-                            'totalEnergy']) * Hartree
-    results['potential_energy'] = energy
-
-    # TODO(dts): Doesn't seem like forces are present in test exciting info.xml
-    # files:
-    # https://git.physik.hu-berlin.de/sol/exciting/-/blob/development/test/test_farm/groundstate/LDA_PW-PbTiO3/ref/info.xml
-    # So maybe we shouldn't be parsing this all the time.
-    
-    if 'forces' in list(implemented_properties):
-        # Initialize forces list.
-        forces = []
-        # final all instances of 'totalforce'.
-        forcesnodes = parsed_output.findall(
-            'groundstate/scl/structure')[-1].findall(
-            'species/atom/forces/totalforce')
-        # Go through each force in the found instances of 'total force'.
-        for force in forcesnodes:
-            # Append the total force to the forces list.
-            forces.append(np.array(list(force.attrib.values())).astype(float))
-        # Reshape forces so we get three columns (x,y,z) and scale units.
-        forces = np.reshape(forces, (-1, 3)) * Hartree / Bohr
-        results['forces'] = forces
-    return results
-
-
-def parse_eigval_xml(directory: Union[os.PathLike, str]) -> dict:
-    """ Read eigenvalues from the eigval.xml output file.
-
-    This function was taking from the exciting repository.
-
-    Args:
-        directory: dir to the exciting calculation.
-    Rturns:
-        Dictionary with the eigenvalues at different k point keys.
-    """
-    output_file = os.path.join(directory, 'eigval.xml')
-    root = xml.etree.ElementTree.parse(output_file).getroot()
-    eigval = root.attrib
-
-    kpts = []
-    for node in root.findall('kpt'):
-        kpt = node.attrib
-        state = []
-        for subnode in node:
-            state.append(subnode.attrib)
-            kpt['state'] = {}  # converts list of states into a dictionary
-        for item in state:
-            name = item['ist']
-            kpt['state'][name] = item
-            kpts.append(kpt)
-            eigval['kpt'] = {}
-    for item in kpts:  # converts list of kpts into a dictionary
-        name = item['ik']
-        eigval['kpt'][name] = item
-
-    return eigval
+# Same deal as the above
+# def parse_eigval_xml(directory: Union[os.PathLike, str]) -> dict:
+#     """ Read eigenvalues from the eigval.xml output file.
+#
+#     This function was taking from the exciting repository.
+#
+#     Args:
+#         directory: dir to the exciting calculation.
+#     Rturns:
+#         Dictionary with the eigenvalues at different k point keys.
+#     """
+#     output_file = os.path.join(directory, 'eigval.xml')
+#     root = xml.etree.ElementTree.parse(output_file).getroot()
+#     eigval = root.attrib
+#
+#     kpts = []
+#     for node in root.findall('kpt'):
+#         kpt = node.attrib
+#         state = []
+#         for subnode in node:
+#             state.append(subnode.attrib)
+#             kpt['state'] = {}  # converts list of states into a dictionary
+#         for item in state:
+#             name = item['ist']
+#             kpt['state'][name] = item
+#             kpts.append(kpt)
+#             eigval['kpt'] = {}
+#     for item in kpts:  # converts list of kpts into a dictionary
+#         name = item['ik']
+#         eigval['kpt'][name] = item
+#
+#     return eigval
