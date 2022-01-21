@@ -265,11 +265,11 @@ class DefectBuilder():
         if kind == 'all':
             positions = np.concatenate([v1, v2, v3, v4], axis=0)
         elif kind == 'points':
-            positions = np.concatenate([v4, v1], axis=0)
+            positions = v4
         elif kind == 'lines':
             positions = v2
         elif kind == 'faces':
-            positions = v3
+            positions = np.concatenate([v3, v1], axis=0)
 
         scaled_pos = self.get_interstitial_mock(positions, atoms)
 
@@ -324,7 +324,7 @@ class DefectBuilder():
             except SyntaxError:
                 string = self.reconstruct_string(string)
             val = numexpr.evaluate(string)
-            if math.isclose(val, scaled_position[i], abs_tol=1e-10):
+            if math.isclose(val, scaled_position[i], abs_tol=1e-5):
                 continue
             else:
                 fit = False
@@ -420,13 +420,14 @@ class DefectBuilder():
                      pbc=atoms.get_pbc())
 
 
-    def create_interstitials(self, atoms=None, Nsites=None):
+    def create_interstitials(self, atoms=None, Nsites=None, ads=False):
         if atoms is None:
             atoms = self.get_primitive_structure()
         sym = self.get_host_symmetry()
         wyck = get_wyckoff_data(sym['number'])
         un, struc = self.map_positions(wyck,
-                                       structure=atoms)
+                                       structure=atoms,
+                                       ads=ads)
         if Nsites is None:
             return un, struc
         else:
@@ -469,10 +470,11 @@ class DefectBuilder():
         if not size is None:
             assert size > 0, 'Choose size larger than zero!'
             sc = self.get_supercell_repitition(size, dim=dim)
-            if dim == 3:
-                sc_tuple = (sc, sc, sc)
-            elif dim == 2:
-                sc_tuple = (sc, sc, 1)
+
+        if dim == 3:
+            sc_tuple = (sc, sc, sc)
+        elif dim == 2:
+            sc_tuple = (sc, sc, 1)
         primitive = self.get_primitive_structure()
         structures = []
         for i in range(len(atoms)):
@@ -501,7 +503,7 @@ class DefectBuilder():
             z = 2
         elif layer == 'bottom':
             z = -2
-        un, struc = self.create_interstitials(atoms, Nsites)
+        un, struc = self.create_interstitials(atoms, Nsites, ads=True)
         prim = self.get_primitive_structure()
         cell = un.get_cell()
         positions = prim.get_positions()
@@ -650,7 +652,7 @@ class DefectBuilder():
         return R1 + R2
 
 
-    def map_positions(self, coordinates, structure=None):
+    def map_positions(self, coordinates, structure=None, ads=False):
         if structure is None:
             structure = self.get_primitive_structure()
 
@@ -661,38 +663,43 @@ class DefectBuilder():
         for kind in kinds:
             scaled_positions = self.get_voronoi_positions(kind=kind,
                                                           atoms=structure)
-            for pos in scaled_positions:
-                mapped = False
-                for element in coordinates:
-                    for wyck in coordinates[element]:
-                        true_int = False
+            mapped = False
+            for element in coordinates:
+                for wyck in coordinates[element]:
+                    true_int = False
+                    for pos in scaled_positions:
                         if self.is_mapped(pos, wyck):
                             tmp_eq = equivalent.copy()
                             tmp_un = unique.copy()
                             dist, tmp_eq = self.check_distances(tmp_eq, pos)
-                            true_int = self.is_true_interstitial(pos)
+                            true_int = self.is_true_interstitial(pos, ads)
                             if dist and true_int:
                                 unique = self.create_unique(pos, tmp_un)
                                 equivalent = self.create_copies(pos, coordinates[element], tmp_eq)
                                 mapped = True
                                 break
-                    if mapped:
-                        break
 
         return unique, equivalent
 
 
-    def is_true_interstitial(self, pos):
+    def is_true_interstitial(self, pos, ads=False):
         dim = self.get_dimension()
         atoms = self.get_primitive_structure()
         if dim == 3:
             return True
         elif dim == 2:
             top, bottom = get_top_bottom(atoms)
-            if pos[2] <= top and pos[2] >= bottom:
-                return True
+            delta = abs(top - bottom) / 10
+            if ads:
+                if pos[2] <= top and pos[2] >= bottom:
+                    return True
+                else:
+                    return False
             else:
-                return False
+                if pos[2] <= top - delta and pos[2] >= bottom + delta:
+                    return True
+                else:
+                    return False
         else:
             return True
 
