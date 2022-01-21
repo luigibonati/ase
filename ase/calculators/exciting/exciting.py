@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Union, List, Optional, Mapping
 from xml.etree import ElementTree as ET
 
-import ase
 import ase.io.exciting
 
 from ase.calculators.genericfileio import (GenericFileIOCalculator, CalculatorTemplate)
@@ -28,6 +27,7 @@ try:
     from excitingtools.input.ground_state import ExcitingGroundStateInput
     from excitingtools.input.structure import ExcitingStructure
 except ModuleNotFoundError:
+    # TODO Add excitingtools to PyPi
     message = """excitingtools must be installed. TODO Make available via wheels"""
     raise ModuleNotFoundError(message)
 
@@ -84,7 +84,6 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
             raise ValueError('exciting input_parameters must be type [dict, ExcitingGroundStateInput]')
         return input_parameters
 
-
     def write_input(self,
                     directory: Path,
                     atoms: ase.Atoms,
@@ -92,18 +91,14 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
                     properties):
         """Write an exciting input.xml file based on the input args.
 
-        TODO(dts, AlexB): Figure out why previously this function had a properties argument
-            called properties: List[str]. I assume this was to target certain properties
-            but I thought ground state calcs will all get the same default properties.
-            (Alex) Added it back in so API is consistent
-        TODO(dts, Alex) Consider correct way to pass input XML's title
-
         Args:
             directory: Directory in which to run calculator.
             atoms: ASE atoms object.
             input_parameters: exciting ground state input parameters, in a dictionary.
             Expect species_path, title and ground_state data, either in an object or as dict
-            properties: ADD ME
+            properties: Physical properties expected from a ground state calculation, for example
+            energies and forces, however it is neither required for input specification nor
+            parsing, and is only included to satisfy the base method's API.
         """
         assert set(input_parameters.keys()) == {'title', 'species_path', 'ground_state_input'}, \
             'Keys should be defined by ExcitingGroundState calculator'
@@ -113,11 +108,13 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
         structure = ExcitingStructure(atoms, species_path=species_path)
         title = input_parameters.pop('title')
 
-        input_parameters = self._require_forces(input_parameters['ground_state_input'])
-        if isinstance(input_parameters, dict):
-            ground_state = ExcitingGroundStateInput(**input_parameters)
+        # TODO(Alex/Dan) I added this but it seems stupid. Should just rely on the user understanding
+        # forces requires specifying in input.
+        gs_input_parameters = self._require_forces(input_parameters['ground_state_input'])
+        if isinstance(gs_input_parameters, dict):
+            ground_state = ExcitingGroundStateInput(**gs_input_parameters)
         else:
-            ground_state = input_parameters
+            ground_state = gs_input_parameters
 
         input_xml: ET.ElementTree = exciting_input_xml(structure, title=title, groundstate=ground_state)
         input_xml.write(file_name)
@@ -158,19 +155,24 @@ class ExcitingGroundStateResults:
     """Exciting Ground State Results."""
     def __init__(self, results: dict) -> None:
         self.results = results
-        self.completed = self.calculation_completed()
-        self.converged = self.calculation_converged()
+        self.completed = self._calculation_completed()
+        self.converged = self._calculation_converged()
 
-    def calculation_completed(self) -> bool:
+    def _calculation_completed(self) -> bool:
         """Check if calculation is complete."""
         # TODO(Alex) This will be returned by the runner object - need to propagate the result to here
         return False
 
-    def calculation_converged(self) -> bool:
+    def _calculation_converged(self) -> bool:
         """Check if calculation is converged."""
         # TODO(Alex) This needs to parsed from INFO.OUT (or info.xml?)
         #  First check is that this file is written
         return False
+
+    # TODO Makes sense for methods to get energies and forces
+    # Doesn't make sense to have getters for all properties
+    # however we should provide getters for a decent amount of ground state properties
+    # - Remember to dicuss this with Santiago
 
     def potential_energy(self) -> float:
         """Return potential energy of system.
@@ -184,7 +186,7 @@ class ExcitingGroundStateResults:
     def forces(self):
         """Return forces present on the system.
 
-        TODO(Dan): Add a bit more description here on how the forces are defiend
+        TODO(Dan): Add a bit more description here on how the forces are defined
             and returned. Right now I can't find forces in exciting test info.xml
             files. So it looks like we shouldn't be parsing this all the time:
             https://git.physik.hu-berlin.de/sol/exciting/-/blob/development/test/test_farm/groundstate/LDA_PW-PbTiO3/ref/info.xml
@@ -203,55 +205,41 @@ class ExcitingGroundStateResults:
         raise PropertyNotImplementedError
 
 
+# TODO Change name to include Calculator
 class ExcitingGroundState(GenericFileIOCalculator):
     """Class for the ground state calculation.
 
-    Base class implements the calculate method.
-    TODO(Alex) Revise the documentation
+    Args:
+        runner: A binary runner that will execute an exciting calculation and return a result.
+        ground_state_input: dictionary of ground state settings for example {'rgkmax': 8.0, 'autormt': True} .
+        or an object of type ExcitingGroundStateInput.
+        directory: Directory in which to run the job.
+        species_path: Path to the location of exciting's species files.
+        title: Job name written to input.xml
 
-    Must supply to the constructor:
-        * runner: ExcitingRunner: This should be a `profile` which is the machine-specific
-          settings (run command, species paths, etc), however in exciting's case, this doesn't
-          make sense. The species path is specified in the input file, and should therefore be
-          an attribute of ExcitingInput. The only other machine-specific setting is the BinaryRunner.
-          Furthermore, in GenericFileIOCalculator.calculate, profile is only used to provide a
-          run method. We therefore pass the BinaryRunner in the place of a profile.
-
-        * exciting_input ExcitingInput: exciting input parameters, including the species path
-          BUT minus the structure, which is defined in ASE's Atoms object.
-
-        * directory: Directory in which to run/execute the job.
-
-    To the calculate method args:
-        * atoms           ASE atoms object
-        * properties      Output properties, as defined in a CalculatorTemplate
-        * system_changes  ?
-
-    via self:
-        * directory      Directory in which to run/execute the job.
-        * template       Specialised exciting template, containing write_input, execute and read_results methods
-        * parameters     exciting_input. Can be defined as a class or Object. Responsibility
-                         of the specialised write method.
-
-    List of keyword inputs from the old calculator:
-        species_path, kpts, autormt, tshift
+    Results returned from running the calculate method. For example:
+       gs_calculator = ExcitingGroundState(runner, ground_state_input)
+       results: ExcitingGroundStateResults = gs_calculator.calculate(atoms: Atoms)
     """
-    default_title = 'ASE-generated input'
-
     def __init__(self, *,
                  runner: ExcitingRunner,
                  ground_state_input: Union[dict, ExcitingGroundStateInput],
                  directory='./',
                  species_path='./',
-                 title=default_title):
+                 title='ASE-generated input'):
 
         self.runner = runner
-        # Data to be passed to ExcitingGroundStateTemplate.write_input(..., input_parameters, ...)
+        # Package data to be passed to ExcitingGroundStateTemplate.write_input(..., input_parameters, ...)
         # Structure not included, as it's passed when one calls .calculate method directly
         self.exciting_inputs = {'title': title, 'species_path': species_path, 'ground_state_input': ground_state_input}
-        self.directory = directory
+        self.directory = Path(directory) if isinstance(directory, str) else directory
         self.template = ExcitingGroundStateTemplate()
 
+        # GenericFileIOCalculator expects a `profile` containing machine-specific settings
+        # however in exciting's case, the species file are defined in the input XML (hence passed
+        # in the parameters argument) and the only other machine-specific setting is the BinaryRunner.
+        # Furthermore, in GenericFileIOCalculator.calculate, profile is only used to provide a
+        # run method. We therefore pass the BinaryRunner in the place of a profile.
         super().__init__(profile=runner,
                          template=self.template,
                          parameters=self.exciting_inputs,
@@ -264,8 +252,21 @@ class ExcitingGroundState(GenericFileIOCalculator):
                   system_changes=None) -> ExcitingGroundStateResults:
         """Run an exciting calculation and capture the results in ExcitingGroundStateResults object.
 
-        TODO(Alex) Would rather remove properties from our calculate API.
-        TODO(All) Document
+        The base class implements the method.
+
+        TODO(Alex/Dan)
+        Consider removing properties and system_changes from our calculate API.
+        properties is passed through to template.write, but is not used there.
+        So None would suffice. system_changes is passed to base calculate but not used there.
+
+        Args:
+            atoms: ase.Atoms object containing atomic positions and lattice vectors.
+            properties: Properties expected by the calculation. This is passed to the template's
+            write_input method, where it is not used. We include it here to satisfy the API.
+            system_changes: This is unused by the base method, so we only include to maintain
+            consistent API.
+        Returns:
+            ExcitingGroundStateResults object
         """
         if properties is None:
             properties = self.template.implemented_properties
