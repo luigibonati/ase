@@ -1151,6 +1151,23 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
     def get_bz_k_points(self):
         raise NotImplementedError
 
+    def read_vib_freq(self, lines=None):
+        """Read vibrational frequencies.
+        Returns list of real and list of imaginary frequencies."""
+
+        freq = []
+        i_freq = []
+        if not lines:
+            lines = self.load_file('OUTCAR')
+        for line in lines:
+            data = line.split()
+            if 'THz' in data:
+                if 'f/i=' not in data:
+                    freq.append(float(data[-2]))
+                else:
+                    i_freq.append(float(data[-2]))
+        return freq, i_freq
+
     def _read_massweighted_hessian_xml(self) -> np.ndarray:
         """Read the Mass Weighted Hessian from vasprun.xml.
         Returns the Mass Weighted Hessian as np.ndarray from the xml file.
