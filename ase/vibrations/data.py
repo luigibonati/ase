@@ -45,6 +45,7 @@ class VibrationsData:
             in Hessian.  Default value (None) includes all atoms.
 
     """
+
     def __init__(self,
                  atoms: Atoms,
                  hessian: Union[RealSequence4D, np.ndarray],
@@ -188,14 +189,15 @@ class VibrationsData:
 
         Returns:
             array with shape (n_atoms, 3, n_atoms, 3) where
+
             - the first and third indices identify atoms in self.get_atoms()
-            - the second and fourth indices cover the corresponding Cartesian
-              movements in x, y, z
+
+            - the second and fourth indices cover the corresponding Cartesian movements in x, y, z
+
 
             e.g. the element h[0, 2, 1, 0] gives a harmonic force exerted on
             atoms[1] in the x-direction in response to a movement in the
             z-direction of atoms[0]
-
         """
         n_atoms = int(self._hessian2d.shape[0] / 3)
         return self._hessian2d.reshape(n_atoms, 3, n_atoms, 3).copy()
@@ -208,18 +210,18 @@ class VibrationsData:
 
         Returns:
             array with shape (n_atoms * 3, n_atoms * 3) where the elements are
-            ordered by atom and Cartesian direction
+            ordered by atom and Cartesian direction::
 
-            [[at1x_at1x, at1x_at1y, at1x_at1z, at1x_at2x, ...],
-             [at1y_at1x, at1y_at1y, at1y_at1z, at1y_at2x, ...],
-             [at1z_at1x, at1z_at1y, at1z_at1z, at1z_at2x, ...],
-             [at2x_at1x, at2x_at1y, at2x_at1z, at2x_at2x, ...],
-             ...]
+            >> [[at1x_at1x, at1x_at1y, at1x_at1z, at1x_at2x, ...],
+            >> [at1y_at1x, at1y_at1y, at1y_at1z, at1y_at2x, ...],
+            >> [at1z_at1x, at1z_at1y, at1z_at1z, at1z_at2x, ...],
+            >> [at2x_at1x, at2x_at1y, at2x_at1z, at2x_at2x, ...],
+            >> ...]
+
 
             e.g. the element h[2, 3] gives a harmonic force exerted on
             atoms[1] in the x-direction in response to a movement in the
             z-direction of atoms[0]
-
         """
         return self._hessian2d.copy()
 

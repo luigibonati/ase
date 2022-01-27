@@ -28,6 +28,7 @@ from pathlib import Path
 from warnings import warn
 from typing import Dict, Any
 from xml.etree import ElementTree
+from typing import Tuple
 
 import ase
 from ase.io import read, jsonio
@@ -36,6 +37,8 @@ from ase.calculators import calculator
 from ase.calculators.calculator import Calculator
 from ase.calculators.singlepoint import SinglePointDFTCalculator
 from ase.calculators.vasp.create_input import GenerateVaspInput
+from ase.vibrations.data import VibrationsData
+from ase.constraints import constrained_indices, FixCartesian, FixAtoms
 
 
 class Vasp(GenerateVaspInput, Calculator):  # type: ignore
@@ -1151,10 +1154,12 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
     def get_bz_k_points(self):
         raise NotImplementedError
 
-    def read_vib_freq(self, lines=None):
+    def read_vib_freq(self, lines=None) -> Tuple[list, list]:
         """Read vibrational frequencies.
 
-        Returns list of real and list of imaginary frequencies."""
+        Returns:
+            List of real and list of imaginary frequencies.
+        """
         freq = []
         i_freq = []
 
@@ -1172,9 +1177,13 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
 
     def _read_massweighted_hessian_xml(self) -> np.ndarray:
         """Read the Mass Weighted Hessian from vasprun.xml.
-        Returns the Mass Weighted Hessian as np.ndarray from the xml file.
-        Raises a ReadError if the reader is not able to read the Hessian.
-        Converts to ASE units for VASP version 6.
+
+        Returns:
+            The Mass Weighted Hessian as np.ndarray from the xml file.
+
+            Raises a ReadError if the reader is not able to read the Hessian.
+
+            Converts to ASE units for VASP version 6.
         """
 
         file = self._indir('vasprun.xml')
@@ -1213,14 +1222,20 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         # VASP uses the negative definition of the hessian compared to ASE
         return -hessian
 
-    def get_vibrations(self):
+    def get_vibrations(self) -> VibrationsData:
         """Get a VibrationsData Object from a VASP Calculation.
-        Returns a VibrationsData object.
-        Note that the atoms in the VibrationsData object can be resorted.
-        """
 
-        from ase.vibrations.data import VibrationsData
-        from ase.constraints import constrained_indices, FixCartesian, FixAtoms
+        Returns:
+            VibrationsData object.
+
+            Note that the atoms in the VibrationsData object can be resorted.
+
+            Uses the (mass weighted) Hessian from vasprun.xml, different masses
+            in the POTCAR can therefore result in different results.
+
+            Note the limitations concerning k-points and symmetry mentioned in
+            the VASP-Wiki.
+        """
 
         mass_weighted_hessian = self._read_massweighted_hessian_xml()
         #Only fully fixed atoms supported by VibrationsData
