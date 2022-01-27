@@ -46,7 +46,7 @@ def test_vasp_freq(factory, atoms_nh3, calc_settings):
                 if 'f/i=' not in data:
                     e.append(float(data[-2]))
                 else:
-                    i_e.append(complex(0,float(data[-2])))
+                    i_e.append(complex(0, float(data[-2])))
         return e, i_e
 
     def array_almost_equal(a1, a2, tol=np.finfo(type(1.0)).eps):
@@ -62,7 +62,7 @@ def test_vasp_freq(factory, atoms_nh3, calc_settings):
     en = mol.get_potential_energy()
     assert isinstance(en, float)
 
-    n_free = 3*(len(mol) - 1) #one constraint
+    n_free = 3*(len(mol) - 1)  # one constraint
 
     e, i_e = read_vib_freq_outcar(calc)
     assert len(e) + len(i_e) == n_free
@@ -70,7 +70,7 @@ def test_vasp_freq(factory, atoms_nh3, calc_settings):
     outcar_data = i_e[-1::-1] + e[-1::-1]
 
     vib_obj = calc.get_vibrations()
-    vib_data = vib_obj.get_energies()*1000 #to meV
+    vib_data = vib_obj.get_energies()*1000  # to meV
     assert array_almost_equal(vib_data, outcar_data, tol=1e-3), "Difference{:}".format(str(vib_data-outcar_data))
     # Cleanup
     calc.clean()

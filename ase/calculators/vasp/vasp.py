@@ -1176,13 +1176,13 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                         if i == 0:
                             n_items = len(text_split)
                             hessian = np.zeros((n_items, n_items))
-                        hessian[i,:] = np.array([float(val) for val in text_split])
+                        hessian[i, :] = np.array([float(val) for val in text_split])
                     assert i == n_items - 1
                     #VASP6+ uses THz**2 as unit, not mEV**2 as before
                     for entry in elem.findall('i[@name="unit"]'):
-                        if not entry.text.strip() == 'THz^2': #Catch changes in VASP
+                        if not entry.text.strip() == 'THz^2':  # Catch changes in VASP
                             raise calculator.ReadError(vasp_version_error_msg)
-                        conv = ase.units._amu / ase.units._e / 1e-4 * (2 * np.pi)**2 #THz**2 to eV**2
+                        conv = ase.units._amu / ase.units._e / 1e-4 * (2 * np.pi)**2  # THz**2 to eV**2
                         # VASP6 uses factor 2pi
                         # 1e-4 = (angstrom to meter times Hz to THz) squared = (1e10 times 1e-12)**2
                     hessian *= conv
@@ -1194,7 +1194,6 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         # VASP uses the negative definition of the hessian compared to ASE
         return -hessian
 
-
     def get_vibrations(self):
         """Get a VibrationsData Object from a VASP Calculation.
         Returns a VibrationsData object.
@@ -1205,7 +1204,6 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         from ase.constraints import constrained_indices, FixCartesian, FixAtoms
 
         mass_weighted_hessian = self._read_massweighted_hessian_xml()
-        n_atoms = len(self.atoms)
         #Only fully fixed atoms supported by VibrationsData
         const_indices = constrained_indices(self.atoms, only_include=(FixCartesian, FixAtoms))
         #Invert the selection to get free atoms
@@ -1218,15 +1216,14 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         #get the unweighted hessian = H_w / m_w / m_w^T
         #ugly and twice the work, but needed since vasprun.xml does not have the unweighted
         #ase.vibrations.vibration will do the opposite in Vibrations.read
-        hessian = mass_weighted_hessian / mass_weights / mass_weights[:,np.newaxis]
+        hessian = mass_weighted_hessian / mass_weights / mass_weights[:, np.newaxis]
         if not hessian.shape == (3*n_free_atoms, 3*n_free_atoms):
             print("Hessian is not n_free_atoms x n_free_atoms")
-            msg = "VibrationsData only implements fully fixed atoms, "+\
+            msg = "VibrationsData only implements fully fixed atoms, " +\
                   "not partially constrained atoms."
             raise NotImplementedError(msg)
 
         return VibrationsData.from_2d(self.atoms[self.sort], hessian, indices)
-
 
     def get_nonselfconsistent_energies(self, bee_type):
         """ Method that reads and returns BEE energy contributions
