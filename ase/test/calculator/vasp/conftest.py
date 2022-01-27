@@ -28,7 +28,7 @@ def atoms_2co():
 def atoms_nh3():
     """Simple atoms object for testing with a planar NH3 molecule"""
     d1 = 0.5
-    d2 = 0.9
+    d2 = 0.87
     atoms = Atoms('NH3', positions=[(0, 0, 0), (0, d1, d2), (0, -d1, d2), (0, 0, -1.)], pbc=True)
     atoms.center(vacuum=5)
     return atoms

@@ -1151,91 +1151,82 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
     def get_bz_k_points(self):
         raise NotImplementedError
 
-    def read_vib_freq(self, lines=None):
-        """Read vibrational frequencies.
-
-        Returns list of real and list of imaginary frequencies."""
-        freq = []
-        i_freq = []
-
-        if not lines:
-            lines = self.load_file('OUTCAR')
-
-        for line in lines:
-            data = line.split()
-            if 'THz' in data:
-                if 'f/i=' not in data:
-                    freq.append(float(data[-2]))
-                else:
-                    i_freq.append(float(data[-2]))
-        return freq, i_freq
-
-    def read_vib_modes(self, lines=None):
-        """Read vibrational modes.
-
-        Returns a list of tuples. Each tuple contains the eigenvalue
-        (i.e. the frequency of the mode in cm^-1) and the corresponding
-        eigenvector.
-
-        Note that the frequency can be a complex number.
-        """
-        modes = []
-
-        if not lines:
-            lines = self.load_file('OUTCAR')
-
-        nAtoms = len(self.atoms)
-        assert nAtoms > 0, "self.atoms seems to be empty."
-        i = 0
-        while i < len(lines):
-            data = lines[i].split()
-            if 'THz' in data:
-                #check that OUTCAR format has not changed
-                assert data[-3] == 'cm-1', "OUTCAR format changed/bad!"
-                freq = float(data[-4])
-                if 'f/i=' in data:
-                    freq = complex(0, freq)
-                matrix = []
-                i += 2
-                for j in range(nAtoms):
-                    data = lines[i+j].split()
-                    assert len(data) == 6, "Unexpected OUTCAR format"
-                    matrix.append([float(x) for x in data[-3:]])
-                i += j
-                modes.append((freq, np.array(matrix)[self.resort]))
-            i += 1
-        return modes
-
-    def get_vibrations(self, index=None, steps=5, factor=0.1, lines=None):
-        """
-        Get trajectories of the atomic motion representing the calculated
-        normal modes.
-
-        Select one or multiple normal modes using `index`.
-        The magnitude of the displacement can be controlled by setting the
-        number of `steps` and the `factor` multiplying the eigenvector.
-        The number of images will be `steps*2`
-
-        Returns a list of tuples containing the frequency (in cm^-1) and
-        a list of Atoms. The first Atoms object is a copy of `self.atoms`.
+    def _read_massweighted_hessian_xml(self) -> np.ndarray:
+        """Read the Mass Weighted Hessian from vasprun.xml.
+        Returns the Mass Weighted Hessian as np.ndarray from the xml file.
+        Raises a ReadError if the reader is not able to read the Hessian.
+        Converts to ASE units for VASP version 6.
         """
 
-        modes = self.read_vib_modes(lines=lines)
-        if index:
-            modes = modes[index]
+        file = self._indir('vasprun.xml')
+        incomplete_msg = (
+            f'The file "{file}" is incomplete, and no DFT data was available. '
+            'This is likely due to an incomplete calculation.')
+        vasp_version_error_msg = (
+            f'The file "{file}" is from a non-supported VASP version. '
+            'Not sure what unit the Hessian is in, aborting.')
+        try:
+            tree = ElementTree.iterparse(file)
+            hessian = None
+            conv = 1.0
+            for event, elem in tree:
+                if elem.tag == 'dynmat':
+                    for i, entry in enumerate(elem.findall('varray[@name="hessian"]/v')):
+                        text_split = entry.text.split()
+                        if i == 0:
+                            n_items = len(text_split)
+                            hessian = np.zeros((n_items, n_items))
+                        hessian[i,:] = np.array([float(val) for val in text_split])
+                    assert i == n_items - 1
+                    #VASP6+ uses THz**2 as unit, not mEV**2 as before
+                    for entry in elem.findall('i[@name="unit"]'):
+                        if not entry.text.strip() == 'THz^2': #Catch changes in VASP
+                            raise calculator.ReadError(vasp_version_error_msg)
+                        conv = ase.units._amu / ase.units._e / 1e-4 * (2 * np.pi)**2 #THz**2 to eV**2
+                        # VASP6 uses factor 2pi
+                        # 1e-4 = (angstrom to meter times Hz to THz) squared = (1e10 times 1e-12)**2
+                    hessian *= conv
+            if hessian is None:
+                raise ElementTree.ParseError
 
-        vibrations = []
-        for mode in modes:
-            traj = [self.atoms]
-            for i in range(1, steps+1):
-                traj.append(self.atoms.copy())
-                traj[-1].positions += mode[1] * factor * i
-            #smooth backward motion
-            for i in range(1, steps):
-                traj.append(traj[steps-i])
-            vibrations.append((mode[0], traj))
+        except ElementTree.ParseError as exc:
+            raise calculator.ReadError(incomplete_msg) from exc
+        # VASP uses the negative definition of the hessian compared to ASE
+        return -hessian
 
-        return vibrations
+
+    def get_vibrations(self):
+        """Get a VibrationsData Object from a VASP Calculation.
+        Returns a VibrationsData object.
+        Note that the atoms in the VibrationsData object can be resorted.
+        """
+
+        from ase.vibrations.data import VibrationsData
+        from ase.constraints import constrained_indices, FixCartesian, FixAtoms
+
+        mass_weighted_hessian = self._read_massweighted_hessian_xml()
+        n_atoms = len(self.atoms)
+        #Only fully fixed atoms supported by VibrationsData
+        const_indices = constrained_indices(self.atoms, only_include=(FixCartesian, FixAtoms))
+        #Invert the selection to get free atoms
+        indices = np.setdiff1d(np.array(range(len(self.atoms))), const_indices).astype(int)
+        #save the corresponding sorted atom numbers
+        sort_indices = np.array(self.sort)[indices]
+        n_free_atoms = len(indices)
+        #mass weights = 1/sqrt(mass)
+        mass_weights = np.repeat(self.atoms.get_masses()[sort_indices]**-0.5, 3)
+        #get the unweighted hessian = H_w / m_w / m_w^T
+        #ugly and twice the work, but needed since vasprun.xml does not have the unweighted
+        #ase.vibrations.vibration will do the opposite in Vibrations.read
+        hessian = mass_weighted_hessian / mass_weights / mass_weights[:,np.newaxis]
+        if not hessian.shape == (3*n_free_atoms, 3*n_free_atoms):
+            print("Hessian is not n_free_atoms x n_free_atoms")
+            msg = "VibrationsData only implements fully fixed atoms, "+\
+                  "not partially constrained atoms."
+            raise NotImplementedError(msg)
+
+        return VibrationsData.from_2d(self.atoms[self.sort], hessian, indices)
+
 
     def get_nonselfconsistent_energies(self, bee_type):
         """ Method that reads and returns BEE energy contributions
