@@ -33,22 +33,8 @@ def test_vasp_freq(factory, atoms_nh3, calc_settings):
     calculator work. This is conditional on the existence of the
     VASP_COMMAND or VASP_SCRIPT environment variables
 
+    Tests read_vib_freq and get_vibrations against each other.
     """
-    def read_vib_freq_outcar(calc):
-        """Helper to read vibrational energies.
-        Returns list of real and list of imaginary energies in meV."""
-        e = []
-        i_e = []
-        lines = calc.load_file('OUTCAR')
-        for line in lines:
-            data = line.split()
-            if 'THz' in data:
-                if 'f/i=' not in data:
-                    e.append(float(data[-2]))
-                else:
-                    i_e.append(complex(0, float(data[-2])))
-        return e, i_e
-
     def array_almost_equal(a1, a2, tol=np.finfo(type(1.0)).eps):
         """Replacement for old numpy.testing.utils.array_almost_equal."""
         return (np.abs(a1 - a2) < tol).all()
@@ -64,7 +50,8 @@ def test_vasp_freq(factory, atoms_nh3, calc_settings):
 
     n_free = 3*(len(mol) - 1)  # one constraint
 
-    e, i_e = read_vib_freq_outcar(calc)
+    e, i_e = calc.read_vib_freq()
+    i_e = [ complex(0, x) for x in i_e ]
     assert len(e) + len(i_e) == n_free
     assert i_e
     outcar_data = i_e[-1::-1] + e[-1::-1]
