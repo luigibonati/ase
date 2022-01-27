@@ -1201,6 +1201,7 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                 if elem.tag == 'dynmat':
                     for i, entry in enumerate(elem.findall('varray[@name="hessian"]/v')):
                         text_split = entry.text.split()
+                        assert text_split
                         if i == 0:
                             n_items = len(text_split)
                             hessian = np.zeros((n_items, n_items))
