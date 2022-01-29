@@ -23,7 +23,7 @@ class MyEncoder(json.JSONEncoder):
             if np.iscomplexobj(obj):
                 flatobj.dtype = obj.real.dtype
             return {'__ndarray__': (obj.shape,
-                                    obj.dtype.name,
+                                    str(obj.dtype),
                                     flatobj.tolist())}
         if isinstance(obj, np.integer):
             return int(obj)
