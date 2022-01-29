@@ -104,6 +104,8 @@ class IndexedConstraint(FixConstraint):
 
         if indices.dtype == bool:
             indices = np.arange(len(indices))[indices]
+        elif len(indices) == 0:
+            indices = np.empty(0, dtype=int)
         elif not np.issubdtype(indices.dtype, np.integer):
             raise ValueError('Indices must be integers or boolean mask, '
                              f'not dtype={indices.dtype}')
@@ -375,7 +377,7 @@ class FixLinearTriatomic(FixConstraint):
            References:
 
            Ciccotti et al. Molecular Physics 47 (1982)
-           https://doi.org/10.1080/00268978200100942
+           :doi:`10.1080/00268978200100942`
         """
         self.triples = np.asarray(triples)
         if self.triples.shape[1] != 3:

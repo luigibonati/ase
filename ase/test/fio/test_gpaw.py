@@ -29,6 +29,8 @@ External:        +0.000000
 XC:             -24.279425
 Entropy (-ST):   -0.381921
 Local:           -0.018721
+Extra
+stuff:          117.420000
 --------------------------
 Free energy:    -10.229926
 Extrapolated:   -10.038965

@@ -579,7 +579,7 @@ def open_with_compression(filename: str, mode: str = 'r') -> IO:
         return gzip.open(filename, mode=mode)  # type: ignore
     elif compression == 'bz2':
         import bz2
-        return bz2.open(filename, mode=mode)
+        return bz2.open(filename, mode=mode)  # type: ignore
     elif compression == 'xz':
         import lzma
         return lzma.open(filename, mode)

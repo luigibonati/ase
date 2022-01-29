@@ -627,7 +627,7 @@ Algorithms:
   :class:`ase.constraints.FixScaledParametricRelations`, and
   :class:`ase.constraints.FixCartesianParametricRelations` to
   :mod:`ase.constraints`. These constraints are based off the work
-  in: https://arxiv.org/abs/1908.01610, and allows for the positions and cell of a
+  in: :arxiv:`1908.01610`, and allows for the positions and cell of a
   structure to be optimized in a reduced parameter space.
 
 * Added :func:`ase.build.graphene` for building graphene monolayers.

@@ -3064,9 +3064,8 @@ def import_castep_keywords(castep_command='',
     # Search for castep_keywords.json (or however it's called) in multiple
     # paths
 
-    searchpaths = [path,
-                   os.path.expanduser('~/.ase'),
-                   os.path.join(ase.__path__[0], 'calculators')]
+    searchpaths = [path, os.path.expanduser('~/.ase'),
+                   os.path.expanduser('~/.config/ase')]
     try:
         kwfile = sum([glob.glob(os.path.join(sp, filename))
                       for sp in searchpaths], [])[0]

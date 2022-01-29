@@ -494,13 +494,14 @@ def _read_xyz_frame(lines, natoms, properties_parser=key_val_str_to_dict,
 
     # Read and set constraints
     if 'move_mask' in arrays:
+        move_mask = arrays['move_mask'].astype(bool)
         if properties['move_mask'][1] == 3:
             cons = []
             for a in range(natoms):
-                cons.append(FixCartesian(a, mask=~arrays['move_mask'][a, :]))
+                cons.append(FixCartesian(a, mask=~move_mask[a, :]))
             atoms.set_constraint(cons)
         elif properties['move_mask'][1] == 1:
-            atoms.set_constraint(FixAtoms(mask=~arrays['move_mask']))
+            atoms.set_constraint(FixAtoms(mask=~move_mask))
         else:
             raise XYZError('Not implemented constraint')
         del arrays['move_mask']
