@@ -9,6 +9,8 @@ from ase.cluster import wulff_construction
 
 
 def get_systems():
+    systems = []
+
     cell = (5, 5, 5)
     atoms = Atoms('H2', [(0, 0, 0), (0, 0, 1.4)], cell=cell)
     atoms.center()
@@ -85,6 +87,7 @@ def get_systems():
     atoms.rattle(0.2)
     systems.append((atoms, 'Alumninum cluster'))
     return systems
+
 
 def create_database():
     systems = get_systems()
