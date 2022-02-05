@@ -92,13 +92,32 @@ def test_nanotube(gui):
 
 def test_nanoparticle(gui):
     n = gui.nanoparticle_window()
-    n.element.symbol = 'Cu'
-    n.apply()
+    n.element.symbol = 'W'  # test bcc
     n.set_structure_data()
+    n.apply()
+    assert len(gui.images[0]) == 57
+    assert gui.images[0].get_distance(44, 45) == pytest.approx(2.737, 0.001)
+    n.structure_cb.value = n.structure_names['sc']
+    n.update_structure()
+    n.apply()
+    assert len(gui.images[0]) == 231
+    assert gui.images[0].get_distance(143, 145) == pytest.approx(3.160, 0.001)
+    n.structure_cb.value = n.structure_names['hcp']
+    n.update_structure()
+    n.apply()
+    assert len(gui.images[0]) == 257
+    assert gui.images[0].get_distance(4, 5) == pytest.approx(3.0, 0.001)
+    assert gui.images[0].get_distance(11, 5) == pytest.approx(3.160, 0.001)
+    n.element.symbol = 'Cu'  # test fcc
+    n.set_structure_data()
+    n.apply()
     assert len(gui.images[0]) == 675
-    n.method.value = 'wulff'
+    assert gui.images[0].get_distance(0, 1) == pytest.approx(2.553, 0.001)
+    n.method_cb.value = 'wulff'
     n.update_gui_method()
     n.apply()
+    assert len(gui.images[0]) == 135
+    assert gui.images[0].get_distance(0, 1) == pytest.approx(2.553, 0.001)
 
 
 def test_color(gui):
