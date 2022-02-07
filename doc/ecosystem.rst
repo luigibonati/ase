@@ -9,6 +9,10 @@ link and descriptive paragraph.
 
 Listed in alphabetical order, for want of a better approach.
 
+ * `abTEM <https://abtem.readthedocs.io/en/latest/index.html>`_:
+   abTEM provides a Python API for running simulations of (scanning)
+   transmission electron microscopy images and diffraction patterns.
+
  * `atomicrex <https://atomicrex.org/>`_:
    atomicrex is a versatile tool for the construction of interatomic
    potential models. It includes a Python interface for integration
@@ -58,6 +62,12 @@ Listed in alphabetical order, for want of a better approach.
    cluster expansions. It supports a wide range of regression and
    validation techniques, and includes a Monte Carlo module with
    support for many different thermodynamic ensembles.
+
+* `NequIP <https://github.com/mir-group/nequip>`_:
+   Euclidian Equivariant neural network potentials.  Nequip can fit
+   neural network potentials to series of DFT calculations (using
+   e.g. ASE trajectory files), and then be used to perform
+   optimization and molecular dynamics in ASE or LAMMPS.
 
  * `Sella <https://github.com/zadorlab/sella>`_:
    Sella is a saddle point refinement (optimization) tool which uses
