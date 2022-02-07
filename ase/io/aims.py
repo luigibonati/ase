@@ -239,7 +239,7 @@ def write_aims(
             If True use fractional coordinates instead of Cartesian coordinates
         symmetry_block: list of str
             List of geometric constraints as defined in:
-            https://arxiv.org/abs/1908.01610
+            :arxiv:`1908.01610`
         write_velocities: bool
             If True add the atomic velocity vectors to the file
         ghosts: list of Atoms

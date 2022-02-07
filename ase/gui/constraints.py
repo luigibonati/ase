@@ -4,7 +4,7 @@ from ase.gui.i18n import _
 
 class Constraints:
     def __init__(self, gui):
-        win = ui.Window(_('Constraints'))
+        win = ui.Window(_('Constraints'), wmtype='utility')
         win.add([ui.Button(_('Fix'), self.selected),
                  _('selected atoms')])
         win.add([ui.Button(_('Release'), self.unconstrain),

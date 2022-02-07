@@ -82,7 +82,7 @@ Interpolation
 
    Interpolate path linearly from initial to final state.
 
-.. function:: interpolate(images)
+.. autofunction:: interpolate
 
    Interpolate path linearly from initial to final state. This standalone
    function can be used independently of the NEB class, but is functionally
@@ -93,7 +93,7 @@ Interpolation
    Create an improved path from initial to final state using the IDPP approach
    [4]. This will start from an initial guess of a linear interpolation.
 
-.. function:: idpp_interpolate(images)
+.. autofunction:: idpp_interpolate
 
    Generate an IDPP pathway from a set of images. This differs
    from above in that more IDPP-specific parameters can be specified,

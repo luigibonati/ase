@@ -53,19 +53,16 @@ class CutAndSplicePairing(OffspringCreator):
     The basic implementation (for fixed unit cells) is
     described in:
 
-    `L.B. Vilhelmsen and B. Hammer, PRL, 108, 126101 (2012)`__
-
-    __ https://doi.org/10.1103/PhysRevLett.108.126101
+    :doi:`L.B. Vilhelmsen and B. Hammer, PRL, 108, 126101 (2012)
+    <10.1103/PhysRevLett.108.126101`>
 
     The extension to variable unit cells is similar to:
 
-    * `Glass, Oganov, Hansen, Comp. Phys. Comm. 175 (2006) 713-720`__
+    * :doi:`Glass, Oganov, Hansen, Comp. Phys. Comm. 175 (2006) 713-720
+      <10.1016/j.cpc.2006.07.020>`
 
-      __ https://doi.org/10.1016/j.cpc.2006.07.020
-
-    * `Lonie, Zurek, Comp. Phys. Comm. 182 (2011) 372-387`__
-
-      __ https://doi.org/10.1016/j.cpc.2010.07.048
+    * :doi:`Lonie, Zurek, Comp. Phys. Comm. 182 (2011) 372-387
+      <10.1016/j.cpc.2010.07.048>`
 
     The operator can furthermore preserve molecular identity
     if desired (see the *use_tags* kwarg). Atoms with the same

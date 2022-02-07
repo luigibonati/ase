@@ -1,3 +1,4 @@
+import contextlib
 from pathlib import Path
 from importlib import import_module
 from numpy import VisibleDeprecationWarning
@@ -58,17 +59,18 @@ newpy_only_modules = {
 @pytest.mark.filterwarnings('ignore:Moved to')
 def test_imports():
     for module in all_modules:
-        if module in deprecated_modules:
-            warning = (DeprecationWarning, VisibleDeprecationWarning)
-        else:
-            warning = None
+        with contextlib.ExitStack() as ignored_warnings:
+            if module in deprecated_modules:
+                ignored_warnings.enter_context(
+                    pytest.warns((DeprecationWarning,
+                                  VisibleDeprecationWarning)))
 
-        try:
-            with pytest.warns(warning):
+            try:
                 import_module(module)
-        except SyntaxError:
-            if module not in newpy_only_modules:
-                raise
-        except ImportError as err:
-            if err.name not in ignore_imports and 'deprecated' not in str(err):
-                raise
+            except SyntaxError:
+                if module not in newpy_only_modules:
+                    raise
+            except ImportError as err:
+                ok = err.name in ignore_imports or 'deprecated' in str(err)
+                if not ok:
+                    raise
