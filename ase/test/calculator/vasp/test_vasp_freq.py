@@ -51,7 +51,7 @@ def test_vasp_freq(factory, atoms_nh3, calc_settings):
     n_free = 3*(len(mol) - 1)  # one constraint
 
     e, i_e = calc.read_vib_freq()
-    i_e = [ complex(0, x) for x in i_e ]
+    i_e = [complex(0, x) for x in i_e]
     assert len(e) + len(i_e) == n_free
     assert i_e
     outcar_data = i_e[-1::-1] + e[-1::-1]
