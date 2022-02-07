@@ -6,42 +6,45 @@ from pathlib import Path
 import os
 import subprocess
 import shutil
+import time
 
 
 class SubprocessRunResults:
+    """ Results returned from subprocess.run()
     """
-    Results returned from subprocess.run
-    """
-
-    def __init__(self, stdout, stderr, return_code: int):
+    def __init__(self, stdout, stderr, return_code: int, process_time: Optional[float] = None):
         self.stdout = stdout
         self.stderr = stderr
         self.return_code = return_code
         self.success = return_code == 0
+        self.process_time = process_time
 
 
 class SimpleBinaryRunner:
-    """
-    Compose a run command, and run a binary
+    """ Class to execute a subprocess.
     """
     path_type = Union[str, Path]
 
     def __init__(self,
                  binary: str,
-                 run_cmd: List[str],
+                 run_cmd: Union[List[str], str],
                  omp_num_threads: int,
                  time_out: int,
                  directory: Optional[path_type] = './',
                  args=None
                  ) -> None:
-        """
-        :param str binary: Binary name prepended by full path, or just binary name (if present in $PATH)
-        :param List[str] run_cmd: Run commands sequentially as a list. For example:
-          * For serial: ['./']
+        """ Initialise class.
+
+        :param binary: Binary name prepended by full path, or just binary name (if present in $PATH).
+        :param run_cmd: Run commands sequentially as a list. For example:
+          * For serial: ['./'] or ['']
           * For MPI:   ['mpirun', '-np', '2']
-        :param int omp_num_threads: Number of OMP threads
-        :param int time_out: Number of seconds before a job is defined to have timed out
-        :param List[str] args: Optional binary arguments
+        or as a string. For example"
+          * For serial: "./"
+          * For MPI: "mpirun -np 2"
+        :param omp_num_threads: Number of OMP threads.
+        :param time_out: Number of seconds before a job is defined to have timed out.
+        :param args: Optional arguments for the binary.
         """
         if args is None:
             args = ['']
@@ -58,29 +61,42 @@ class SimpleBinaryRunner:
             # If just the binary name, try checking the $PATH
             self.binary = shutil.which(self.binary)
             if self.binary is None:
-                raise FileNotFoundError(f"Binary does not exist and cannot be found in the $PATH: {binary}")
+                raise FileNotFoundError(f"{binary} does not exist and cannot be found in the $PATH")
 
         if not Path(directory).is_dir():
             raise OSError(f"Run directory does not exist: {directory}")
 
-        if not isinstance(run_cmd, list):
-            raise ValueError("Run commands expected in a list. For example ['mpirun', '-np', '2']")
+        if isinstance(run_cmd, str):
+            self.run_cmd = run_cmd.split()
+        elif not isinstance(run_cmd, list):
+            raise ValueError("Run commands expected in a str or list. For example ['mpirun', '-np', '2']")
 
+        self._check_mpi_processes()
+
+        if omp_num_threads <= 0:
+            raise ValueError("Number of OMP threads must be > 0")
+
+        if time_out <= 0:
+            raise ValueError("time_out must be a positive integer")
+
+    def _check_mpi_processes(self):
+        """ Check that the number of MPI processes specified is valid.
+        """
+        # MPI
         try:
-            i = run_cmd.index('np')
-            mpi_processes = eval(run_cmd[i + 1])
-            assert type(mpi_processes) == int, "Number of MPI processes should be an int"
-            assert mpi_processes > 0, "Number of MPI processes must be > 0"
+            i = self.run_cmd.index('-np')
+            mpi_processes = eval(self.run_cmd[i + 1])
+            if type(mpi_processes) != int:
+                raise ValueError("Number of MPI processes should be an int")
+            if mpi_processes <= 0:
+                raise ValueError("Number of MPI processes must be > 0")
+        # Serial and OMP-only
         except ValueError:
-            # .index will return ValueError if 'np' not found (serial and omp calculations)
+            # .index will return ValueError if 'np' not found. This corresponds to serial and omp calculations.
             pass
 
-        assert omp_num_threads > 0, "Number of OMP threads must be > 0"
-
-        assert time_out > 0, "time_out must be a positive integer"
-
     def _compose_execution_list(self) -> list:
-        """Generate a complete list of strings to pass to subprocess.run, to execute the calculation.
+        """Generate a complete list of strings to pass to subprocess.run(), to execute the calculation.
 
         For example, given:
           ['mpirun', '-np, '2'] + ['binary.exe'] + ['>', 'std.out']
@@ -92,34 +108,27 @@ class SimpleBinaryRunner:
         else:
             return self.run_cmd + [self.binary] + self.args
 
-    def run(self, directory: Optional[path_type] = None, execution_list: Optional[list] = None) -> SubprocessRunResults:
+    def run(self) -> SubprocessRunResults:
         """Run a binary.
-
-        :param str directory: Optional Directory in which to run the execute command.
-        :param Optional[list] execution_list: Optional List of arguments required by subprocess.run. Defaults to None.
         """
-
-        if directory is None:
-            directory = self.directory
-
-        if not Path(directory).is_dir():
-            raise OSError("Run directory does not exist: " + directory)
-
-        if execution_list is None:
-            execution_list = self._compose_execution_list()
-
+        execution_list = self._compose_execution_list()
         my_env = {**os.environ, "OMP_NUM_THREADS": str(self.omp_num_threads)}
 
+        time_start: float = time.time()
         try:
             result = subprocess.run(execution_list,
                                     env=my_env,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE,
                                     timeout=self.time_out,
-                                    cwd=directory)
-            return SubprocessRunResults(result.stdout, result.stderr, result.returncode)
-        except subprocess.TimeoutExpired:
-            return SubprocessRunResults(None, 'SimpleBinaryRunner: Job timed out', -1)
+                                    cwd=self.directory)
+            total_time = time.time() - time_start
+            return SubprocessRunResults(result.stdout, result.stderr, result.returncode, total_time)
+
+        except subprocess.TimeoutExpired as timed_out:
+            error = 'BinaryRunner: Job timed out. \n\n' + timed_out.stderr
+            arbitrary_time_out_code = -1
+            return SubprocessRunResults(timed_out.output, error, arbitrary_time_out_code, self.time_out)
 
 
 class ExcitingRunner(SimpleBinaryRunner):
