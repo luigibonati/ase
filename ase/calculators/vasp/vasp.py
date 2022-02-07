@@ -1205,6 +1205,7 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                         if i == 0:
                             n_items = len(text_split)
                             hessian = np.zeros((n_items, n_items))
+                        assert isinstance(hessian, np.ndarray)
                         hessian[i, :] = np.array([float(val) for val in text_split])
                     assert i == n_items - 1
                     #VASP6+ uses THz**2 as unit, not mEV**2 as before
