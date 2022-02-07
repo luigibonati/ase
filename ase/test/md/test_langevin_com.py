@@ -1,4 +1,3 @@
-
 from ase import units
 from ase.build import bulk
 from ase.calculators.emt import EMT
@@ -6,6 +5,7 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.md.velocitydistribution import Stationary
 from ase.md.langevin import Langevin
 from numpy.linalg import norm
+
 
 def test_langevin_com():
     # parameters
