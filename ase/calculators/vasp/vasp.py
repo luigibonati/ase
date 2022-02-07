@@ -1215,6 +1215,7 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                         conv = ase.units._amu / ase.units._e / 1e-4 * (2 * np.pi)**2  # THz**2 to eV**2
                         # VASP6 uses factor 2pi
                         # 1e-4 = (angstrom to meter times Hz to THz) squared = (1e10 times 1e-12)**2
+                    assert isinstance(hessian, np.ndarray)
                     hessian *= conv
             if hessian is None:
                 raise ElementTree.ParseError
