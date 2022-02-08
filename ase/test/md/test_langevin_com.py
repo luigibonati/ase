@@ -8,13 +8,17 @@ from numpy.linalg import norm
 
 
 def test_langevin_com():
+    """Check that the center of mass does not move during Langevin dynamics.
+
+    In particular, test that this does not happen with atoms with different
+    mass present (issue #1044).
+    """
     # parameters
     size = 2
     T = 300
     dt = 0.01
 
     # setup
-    #atoms = bulk('Al', 'fcc', a=4.0).repeat(size)
     atoms = bulk('CuAg', 'rocksalt', a=4.0).repeat(size)
     atoms.pbc = False
     atoms.calc = EMT()
