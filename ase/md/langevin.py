@@ -132,7 +132,7 @@ class Langevin(MolecularDynamics):
         if forces is None:
             forces = atoms.get_forces(md=True)
 
-        # This velocity as well as xi, eta and a few other variables are stored
+        # This velocity as well as rnd_pos, rnd_mom and a few other variables are stored
         # as attributes, so Asap can do its magic when atoms migrate between
         # processors.
         self.v = atoms.get_velocities()
