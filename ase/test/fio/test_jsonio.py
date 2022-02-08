@@ -13,6 +13,9 @@ def test_jsonio():
     c = np.array([0.1j])
     assert (decode(encode(c)) == c).all()
 
+    c = np.array(['a'])
+    assert (decode(encode(c)) == c).all()
+
     fd = io.StringIO()
 
     obj1 = {'hello': 'world'}
