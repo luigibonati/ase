@@ -4,12 +4,11 @@ from ase.parallel import broadcast
 from ase.parallel import world
 import numpy as np
 from os.path import exists
+from ase.units import fs, mol, kJ, nm
 
 
 def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwargs):
-    atoms.calc = Plumed(*args, atoms=atoms, restart=True, **kwargs)
-
-    """This function helps the user to restart a plumed simulation 
+    """ This function helps the user to restart a plumed simulation 
     from a trajectory file. 
 
     Parameters
@@ -20,6 +19,8 @@ def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwa
     .. note:: As alternative for restarting a plumed simulation, the user
             has to fix the positions, momenta and Plumed.istep
     """
+    atoms.calc = Plumed(*args, atoms=atoms, restart=True, **kwargs)
+
     with Trajectory(prev_traj) as traj:
         if prev_steps is None:
             atoms.calc.istep = len(traj) - 1
@@ -31,18 +32,10 @@ def restart_from_trajectory(prev_traj, *args, prev_steps=None, atoms=None, **kwa
 
 
 class Plumed(Calculator):
-    """Plumed calculator is used for simulations of enhanced sampling methods
-    with the open-source code PLUMED (plumed.org).
-    
-
-    [1] The PLUMED consortium, Nat. Methods 16, 670 (2019)
-    [2] Tribello, Bonomi, Branduardi, Camilloni, and Bussi,
-    Comput. Phys. Commun. 185, 604 (2014).
-    """
-
     implemented_properties = ['energy', 'forces']
     
-    def __init__(self, calc, input, timestep, atoms=None, kT=1., log='', restart=False):
+    def __init__(self, calc, input, timestep, atoms=None, kT=1., log='', 
+                 restart=False, use_charge=False, update_charge=False):
         """
         Plumed calculator is used for simulations of enhanced sampling methods
         with the open-source code PLUMED (plumed.org).
@@ -79,7 +72,16 @@ class Plumed(Calculator):
             Log file of the plumed calculations
         
         restart: boolean. Default False
-            True if the simulation is restarted. 
+            True if the simulation is restarted.
+
+        use_charge: boolean. Default False
+            True if you use some collective variable which needs charges. If 
+            use_charges is True and update_charge is False, you have to define 
+            initial charges and then this charge will be used during all simulation.
+
+        update_charge: boolean. Default False
+            True if you want the carges to be updated each time step. This will
+            fail in case that calc does not have 'charges' in its properties. 
 
 
         .. note:: In order to guarantee a well restart, the user has to fix momenta,
@@ -89,6 +91,7 @@ class Plumed(Calculator):
             using ase.calculators.plumed.restart_from_trajectory.
         
         """
+
         from plumed import Plumed as pl
 
         if atoms is None:
@@ -99,11 +102,23 @@ class Plumed(Calculator):
 
         self.input = input
         self.calc = calc
-        self.name = '{}+Plumed'.format(self.calc.name)
+        self.use_charge = use_charge
+        self.update_charge = update_charge
         
         if world.rank == 0:
             natoms = len(atoms.get_positions())
             self.plumed = pl()
+            
+            # Units setup
+            # warning: outputs from plumed will still be in plumed units.
+
+            ps = 1000 * fs
+            self.plumed.cmd("setMDEnergyUnits", mol/kJ)  # kjoule/mol to eV
+            self.plumed.cmd("setMDLengthUnits", 1/nm)    # nm to Angstrom
+            self.plumed.cmd("setMDTimeUnits", 1/ps)      # ps to ASE time units 
+            self.plumed.cmd("setMDChargeUnits", 1.)      # ASE and plumed - charge unit is in e units
+            self.plumed.cmd("setMDMassUnits", 1.)        # ASE and plumed - mass unit is in e units
+
             self.plumed.cmd("setNatoms", natoms)
             self.plumed.cmd("setMDEngine", "ASE")
             self.plumed.cmd("setLogFile", log)
@@ -115,6 +130,9 @@ class Plumed(Calculator):
                 self.plumed.cmd("readInputLine", line)
         self.atoms = atoms
 
+    def _get_name(self):
+        return f'{self.calc.name}+Plumed'
+
     def calculate(self, atoms=None, properties=['energy', 'forces'], system_changes=all_changes):
         Calculator.calculate(self, atoms, properties, system_changes)
         energy, forces = self.compute_energy_and_forces(self.atoms.get_positions(), self.istep)
@@ -122,18 +140,36 @@ class Plumed(Calculator):
         self.results['energy'], self. results['forces'] = energy, forces
 
     def compute_energy_and_forces(self, pos, istep):
+        unbiased_energy = self.calc.get_potential_energy(self.atoms)
+        unbiased_forces = self.calc.get_forces(self.atoms)
+
         if world.rank == 0:
-            ener_forc = self.compute_bias(pos, istep)
+            ener_forc = self.compute_bias(pos, istep, unbiased_energy)
         else:
             ener_forc = None
         energy_bias, forces_bias = broadcast(ener_forc)
-        energy = self.calc.get_potential_energy(self.atoms) + energy_bias
-        forces = self.calc.get_forces(self.atoms) + forces_bias
+        energy = unbiased_energy + energy_bias
+        forces = unbiased_forces + forces_bias
         return energy, forces
 
-    def compute_bias(self, pos, istep):
+    def compute_bias(self, pos, istep, unbiased_energy):
         self.plumed.cmd("setStep", istep)
+
+        if self.use_charge:
+            if 'charges' in self.calc.implemented_properties and self.update_charge:
+                charges = self.calc.get_charges(atoms=self.atoms.copy()) 
+
+            elif self.atoms.has('initial_charges') and not self.update_charge:
+                charges = self.atoms.get_initial_charges()
+
+            else:
+                assert not self.update_charge, "Charges cannot be updated"
+                assert self.update_charge, "Not initial charges in Atoms"
+
+            self.plumed.cmd("setCharges", charges)
+        
         self.plumed.cmd("setPositions", pos)
+        self.plumed.cmd("setEnergy", unbiased_energy)
         self.plumed.cmd("setMasses", self.atoms.get_masses())
         forces_bias = np.zeros((self.atoms.get_positions()).shape)
         self.plumed.cmd("setForces", forces_bias)
@@ -176,7 +212,6 @@ class Plumed(Calculator):
                     read_files['COLVAR'] = np.loadtxt('COLVAR', unpack=True)
                 if exists('HILLS'):
                     read_files['HILLS'] = np.loadtxt('HILLS', unpack=True)
-        
         assert not len(read_files) == 0, "There are not files for reading"
         return read_files
 

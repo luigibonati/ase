@@ -32,7 +32,17 @@ Git master branch
   objects.  See :meth:`ase.formula.Formula.format`.  The ``abc`` format
   has been renamed to ``ab2``.
 
+* IO formats can now be implemented in separate packages and registered
+  in ase with the entry point ``ase.ioformats`` in the external package
+  configuration. This entry point only accepts objects of the type
+  :class:`~ase.utils.plugins.ExternalIOFormat`.
+
 Calculators:
+
+* Created new module :mod:`ase.calculators.harmonic` with the
+  :class:`ase.calculators.harmonic.HarmonicCalculator`
+  for calculations with a Hessian-based harmonic force field. Can be used to
+  compute Anharmonic Corrections to the Harmonic Approximation.
 
 * Created new :class:`ase.calculators.plumed.Plumed` that is an interface
   between ASE and Plumed_ for carrying out enhanced sampling methods and MD
@@ -44,6 +54,14 @@ Calculators:
   of OpenKIM models).
 
 .. _Plumed: https://www.plumed.org/
+
+Version 3.22.1
+==============
+
+1 December 2021: :git:`3.22.1 <../3.22.1>`
+
+* Fixed compatibility of Brillouin zone plotting with matplotlib 3.5+.
+
 
 Version 3.22.0
 ==============
@@ -609,7 +627,7 @@ Algorithms:
   :class:`ase.constraints.FixScaledParametricRelations`, and
   :class:`ase.constraints.FixCartesianParametricRelations` to
   :mod:`ase.constraints`. These constraints are based off the work
-  in: https://arxiv.org/abs/1908.01610, and allows for the positions and cell of a
+  in: :arxiv:`1908.01610`, and allows for the positions and cell of a
   structure to be optimized in a reduced parameter space.
 
 * Added :func:`ase.build.graphene` for building graphene monolayers.

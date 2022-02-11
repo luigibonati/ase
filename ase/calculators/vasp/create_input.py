@@ -226,6 +226,7 @@ float_keys = [
     'qdt',  # Timestep for quickmin minimization (instanton)
     'qtpz',  # Temperature (instanton)
     'qftol',  # Tolerance (instanton)
+    'nupdown',  # fix spin moment to specified value
 ]
 
 exp_keys = [
@@ -293,7 +294,6 @@ int_keys = [
     'npar',  # parallelization over bands
     'nsim',  # evaluate NSIM bands simultaneously if using RMM-DIIS
     'nsw',  # number of steps for ionic upd.
-    'nupdown',  # fix spin moment to specified value
     'nwrite',  # verbosity write-flag (how much is written)
     'vdwgr',  # extra keyword for Andris program
     'vdwrn',  # extra keyword for Andris program
@@ -758,6 +758,14 @@ class GenerateVaspInput:
             'pp': 'LDA'
         },
         # GGAs
+        'blyp': {  # https://www.vasp.at/forum/viewtopic.php?p=17234
+            'pp': 'PBE',
+            'gga': 'B5',
+            'aldax': 1.00,
+            'aggax': 1.00,
+            'aggac': 1.00,
+            'aldac': 0.00
+        },
         'pw91': {
             'pp': 'PW91',
             'gga': '91'

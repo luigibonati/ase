@@ -1,15 +1,15 @@
 """Structure optimization. """
 
+import collections.abc
 import time
 from math import sqrt
 from os.path import isfile
 
-from ase.io.jsonio import read_json, write_json
 from ase.calculators.calculator import PropertyNotImplementedError
-from ase.parallel import world, barrier
+from ase.io.jsonio import read_json, write_json
 from ase.io.trajectory import Trajectory
+from ase.parallel import barrier, world
 from ase.utils import IOContext
-import collections.abc
 
 
 class RestartError(RuntimeError):
@@ -60,9 +60,9 @@ class Dynamics(IOContext):
             if isinstance(trajectory, str):
                 mode = "a" if append_trajectory else "w"
                 trajectory = self.closelater(Trajectory(
-                    trajectory, mode=mode, atoms=atoms, master=master
+                    trajectory, mode=mode, master=master
                 ))
-            self.attach(trajectory)
+            self.attach(trajectory, atoms=atoms)
 
     def get_number_of_steps(self):
         return self.nsteps
@@ -294,7 +294,7 @@ class Optimizer(Dynamics):
             name = self.__class__.__name__
             if self.nsteps == 0:
                 args = (" " * len(name), "Step", "Time", "Energy", "fmax")
-                msg = "%s  %4s %8s %15s %12s\n" % args
+                msg = "%s  %4s %8s %15s  %12s\n" % args
                 self.logfile.write(msg)
 
                 # if self.force_consistent:
@@ -307,7 +307,7 @@ class Optimizer(Dynamics):
             # ast = {1: "*", 0: ""}[self.force_consistent]
             ast = ''
             args = (name, self.nsteps, T[3], T[4], T[5], e, ast, fmax)
-            msg = "%s:  %3d %02d:%02d:%02d %15.6f%1s %12.4f\n" % args
+            msg = "%s:  %3d %02d:%02d:%02d %15.6f%1s %15.6f\n" % args
             self.logfile.write(msg)
 
             self.logfile.flush()

@@ -152,7 +152,8 @@ class ASENEBMethod(NEBMethod):
 
     def add_image_force(self, state, tangential_force, tangent, imgforce,
                         spring1, spring2, i):
-        tangent_mag = np.vdot(tangent, tangent)  # Magnitude for normalizing
+        # Magnitude for normalizing. Ensure it is not 0
+        tangent_mag = np.vdot(tangent, tangent) or 1
         factor = tangent / tangent_mag
         imgforce -= tangential_force * factor
         imgforce -= np.vdot(
@@ -738,19 +739,19 @@ class NEB(DyNEB):
         Paper I:
 
             G. Henkelman and H. Jonsson, Chem. Phys, 113, 9978 (2000).
-            https://doi.org/10.1063/1.1323224
+            :doi:`10.1063/1.1323224`
 
         Paper II:
 
             G. Henkelman, B. P. Uberuaga, and H. Jonsson, Chem. Phys,
             113, 9901 (2000).
-            https://doi.org/10.1063/1.1329672
+            :doi:`10.1063/1.1329672`
 
         Paper III:
 
             E. L. Kolsbjerg, M. N. Groves, and B. Hammer, J. Chem. Phys,
             145, 094107 (2016)
-            https://doi.org/10.1063/1.4961868
+            :doi:`10.1063/1.4961868`
 
         Paper IV:
 
