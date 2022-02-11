@@ -4,7 +4,7 @@ from __future__ import print_function, division
 import os
 import numpy as np
 from ase.geometry import cellpar_to_cell
-from itertools import chain, groupby
+from itertools import chain
 from ase.utils import basestring
 from ase.spacegroup.spacegroup import SpacegroupValueError
 
@@ -69,16 +69,16 @@ px2 = np.pi*2
 tet = 109.471220634491  # Angle between two edges of Tegtrahedron
 ptet = p*tet/180
 prim_lat_of_sg = {  # Primitive lattice of spacegroup
-        'Tc':  (lambda a, b, c, al, be, ga: (a, b, c, al, be, ga)),
-        'Mc':  (lambda a, b, c, al, be, ga: (a, b, c, p/2, p/2, ga)),
+        'Tc': (lambda a, b, c, al, be, ga: (a, b, c, al, be, ga)),
+        'Mc': (lambda a, b, c, al, be, ga: (a, b, c, p/2, p/2, ga)),
         'Mc2': (lambda a, b, c, al, be, ga: (a, a, c, al, al, ga)),
-        'Or':  (lambda a, b, c, al, be, ga: (a, b, c, p/2, p/2, p/2)),
+        'Or': (lambda a, b, c, al, be, ga: (a, b, c, p/2, p/2, p/2)),
         'Or2': (lambda a, b, c, al, be, ga: (a, a, c, p/2, p/2, p/2)),
-        'Te':  (lambda a, b, c, al, be, ga: (a, a, c, p/2, p/2, p/2)),
-        'Tr':  (lambda a, b, c, al, be, ga: (a, a, c, p/2, p/2, p*2/3)),
+        'Te': (lambda a, b, c, al, be, ga: (a, a, c, p/2, p/2, p/2)),
+        'Tr': (lambda a, b, c, al, be, ga: (a, a, c, p/2, p/2, p*2/3)),
         'Tr2': (lambda a, b, c, al, be, ga: (a, a, a, al, al, al)),
-        'Hx':  (lambda a, b, c, al, be, ga: (a, a, c, p/2, p/2, p*2/3)),
-        'Cb':  (lambda a, b, c, al, be, ga: (a, a, a, p/2, p/2, p/2)),
+        'Hx': (lambda a, b, c, al, be, ga: (a, a, c, p/2, p/2, p*2/3)),
+        'Cb': (lambda a, b, c, al, be, ga: (a, a, a, p/2, p/2, p/2)),
         'Cb2': (lambda a, b, c, al, be, ga: (a, a, a, p/3, p/3, p/3)),
         'Cb3': (lambda a, b, c, al, be, ga: (a, a, a, ptet, ptet, ptet)),
         'Or3': (lambda a, b, c, al, be, ga: (a, b, c,
@@ -245,9 +245,9 @@ def _read_datafile(wyc, spacegroup, setting, f):
         spacegroup, wyc['setting'] = line_list[0].split('-')
         wyc['spacegroup'] = int(spacegroup)
     if len(line.split()) > 1:
-            eq_sites = line.split('(')[1:]
-            wyc['equivalent_sites'] = ([eq[:-1] for eq in eq_sites])[1:]
-            wyc['equivalent_sites'][-1] = wyc['equivalent_sites'][-1][:-1]
+        eq_sites = line.split('(')[1:]
+        wyc['equivalent_sites'] = ([eq[:-1] for eq in eq_sites])[1:]
+        wyc['equivalent_sites'][-1] = wyc['equivalent_sites'][-1][:-1]
 
     while True:
         line = f.readline()
@@ -282,7 +282,7 @@ def _skip_to_spacegroup(f, spacegroup, setting=None):
     while True:
         line = f.readline()
         if not line:
-            raise SpacegroupNotFoundError(
+            raise RuntimeError(
                 'invalid spacegroup `%s`, setting `%s` not found in data base' %
                 (spacegroup, setting))
         if line.startswith(name):
