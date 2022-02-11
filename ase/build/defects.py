@@ -186,7 +186,13 @@ class DefectBuilder():
         - 'create_interstitials' (return overview structures of interstitial sites
            i.e. a tuple of unique interstitials and equivalent interstitials)
         - 'create_adsorption_sites' (return overview structure of all adsorption sites)
+        - 'get_voronoi_positions' (get positions resulting from a Voronoi tessalation,
+          has modes 'all', 'points', 'lines', 'faces')
+        - 'map_positions' to use Voronoi positions and map them onto Wyckoff positions
+          of the host crystal
 
+    Functionalities that need to be added and could be useful:
+        - method to get intercalated structures, e.g. 'get_intercalated_structures'
 
     Attributes
     ----------
@@ -237,6 +243,13 @@ class DefectBuilder():
     def get_primitive_structure(self):
         """Return a copy of DefectBuilder's primitive structure attribute."""
         return self.primitive.copy()
+
+    def get_host_symmetry(self):
+        atoms = self.get_primitive_structure()
+        spg_cell = get_spg_cell(atoms)
+        dataset = spg.get_symmetry_dataset(spg_cell, symprec=1e-2)
+
+        return dataset
 
     def get_input_structure(self):
         """Return a copy of DefectBuilder's input structure."""
@@ -544,6 +557,7 @@ class DefectBuilder():
                      pbc=prim.get_pbc())
     # interstitial and adsorbate overview methods - end
 
+    # methods related to voronoi tessalation - start
     def draw_voronoi(self, voronoi, pos):
         from scipy.spatial import voronoi_plot_2d
         import matplotlib.pyplot as plt
@@ -552,6 +566,17 @@ class DefectBuilder():
         plt.show()
 
     def get_voronoi_positions(self, kind='all', atoms=None):
+        """Return positions resulting from a Voronoi tessalation with scipy.
+
+        Parameters
+        ----------
+        kind : str ('all', 'points', 'lines', 'faces')
+            choose kind of voronoi positions to be returned: Voronoi points,
+            middle of Voronoi lines, centers of Voronoi faces, or all
+        atoms : ASE Atoms object
+            input atomic structure for Voronoi tessalation, if 'None' simply
+            use the input atomic structure for the DefectBuilder
+        """
         if atoms is None:
             atoms = self.get_input_structure()
         else:
@@ -574,6 +599,128 @@ class DefectBuilder():
 
         return scaled_pos
 
+    def get_voronoi_points(self, voronoi, atoms):
+        dim = self.dim
+        vertices = voronoi.vertices
+        if dim == 2 and self.is_planar(atoms):
+            z = self.get_z_position(atoms)
+            a = np.empty((len(vertices), 3))
+            for i, element in enumerate(vertices):
+                a[i][0] = element[0]
+                a[i][1] = element[1]
+                a[i][2] = z
+            vertices = a
+
+        return vertices
+
+    def get_voronoi_object(self, atoms=None):
+        if atoms is None:
+            atoms = self.get_input_structure()
+        points = atoms.get_positions()
+        if self.dim == 2 and self.is_planar(atoms):
+            points = points[:, :2]
+        elif self.dim == 1:
+            raise NotImplementedError("Not implemented for 1D structures.")
+
+        return Voronoi(points)
+
+    def get_voronoi_lines(self, voronoi, points):
+        ridges = voronoi.ridge_vertices
+        lines = np.zeros((len(ridges), 3))
+        remove = []
+        for i, ridge in enumerate(ridges):
+            if not ridge[0] == -1:
+                p1 = [points[ridge[0]][0],
+                      points[ridge[0]][1],
+                      points[ridge[0]][2]]
+                p2 = [points[ridge[1]][0],
+                      points[ridge[1]][1],
+                      points[ridge[1]][2]]
+                lines[i] = get_middle_point(p1, p2)
+            else:
+                remove.append(i)
+        lines = np.delete(lines, remove, axis=0)
+
+        return lines
+
+    def get_voronoi_faces(self, voronoi, points):
+        regions = voronoi.regions
+        centers = np.zeros((len(regions), 3))
+        remove = []
+        for i, region in enumerate(regions):
+            if -1 not in region and len(region) > 1:
+                array = np.zeros((len(region), 3))
+                for j, element in enumerate(region):
+                    array[j][0] = points[element][0]
+                    array[j][1] = points[element][1]
+                    array[j][2] = points[element][2]
+                centers[i] = centeroidnp(array)
+            else:
+                remove.append(i)
+        centers = np.delete(centers, remove, axis=0)
+
+        return centers
+
+    def get_voronoi_ridges(self, voronoi, atoms=None):
+        if atoms is None:
+            atoms = self.get_input_structure()
+        ridge_points = voronoi.ridge_points
+        points = atoms.get_positions()
+        array = np.zeros((len(ridge_points), 3))
+        for i, ridge in enumerate(ridge_points):
+            p1 = [points[ridge[0]][0],
+                  points[ridge[0]][1],
+                  points[ridge[0]][2]]
+            p2 = [points[ridge[1]][0],
+                  points[ridge[1]][1],
+                  points[ridge[1]][2]]
+            array[i] = get_middle_point(p1, p2)
+
+        return array
+    # methods related to voronoi tessalation - end
+
+    # mapping functionalities - start
+    def map_positions(self, coordinates, structure=None, ads=False):
+        """Get Voronoi positions and map them onto Wyckoff positions of the host crystal.
+
+        Parameters
+        ----------
+        coordinates : dict
+            dictionary of wyckoff coordinates coming from ase.spacegroup.wyckoff module
+            (see more detals in 'get_wyckoff_data' function)
+        structure : ASE Atoms object
+            input structure for the mapping; will be set to primitive structure if 'None'
+        ads : bool
+            True if mapping should be for adsorption site generation, False otherwise
+        """
+        if structure is None:
+            structure = self.get_primitive_structure()
+
+        equivalent = structure.copy()
+        unique = structure.copy()
+
+        kinds = ['points', 'lines', 'faces']
+        for kind in kinds:
+            scaled_positions = self.get_voronoi_positions(kind=kind,
+                                                          atoms=structure)
+            # mapped = False
+            for element in coordinates:
+                for wyck in coordinates[element]:
+                    true_int = False
+                    for pos in scaled_positions:
+                        if self.is_mapped(pos, wyck):
+                            tmp_eq = equivalent.copy()
+                            tmp_un = unique.copy()
+                            dist, tmp_eq = self.check_distances(tmp_eq, pos)
+                            true_int = self.is_true_interstitial(pos, ads)
+                            if dist and true_int:
+                                unique = self.create_unique(pos, tmp_un)
+                                equivalent = self.create_copies(pos, coordinates[element], tmp_eq)
+                                # mapped = True
+                                break
+
+        return unique, equivalent
+
     def get_interstitial_mock(self, positions, atoms=None):
         if atoms is None:
             atoms = self.get_input_structure()
@@ -593,13 +740,6 @@ class DefectBuilder():
         interstitial = self.cut_positions(interstitial)
 
         return interstitial.get_scaled_positions()
-
-    def get_host_symmetry(self):
-        atoms = self.get_primitive_structure()
-        spg_cell = get_spg_cell(atoms)
-        dataset = spg.get_symmetry_dataset(spg_cell, symprec=1e-2)
-
-        return dataset
 
     def is_mapped(self, scaled_position, coordinate):
         import numexpr
@@ -674,6 +814,7 @@ class DefectBuilder():
 
         return new_struc
 
+    # mapping functionalities - start
     def get_layer(self, kind='top'):
         atoms = self.get_primitive_structure()
         zs = []
@@ -754,35 +895,6 @@ class DefectBuilder():
 
         return R1 + R2
 
-    def map_positions(self, coordinates, structure=None, ads=False):
-        if structure is None:
-            structure = self.get_primitive_structure()
-
-        equivalent = structure.copy()
-        unique = structure.copy()
-
-        kinds = ['points', 'lines', 'faces']
-        for kind in kinds:
-            scaled_positions = self.get_voronoi_positions(kind=kind,
-                                                          atoms=structure)
-            # mapped = False
-            for element in coordinates:
-                for wyck in coordinates[element]:
-                    true_int = False
-                    for pos in scaled_positions:
-                        if self.is_mapped(pos, wyck):
-                            tmp_eq = equivalent.copy()
-                            tmp_un = unique.copy()
-                            dist, tmp_eq = self.check_distances(tmp_eq, pos)
-                            true_int = self.is_true_interstitial(pos, ads)
-                            if dist and true_int:
-                                unique = self.create_unique(pos, tmp_un)
-                                equivalent = self.create_copies(pos, coordinates[element], tmp_eq)
-                                # mapped = True
-                                break
-
-        return unique, equivalent
-
     def is_true_interstitial(self, pos, ads=False, delta=0):
         dim = self.dim
         atoms = self.get_primitive_structure()
@@ -833,7 +945,9 @@ class DefectBuilder():
             return True, tmp_struc
         else:
             return False, structure
+    # mapping functionalities - end
 
+    # some minor helper methods - start
     def reconstruct_string(self, string):
         import numexpr
         N = len(string)
@@ -922,82 +1036,4 @@ class DefectBuilder():
         assert self.is_planar(atoms), 'No planar structure.'
 
         return atoms.get_positions()[0, 2]
-
-    def get_voronoi_points(self, voronoi, atoms):
-        dim = self.dim
-        vertices = voronoi.vertices
-        if dim == 2 and self.is_planar(atoms):
-            z = self.get_z_position(atoms)
-            a = np.empty((len(vertices), 3))
-            for i, element in enumerate(vertices):
-                a[i][0] = element[0]
-                a[i][1] = element[1]
-                a[i][2] = z
-            vertices = a
-
-        return vertices
-
-    def get_voronoi_object(self, atoms=None):
-        if atoms is None:
-            atoms = self.get_input_structure()
-        points = atoms.get_positions()
-        if self.dim == 2 and self.is_planar(atoms):
-            points = points[:, :2]
-        elif self.dim == 1:
-            raise NotImplementedError("Not implemented for 1D structures.")
-
-        return Voronoi(points)
-
-    def get_voronoi_lines(self, voronoi, points):
-        ridges = voronoi.ridge_vertices
-        lines = np.zeros((len(ridges), 3))
-        remove = []
-        for i, ridge in enumerate(ridges):
-            if not ridge[0] == -1:
-                p1 = [points[ridge[0]][0],
-                      points[ridge[0]][1],
-                      points[ridge[0]][2]]
-                p2 = [points[ridge[1]][0],
-                      points[ridge[1]][1],
-                      points[ridge[1]][2]]
-                lines[i] = get_middle_point(p1, p2)
-            else:
-                remove.append(i)
-        lines = np.delete(lines, remove, axis=0)
-
-        return lines
-
-    def get_voronoi_faces(self, voronoi, points):
-        regions = voronoi.regions
-        centers = np.zeros((len(regions), 3))
-        remove = []
-        for i, region in enumerate(regions):
-            if -1 not in region and len(region) > 1:
-                array = np.zeros((len(region), 3))
-                for j, element in enumerate(region):
-                    array[j][0] = points[element][0]
-                    array[j][1] = points[element][1]
-                    array[j][2] = points[element][2]
-                centers[i] = centeroidnp(array)
-            else:
-                remove.append(i)
-        centers = np.delete(centers, remove, axis=0)
-
-        return centers
-
-    def get_voronoi_ridges(self, voronoi, atoms=None):
-        if atoms is None:
-            atoms = self.get_input_structure()
-        ridge_points = voronoi.ridge_points
-        points = atoms.get_positions()
-        array = np.zeros((len(ridge_points), 3))
-        for i, ridge in enumerate(ridge_points):
-            p1 = [points[ridge[0]][0],
-                  points[ridge[0]][1],
-                  points[ridge[0]][2]]
-            p2 = [points[ridge[1]][0],
-                  points[ridge[1]][1],
-                  points[ridge[1]][2]]
-            array[i] = get_middle_point(p1, p2)
-
-        return array
+    # some minor helper methods - end
