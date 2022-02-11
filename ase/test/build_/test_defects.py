@@ -19,7 +19,6 @@ def test_input_structure():
 def test_spg():
     from ase.build import bulk
     from ase.build.defects import get_spg_cell
-    from ase.build.defects import DefectBuilder
     import spglib as spg
 
     Fe = bulk('Fe')
@@ -42,7 +41,7 @@ def test_construction_cell():
     assert len(MoS2_con) == 9 * N
 
 
-def test_create_vacancies():
+def test_get_vacancy_structures():
     from ase.build import mx2, bulk
     from ase.build.defects import DefectBuilder
     import numpy as np
@@ -53,7 +52,7 @@ def test_create_vacancies():
 
     for structure in structures:
         builder = DefectBuilder(structure)
-        vacancies = builder.create_vacancies()
+        vacancies = builder.get_vacancy_structures()
         if np.sum(structure.get_pbc()) == 2:
             N = 9
         elif np.sum(structure.get_pbc()) == 3:
@@ -62,7 +61,7 @@ def test_create_vacancies():
             assert len(vacancy) == len(structure) * N - 1
 
 
-def test_create_substitutional():
+def test_get_substitution_structures():
     from ase.build import mx2, bulk
     from ase.build.defects import DefectBuilder
     import numpy as np
@@ -75,7 +74,7 @@ def test_create_substitutional():
 
     for i, structure in enumerate(structures):
         builder = DefectBuilder(structure)
-        substitutions = builder.create_substitutions(
+        substitutions = builder.get_substitution_structures(
             intrinsic=True,
             extrinsic=['C', 'Nb', 'He'])
         if np.sum(structure.get_pbc()) == 2:
@@ -118,7 +117,6 @@ def test_create_adsorption():
 
     for i, structure in enumerate(structures):
         builder = DefectBuilder(structure)
-        counter = 0
         adsorbates = builder.get_adsorbate_structures(
             kindlist=['H', 'He'], Nsites=2)
         assert len(adsorbates) == lengths[i]
