@@ -235,6 +235,15 @@ class DefectBuilder():
     # small helper methods - start
     def _set_construction_cell(self, atoms):
         """Repeat atomic structure to mimic pbc for Voronoi construction."""
+        repetitions = np.ones(3, dtype='int')
+        assert (all(atoms.pbc == [True, True, False])
+                or all(atoms.pbc == [True, True, True])), (
+                'input atoms should either be periodic in all three directions '
+                'or the non periodic axis should be the third one!')
+        repetitions[atoms.pbc] = 3
+
+        return atoms.repeat(repetitions)
+
         if self.dim == 3:
             return atoms.repeat((3, 3, 3))
         elif self.dim == 2:
@@ -987,7 +996,7 @@ class DefectBuilder():
                pos[1] >= (1 + th) or pos[1] < (0 - th) or
                pos[2] >= (1 + th) or pos[2] < (0 - th)):
                 indexlist.append(i)
-        interstitial = self.remove_atoms(interstitial, indexlist)
+        del interstitial[indexlist]
 
         return interstitial
 
@@ -1023,14 +1032,6 @@ class DefectBuilder():
                     a[i][j] = pos[j] - (cell[0][j] + cell[1][j])
 
         return a
-
-    def remove_atoms(self, atoms, indexlist):
-        indices = np.array(indexlist)
-        indices = np.sort(indices)[::-1]
-        for element in indices:
-            atoms.pop(element)
-
-        return atoms
 
     def get_z_position(self, atoms):
         assert self.is_planar(atoms), 'No planar structure.'
