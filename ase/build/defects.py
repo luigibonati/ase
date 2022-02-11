@@ -638,19 +638,26 @@ class DefectBuilder():
         lines = np.zeros((len(ridges), 3))
         remove = []
         for i, ridge in enumerate(ridges):
-            if not ridge[0] == -1:
-                p1 = [points[ridge[0]][0],
-                      points[ridge[0]][1],
-                      points[ridge[0]][2]]
-                p2 = [points[ridge[1]][0],
-                      points[ridge[1]][1],
-                      points[ridge[1]][2]]
+            if ridge[0] != -1:
+                p1 = self.get_ridgepoint(points, ridge, 0)
+                p2 = self.get_ridgepoint(points, ridge, 1)
+                # p1 = [rdgpnt[i] for i, rdgpnt in enumerate(points[ridge[0]])]
+                # p2 = [rdgpnt[i] for i, rdgpnt in enumerate(points[ridge[1]])]
+                # p1 = [points[ridge[0]][0],
+                #       points[ridge[0]][1],
+                #       points[ridge[0]][2]]
+                # p2 = [points[ridge[1]][0],
+                #       points[ridge[1]][1],
+                #       points[ridge[1]][2]]
                 lines[i] = get_middle_point(p1, p2)
             else:
                 remove.append(i)
         lines = np.delete(lines, remove, axis=0)
 
         return lines
+
+    def get_ridgepoint(self, points, ridge, j):
+        return [rdgpnt for rdgpnt in points[ridge[j]]]
 
     def get_voronoi_faces(self, voronoi, points):
         regions = voronoi.regions
