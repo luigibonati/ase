@@ -1,5 +1,6 @@
 import os
 import re
+import subprocess
 
 import numpy as np
 
@@ -430,6 +431,11 @@ def kwargs2atoms(kwargs, directory=None):
 def generate_input(atoms, kwargs):
     """Convert atoms and keyword arguments to Octopus input file."""
     _lines = []
+    # Find out octopus version, changes output format, i.e. + separated or block
+    command: list = ['octopus', '--version']
+    check_version: str = subprocess.run(command, capture_output=True)
+    stdout_list: list = check_version.stdout.decode().split()
+    octopus_version: int = int(stdout_list[1].split('.')[0])    # major vers. only
 
     def append(line):
         _lines.append(line)
@@ -466,16 +472,26 @@ def generate_input(atoms, kwargs):
     setvar('periodicdimensions', atomskwargs[pdim])
 
     # We like to output forces
-    if 'output' in kwargs:
-        output_string = kwargs.pop('output')
-        output_tokens = [token.strip()
-                         for token in output_string.lower().split('+')]
-    else:
-        output_tokens = []
+    if octopus_version < 11:
+        if 'output' in kwargs:
+            output_string = kwargs.pop('output')
+            output_tokens = [token.strip()
+                            for token in output_string.lower().split('+')]
+        else:
+            output_tokens = []
 
-    if 'forces' not in output_tokens:
-        output_tokens.append('forces')
-    setvar('output', ' + '.join(output_tokens))
+        if 'forces' not in output_tokens:
+            output_tokens.append('forces')
+        setvar('output', ' + '.join(output_tokens))
+
+    elif octopus_version >= 11:
+        # output is a block in octopus version 11+
+        if 'output' in kwargs:
+            output_list = kwargs.pop('output')
+            assert type(output_list) is list
+            output_block = list2block('Output', output_list)
+            extend(output_block)
+
     # It is illegal to have output forces without any OutputFormat.
     # Even though the forces are written in the same format no matter
     # OutputFormat.  Thus we have to make one up:
