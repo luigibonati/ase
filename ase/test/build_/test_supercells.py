@@ -35,8 +35,7 @@ def test_make_supercell(prim, P):
     assert list(sc.symbols) == list(prim.symbols) * rep
 
 
-def test_make_supercells_arrays(prim, rng):
-    P = 3 * np.diag([1, 1, 1])
+def test_make_supercells_arrays(prim, P, rng):
     reps = int(round(np.linalg.det(P)))
     tags = list(range(len(prim)))
     momenta = rng.random((len(prim), 3))
