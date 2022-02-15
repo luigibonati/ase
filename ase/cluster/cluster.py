@@ -55,7 +55,7 @@ class Cluster(Atoms, ClusterBase):
 
         Parameters
         ----------
-        method : {'volume', 'sphere'}
+        method : {'volume', 'shape'}
             'volume' (default) returns the diameter of a sphere with the same
             volume as the atoms. 'shape' returns the averaged diameter
             calculated from the directions given by the defined surfaces.
