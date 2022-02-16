@@ -160,18 +160,30 @@ def centeroidnp(arr):
     return np.array((sum_x/length, sum_y/length, sum_z/length))
 
 
-def get_top_bottom(atoms, dim=2):
+def get_top_bottom(atoms, interc=False, dim=2):
     positions = atoms.get_scaled_positions()
     assert dim == 2, "Can only be used for 2D structures."
 
     zs = positions[:, 2]
-    for z in zs:
-        if z == max(zs):
-            top = z
-        if z == min(zs):
-            bottom = z
+    if interc:
+        top = zs[atoms.get_tags() == 1].min()
+        bottom = zs[atoms.get_tags() == 0].max()
+    else:
+        for z in zs:
+            if z == max(zs):
+                top = z
+            if z == min(zs):
+                bottom = z
 
     return top, bottom
+
+
+def get_layer_tags(atoms):
+    '''Automatically assign tag 1 to top layer and tag 0 to bottom layer'''
+    atoms_tmp = atoms.copy()
+    atoms_tmp.center()
+    tags = [1 if atom.scaled_position[2] > 0.5 else 0 for atom in atoms_tmp]
+    return tags
 
 
 class DefectBuilder():
@@ -458,10 +470,187 @@ class DefectBuilder():
                                 break
 
         return structures
-    # defect creation methods (vacancies, subst., interstitial, adsorption) - end
+
+    '''
+    def get_intercalated_structures(self, kindlist=None, sc=2):
+        """Create interstitial structures and return in desired supercell.
+
+        Intercalated structures for 2D bilayers are created with the following steps:
+            1. find hollow sites (i.e. Voronoi faces) in the Van der Waals gap
+            2. set up supercell
+            3. loop over all interstitial positions and dope with kindlist elements
+            4. return list of doped interstitial structures
+
+        Parameters
+        ----------
+        kindlist : list(str)
+            list of chemical elements to dope the interstitial structures with
+            (if 'None', only intrisic elements will be considered)
+        sc : [int, list, np.ndarray]
+            if integer -> integer repitition of the primitive supercell to create supercell
+            if 3x3 list or numpy array -> unit vector transformation matrix
+        """
+        from ase.build import make_supercell
+        from ase.visualize import view
+
+        atoms, _ = self.create_interstitials(interc=True)
+        if kindlist is None:
+            kindlist = self.get_intrinsic_types()
+
+        # set up pristine supercell
+        prim = self.get_primitive_structure()
+        if type(sc) == int:
+            supercell = setup_supercell(prim, sc)
+        elif type(sc) in [list, np.ndarray]:
+            supercell = make_supercell(prim, sc)
+
+        # loop over all interstitial sites (type 'X') and dope them wth kindlist elements
+        structures = []
+        for i in range(len(atoms)):
+            if atoms.get_chemical_symbols()[i] == 'X':
+                for kind in kindlist:
+                    structure = supercell.copy()
+                    positions = structure.get_positions()
+                    symbols = structure.get_chemical_symbols()
+                    cell = structure.get_cell()
+                    pos = atoms.get_positions()[i]
+                    positions = np.append(positions, [pos], axis=0)
+                    symbols.append(kind)
+                    newstruct = Atoms(symbols=symbols,
+                                      positions=positions,
+                                      cell=cell,
+                                      pbc=structure.get_pbc())
+                    newstruct.wrap()
+                    structures.append(newstruct)
+    '''
+
+
+    def get_intercalated_structures(self, kindlist=None, nsites=2, sc=2):
+        from ase import Atom
+        from ase.geometry import get_distances
+        from ase.visualize import view
+        from ase.build import make_supercell
+
+        _, atoms = self.create_interstitials(interc=True)
+        if kindlist is None:
+            kindlist = self.get_intrinsic_types()
+
+        # set up pristine and mock supercells
+        prim = self.get_primitive_structure()
+        if type(sc) == int:
+            supercell_prim = setup_supercell(prim, sc)
+            supercell_mock = setup_supercell(atoms, sc)
+        elif type(sc) in [list, np.ndarray]:
+            supercell_prim = make_supercell(prim, sc)
+            supercell_mock = make_supercell(atoms, sc)
+
+        def find_hollow_positions(atoms, hollow='X'):
+            """Use mock supercell to find the positions of all hollow sites.
+
+            Requires the following tagging scheme:
+                1: atoms in the top layer
+                0: atoms in the bottom layer
+                N>1: hollow sites
+            """
+            assert hollow in atoms.get_chemical_symbols(), 'No hollow sites found'
+
+            all_tags = atoms.get_tags()
+            site_tags = [tag for tag in all_tags if tag > 1]
+            site_pos = {}
+            for i, tag in enumerate(np.unique(site_tags)):
+                site_pos.update({i: []})
+                for j, atom in enumerate(atoms):
+                    if all_tags[j] == tag:
+                        site_pos[i].append(atom.position)
+
+        structures = {}
+        for kind in kindlist:
+            structures[kind] = {}
+            for site in site_pos:
+                structures[kind][site] = []
+                # Define order in which hollow positions will be filled.
+                # Criteria: as spread out as possible in terms of distances
+                D = get_distances(site_pos[site], site_pos[site], 
+                                  pbc=supercell_mock.pbc, 
+                                  cell=supercell_mock.get_cell())[1]
+                # We fill the hollow site with index 0 first 
+                # and the one at the largest distance second.
+                order = [0, np.argmax(D[0])]
+                for i in range(2, len(D)):
+                    print(len(D))
+                    dists = np.asarray([D[indx] for indx in order])
+                    avgs = []
+                    stdevs = []
+                    for j in range(len(D)):
+                        if j in order:
+                            avgs.append(-1)
+                            stdevs.append(0)
+                        else:
+                            avgs.append(np.average(dists[:, j]))
+                            stdevs.append(np.std(dists[:, j]))
+                            #stdev_score_j = np.clip(1 - np.std(dists[:, j]), a_min=0, a_max=1)
+                            #scores.append(avg_dist_j * stdev_score_j)
+                    scores = avgs * (1 - stdevs / np.max(stdevs))
+                    order.append(np.argmax(scores))
+
+                supercell = supercell_prim.copy()
+                for index in order[:nsites]:
+                    supercell += Atom(symbol=kind,
+                                      position=site_pos[site][index],
+                                      tag=2)
+                structures[kind][site].append(supercell)
+
+        for kind in structures:
+            for site in structures[kind]:
+                for struct in structures[kind][site]:
+                    view(struct)
+
+
+
+
+            '''
+            order = [0]
+            for i in range(len(D)):
+                row = D[order[-1]]
+                for j in np.flip(np.argsort(row)):
+                    if j not in order:
+                        order.append(j)
+                        break
+            '''
+                
+                    
+
+
+
+            #site_pos[key] = np.asarray(site_pos[key])
+            #dists = np.linalg.norm(site_pos[key] - site_pos[key][0], axis=1)
+            #print(dists)
+            
+
+        '''
+        # loop over all interstitial sites (type 'X') and dope them with kindlist elements
+        structures = []
+        for i, atom in enumerate(supercell_mock):
+            if atom.symbol == 'X':
+                for kind in kindlist:
+                    structure = supercell.copy()
+                    positions = structure.get_positions()
+                    symbols = structure.get_chemical_symbols()
+                    cell = structure.get_cell()
+                    pos = atoms.get_positions()[i]
+                    positions = np.append(positions, [pos], axis=0)
+                    symbols.append(kind)
+                    structures.append(Atoms(symbols=symbols,
+                                            positions=positions,
+                                            cell=cell,
+                                            pbc=structure.get_pbc()))
+
+        '''
+        return structures
+    # defect creation methods (vacancies, subst., interstitial, adsorption, intercalation) - end
 
     # interstitial and adsorbate overview methods - start
-    def create_interstitials(self, atoms=None, Nsites=None, ads=False):
+    def create_interstitials(self, atoms=None, Nsites=None, ads=False, interc=False):
         """Create a 'mock' atomic structure to give an overview over all interstitials.
 
         Setps to create the interstitial position:
@@ -479,14 +668,22 @@ class DefectBuilder():
             to next neighbor)
         ads : bool
             flag for creating adsorption sites
+        interc : bool
+            flag for creating intercalation sites
         """
         if atoms is None:
             atoms = self.get_primitive_structure()
         sym = self.get_host_symmetry()
         wyck = get_wyckoff_data(sym['number'])
+
+        if interc:
+            tags = get_layer_tags(atoms)
+            atoms.set_tags(tags)
+
         un, struc = self.map_positions(wyck,
                                        structure=atoms,
-                                       ads=ads)
+                                       ads=ads,
+                                       interc=interc)
         if Nsites is None:
             return un, struc
 
@@ -696,7 +893,7 @@ class DefectBuilder():
     # methods related to voronoi tessalation - end
 
     # mapping functionalities - start
-    def map_positions(self, coordinates, structure=None, ads=False):
+    def map_positions(self, coordinates, structure=None, ads=False, interc=False):
         """Get Voronoi positions and map them onto Wyckoff positions of the host crystal.
 
         Parameters
@@ -708,6 +905,8 @@ class DefectBuilder():
             input structure for the mapping; will be set to primitive structure if 'None'
         ads : bool
             True if mapping should be for adsorption site generation, False otherwise
+        interc : bool
+            True if mapping should be for intercalation site generation, False otherwise
         """
         if structure is None:
             structure = self.get_primitive_structure()
@@ -715,7 +914,11 @@ class DefectBuilder():
         equivalent = structure.copy()
         unique = structure.copy()
 
-        kinds = ['points', 'lines', 'faces']
+        if interc:
+            kinds = ['faces']
+        else:
+            kinds = ['points', 'lines', 'faces']
+
         for kind in kinds:
             scaled_positions = self.get_voronoi_positions(kind=kind,
                                                           atoms=structure)
@@ -723,15 +926,19 @@ class DefectBuilder():
             for element in coordinates:
                 for wyck in coordinates[element]:
                     true_int = False
-                    for pos in scaled_positions:
+                    for indx, pos in enumerate(scaled_positions):
                         if self.is_mapped(pos, wyck):
                             tmp_eq = equivalent.copy()
                             tmp_un = unique.copy()
-                            dist, tmp_eq = self.check_distances(tmp_eq, pos)
-                            true_int = self.is_true_interstitial(pos, ads)
+                            dist, tmp_eq = self.check_distances(tmp_eq, pos, indx)
+                            true_int = self.is_true_interstitial(pos, ads, interc)
                             if dist and true_int:
                                 unique = self.create_unique(pos, tmp_un)
-                                equivalent = self.create_copies(pos, coordinates[element], tmp_eq)
+                                equivalent = self.create_copies(pos, 
+                                                                coordinates[element], 
+                                                                tmp_eq, 
+                                                                indx,
+                                                                interc)
                                 # mapped = True
                                 break
 
@@ -796,7 +1003,7 @@ class DefectBuilder():
 
         return positions
 
-    def create_copies(self, scaled_position, coordinates, tmp_struc):
+    def create_copies(self, scaled_position, coordinates, tmp_struc, index, interc=False):
         import numexpr
 
         new_struc = tmp_struc.copy()
@@ -818,13 +1025,13 @@ class DefectBuilder():
             if self.is_planar(new_struc) and value[2] != z:
                 copy = False
             if self.dim == 2 and not self.is_planar(new_struc):
-                top, bottom = get_top_bottom(self.get_primitive_structure())
+                top, bottom = get_top_bottom(self.get_primitive_structure(), interc=interc)
                 if value[2] <= bottom or value[2] >= top:
                     copy = False
             if (value[0] <= 1 and value[0] >= 0
                and value[1] <= 1 and value[1] >= 0
                and value[2] <= 1 and value[2] >= 0 and copy):
-                dist, new_struc = self.check_distances(tmp_struc, value)
+                dist, new_struc = self.check_distances(tmp_struc, value, index)
                 if dist:
                     tmp_struc = new_struc
 
@@ -911,14 +1118,14 @@ class DefectBuilder():
 
         return R1 + R2
 
-    def is_true_interstitial(self, pos, ads=False, delta=0):
+    def is_true_interstitial(self, pos, ads=False, interc=False, ztol=0.1):
         dim = self.dim
         atoms = self.get_primitive_structure()
         if dim == 3:
             return True
         elif dim == 2:
-            top, bottom = get_top_bottom(atoms)
-            # delta = abs(top - bottom) / 10
+            top, bottom = get_top_bottom(atoms, interc=interc)
+            delta = abs(top - bottom) * ztol
             if ads:
                 if pos[2] <= top and pos[2] >= bottom:
                     return True
@@ -940,18 +1147,23 @@ class DefectBuilder():
         positions = np.append(positions, [pos], axis=0)
         unique = Atoms(symbols=symbols,
                        scaled_positions=positions,
-                       cell=cell)
+                       cell=cell,
+                       pbc=unique.pbc)
 
         return unique
 
-    def check_distances(self, structure, pos):
+    def check_distances(self, structure, pos, index):
         symbols = structure.get_chemical_symbols()
         symbols.append('X')
         tmp_pos = structure.get_scaled_positions()
         tmp_pos = np.append(tmp_pos, [pos], axis=0)
+        tmp_tags = structure.get_tags()
+        tmp_tags = np.append(tmp_tags, index+2)
         tmp_struc = Atoms(symbols=symbols,
                           scaled_positions=tmp_pos,
-                          cell=structure.get_cell())
+                          cell=structure.get_cell(),
+                          pbc=structure.pbc,
+                          tags=tmp_tags)
         distances = get_distances(tmp_struc.get_positions()[-1],
                                   tmp_struc.get_positions()[:-1],
                                   cell=structure.get_cell(),
