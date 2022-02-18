@@ -179,7 +179,7 @@ def get_top_bottom(atoms, interc=False, dim=2):
 
 
 def get_layer_tags(atoms):
-    '''Automatically assign tag 1 to top layer and tag 0 to bottom layer'''
+    """Automatically assign tag 1 to top layer and tag 0 to bottom layer"""
     atoms_tmp = atoms.copy()
     atoms_tmp.center()
     tags = [1 if atom.scaled_position[2] > 0.5 else 0 for atom in atoms_tmp]
@@ -471,64 +471,42 @@ class DefectBuilder():
 
         return structures
 
-    '''
-    def get_intercalated_structures(self, kindlist=None, sc=2):
-        """Create interstitial structures and return in desired supercell.
+    def get_intercalated_structures(self, kindlist=None, 
+                                    Nsites=1, sc=2, 
+                                    group_sites=True,
+                                    randomize=False):
+        """Create intercalation structures in the desired supercell.
 
-        Intercalated structures for 2D bilayers are created with the following steps:
-            1. find hollow sites (i.e. Voronoi faces) in the Van der Waals gap
-            2. set up supercell
-            3. loop over all interstitial positions and dope with kindlist elements
-            4. return list of doped interstitial structures
+        Intercalation structures are created with the following steps:
+            1. find all the hollow sites in the Van der Waals gap,
+               and tag them according to their symmetry
+            2. set up supercell and find the hollow site replicas inside it
+            3. For each element provided in kindlist, 
+               intercalate as many atoms as specified by nsites.
+            4. return list of intercalation structures
 
         Parameters
         ----------
-        kindlist : list(str)
-            list of chemical elements to dope the interstitial structures with
+        kindlist : list
+            list of chemical elements to dope the adsorbate structures with
             (if 'None', only intrisic elements will be considered)
-        sc : [int, list, np.ndarray]
+        sc : int/list/numpy.ndarray
             if integer -> integer repitition of the primitive supercell to create supercell
             if 3x3 list or numpy array -> unit vector transformation matrix
+        Nsites : int
+            choose number of atoms to intercalate per element.
+            If set to 0, it will simply return the supercell.
+        randomize : bool
+            if True, randomly choose the intercalation sites among the available ones.
+            Overrides the default behaviour, i.e. spreading out the
+            intercalation sites as much as possible according to their distances.
+        group_sites : bool
+            if False, don't group the hollow sites by symmetry 
+            and fill them only according to distances. 
+            It will reduce the total number of structures to one per kindlist element
         """
-        from ase.build import make_supercell
-        from ase.visualize import view
-
-        atoms, _ = self.create_interstitials(interc=True)
-        if kindlist is None:
-            kindlist = self.get_intrinsic_types()
-
-        # set up pristine supercell
-        prim = self.get_primitive_structure()
-        if type(sc) == int:
-            supercell = setup_supercell(prim, sc)
-        elif type(sc) in [list, np.ndarray]:
-            supercell = make_supercell(prim, sc)
-
-        # loop over all interstitial sites (type 'X') and dope them wth kindlist elements
-        structures = []
-        for i in range(len(atoms)):
-            if atoms.get_chemical_symbols()[i] == 'X':
-                for kind in kindlist:
-                    structure = supercell.copy()
-                    positions = structure.get_positions()
-                    symbols = structure.get_chemical_symbols()
-                    cell = structure.get_cell()
-                    pos = atoms.get_positions()[i]
-                    positions = np.append(positions, [pos], axis=0)
-                    symbols.append(kind)
-                    newstruct = Atoms(symbols=symbols,
-                                      positions=positions,
-                                      cell=cell,
-                                      pbc=structure.get_pbc())
-                    newstruct.wrap()
-                    structures.append(newstruct)
-    '''
-
-
-    def get_intercalated_structures(self, kindlist=None, nsites=2, sc=2):
         from ase import Atom
         from ase.geometry import get_distances
-        from ase.visualize import view
         from ase.build import make_supercell
 
         _, atoms = self.create_interstitials(interc=True)
@@ -537,6 +515,9 @@ class DefectBuilder():
 
         # set up pristine and mock supercells
         prim = self.get_primitive_structure()
+        if Nsites == 0:
+            return prim
+
         if type(sc) == int:
             supercell_prim = setup_supercell(prim, sc)
             supercell_mock = setup_supercell(atoms, sc)
@@ -544,108 +525,22 @@ class DefectBuilder():
             supercell_prim = make_supercell(prim, sc)
             supercell_mock = make_supercell(atoms, sc)
 
-        def find_hollow_positions(atoms, hollow='X'):
-            """Use mock supercell to find the positions of all hollow sites.
-
-            Requires the following tagging scheme:
-                1: atoms in the top layer
-                0: atoms in the bottom layer
-                N>1: hollow sites
-            """
-            assert hollow in atoms.get_chemical_symbols(), 'No hollow sites found'
-
-            all_tags = atoms.get_tags()
-            site_tags = [tag for tag in all_tags if tag > 1]
-            site_pos = {}
-            for i, tag in enumerate(np.unique(site_tags)):
-                site_pos.update({i: []})
-                for j, atom in enumerate(atoms):
-                    if all_tags[j] == tag:
-                        site_pos[i].append(atom.position)
-
-        structures = {}
-        for kind in kindlist:
-            structures[kind] = {}
-            for site in site_pos:
-                structures[kind][site] = []
-                # Define order in which hollow positions will be filled.
-                # Criteria: as spread out as possible in terms of distances
-                D = get_distances(site_pos[site], site_pos[site], 
-                                  pbc=supercell_mock.pbc, 
-                                  cell=supercell_mock.get_cell())[1]
-                # We fill the hollow site with index 0 first 
-                # and the one at the largest distance second.
-                order = [0, np.argmax(D[0])]
-                for i in range(2, len(D)):
-                    print(len(D))
-                    dists = np.asarray([D[indx] for indx in order])
-                    avgs = []
-                    stdevs = []
-                    for j in range(len(D)):
-                        if j in order:
-                            avgs.append(-1)
-                            stdevs.append(0)
-                        else:
-                            avgs.append(np.average(dists[:, j]))
-                            stdevs.append(np.std(dists[:, j]))
-                            #stdev_score_j = np.clip(1 - np.std(dists[:, j]), a_min=0, a_max=1)
-                            #scores.append(avg_dist_j * stdev_score_j)
-                    scores = avgs * (1 - stdevs / np.max(stdevs))
-                    order.append(np.argmax(scores))
-
-                supercell = supercell_prim.copy()
-                for index in order[:nsites]:
-                    supercell += Atom(symbol=kind,
-                                      position=site_pos[site][index],
-                                      tag=2)
-                structures[kind][site].append(supercell)
-
-        for kind in structures:
-            for site in structures[kind]:
-                for struct in structures[kind][site]:
-                    view(struct)
-
-
-
-
-            '''
-            order = [0]
-            for i in range(len(D)):
-                row = D[order[-1]]
-                for j in np.flip(np.argsort(row)):
-                    if j not in order:
-                        order.append(j)
-                        break
-            '''
-                
-                    
-
-
-
-            #site_pos[key] = np.asarray(site_pos[key])
-            #dists = np.linalg.norm(site_pos[key] - site_pos[key][0], axis=1)
-            #print(dists)
-            
-
-        '''
-        # loop over all interstitial sites (type 'X') and dope them with kindlist elements
+        site_positions = self.find_hollow_positions(supercell_mock,
+                                                    group_sites=group_sites)
         structures = []
-        for i, atom in enumerate(supercell_mock):
-            if atom.symbol == 'X':
-                for kind in kindlist:
-                    structure = supercell.copy()
-                    positions = structure.get_positions()
-                    symbols = structure.get_chemical_symbols()
-                    cell = structure.get_cell()
-                    pos = atoms.get_positions()[i]
-                    positions = np.append(positions, [pos], axis=0)
-                    symbols.append(kind)
-                    structures.append(Atoms(symbols=symbols,
-                                            positions=positions,
-                                            cell=cell,
-                                            pbc=structure.get_pbc()))
+        for kind in kindlist:
+            for site in site_positions:
+                order = self.get_filling_order(site_positions[site],
+                                               supercell_mock.pbc,
+                                               supercell_mock.get_cell(),
+                                               randomize=randomize)
+                supercell = supercell_prim.copy()
+                for index in order[:Nsites]:
+                    supercell += Atom(symbol=kind,
+                                      position=site_positions[site][index],
+                                      tag=2)
+                structures.append(supercell)
 
-        '''
         return structures
     # defect creation methods (vacancies, subst., interstitial, adsorption, intercalation) - end
 
@@ -1174,6 +1069,63 @@ class DefectBuilder():
         else:
             return False, structure
     # mapping functionalities - end
+
+    # Intercalation-specific functions - start
+    def find_hollow_positions(self, atoms, group_sites=False):
+        """Find the positions and tags of all hollow sites.
+
+        Requires the following tagging scheme:
+            1:   atoms in the top layer
+            0:   atoms in the bottom layer
+            n>1: hollow sites
+        i.e. as returned by create_interstitials()
+        """
+        all_tags = atoms.get_tags()
+
+        if group_sites:
+            for i, tag in enumerate(all_tags):
+                if tag > 1:
+                    all_tags[i] = 2
+
+        uniq = np.unique([tag for tag in all_tags if tag > 1])
+        site_pos = {}
+        for i, tag in enumerate(uniq):
+            site_pos.update({i: []})
+            for j, atom in enumerate(atoms):
+                if all_tags[j] == tag:
+                    site_pos[i].append(atom.position)
+        return site_pos
+
+    def get_filling_order(self, positions, pbc, cell, randomize):
+        """Define order in which hollow positions will be filled.
+
+        Criteria: as spread out as possible in terms of distances
+        If randomize is set to True, it will just return the indexes
+        """
+        if randomize:
+            indexes = [i for i in range(len(positions))]
+            np.random.shuffle(indexes)
+            return indexes
+
+        D = get_distances(positions, positions, 
+                          pbc=pbc, 
+                          cell=cell)[1]
+        order = [0, np.argmax(D[0])]
+        for i in range(2, len(D)):
+            dists = np.asarray([D[indx] for indx in order])
+            avgs = []
+            stdevs = []
+            for j in range(len(D)):
+                if j in order:
+                    avgs.append(-1)
+                    stdevs.append(0)
+                else:
+                    avgs.append(np.average(dists[:, j]))
+                    stdevs.append(np.std(dists[:, j]))
+            scores = avgs * (1 - stdevs / np.max(stdevs))
+            order.append(np.argmax(scores))
+        return order
+    # Intercalation-specific functions - end
 
     # some minor helper methods - start
     def reconstruct_string(self, string):
