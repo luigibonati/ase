@@ -1070,8 +1070,8 @@ class DefectBuilder():
             return False, structure
     # mapping functionalities - end
 
-    # Intercalation-specific functions - start
-    def find_hollow_positions(self, atoms, group_sites=False):
+    # Intercalation-specific methods - start
+    def find_hollow_positions(self, atoms, group_sites=True):
         """Find the positions and tags of all hollow sites.
 
         Requires the following tagging scheme:
@@ -1079,10 +1079,13 @@ class DefectBuilder():
             0:   atoms in the bottom layer
             n>1: hollow sites
         i.e. as returned by create_interstitials()
+
+        If group_sites is set to False, it will set the tags 
+        of all hollow sites to 2.
         """
         all_tags = atoms.get_tags()
 
-        if group_sites:
+        if not group_sites:
             for i, tag in enumerate(all_tags):
                 if tag > 1:
                     all_tags[i] = 2
@@ -1100,7 +1103,21 @@ class DefectBuilder():
         """Define order in which hollow positions will be filled.
 
         Criteria: as spread out as possible in terms of distances
-        If randomize is set to True, it will just return the indexes
+        This is achieved by filling up the hollow position with 
+        index 0 first, then the one at the largest distance.
+
+        The following ones are chosen according to two criteria:
+            1. maximize the average distance A from the previously filled ones
+            2. keep the distances among intercalation sites as uniform as possible. 
+               This is given by F = 1 - s, where s is the standard deviation
+               of the distances between a given position and all the others.
+
+        Each time a position is filled, all the remaining ones 
+        are given a score S = A * F/F_max. The one with the highest S
+        is chosen as the next one. All the filled sites are given S = -1
+
+        If randomize is set to True, the method will just 
+        return the indexes randomly shuffled.
         """
         if randomize:
             indexes = [i for i in range(len(positions))]
@@ -1125,7 +1142,7 @@ class DefectBuilder():
             scores = avgs * (1 - stdevs / np.max(stdevs))
             order.append(np.argmax(scores))
         return order
-    # Intercalation-specific functions - end
+    # Intercalation-specific methods - end
 
     # some minor helper methods - start
     def reconstruct_string(self, string):
