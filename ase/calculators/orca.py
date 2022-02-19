@@ -57,10 +57,9 @@ class OrcaTemplate(CalculatorTemplate):
 class ORCA(GenericFileIOCalculator):
     """Class for doing Orca calculations.
 
-    The default parameters are very close to those that the ABINIT
-    Fortran code would use.  These are the exceptions::
+    Example:
 
-      calc = Abinit(label='orca', charge=0, mult=1, orcasimpleinput='B3LYP def2-TZVP',
+      calc = Orca(charge=0, mult=1, orcasimpleinput='B3LYP def2-TZVP',
         orcablocks='%pal nprocs 16 end')
     """
 
