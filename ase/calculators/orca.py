@@ -52,14 +52,7 @@ class OrcaTemplate(CalculatorTemplate):
         io.write_orca(atoms=atoms, **kw)
 
     def read_results(self, directory):
-        results = {}
-        energy = io.read_orca_energy(directory / self.output_file)
-        results['energy'] = energy
-        results['free_energy'] = energy
-
-        # Does engrad always exist?
-        results['forces'] = io.read_orca_forces(directory / 'engrad')
-        return results
+        return io.read_orca_outputs(directory, directory / self.output_file)
 
 
 class ORCA(GenericFileIOCalculator):

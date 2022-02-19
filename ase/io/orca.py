@@ -109,12 +109,12 @@ def read_orca_forces(fd):
     return forces
 
 
-def read_orca_outputs(directory, label):
-    label = label
-    directory = Path(directory)
-    #textfilename = directory / f'{label}.out'
+def read_orca_outputs(directory, stdout_path):
     results = {}
-    # with open(textfilename) as fd:
-    dct = read_orca_out(label)
-    results.update(dct)
+    energy = io.read_orca_energy(stdout_path)
+    results['energy'] = energy
+    results['free_energy'] = energy
+
+    # Does engrad always exist?
+    results['forces'] = io.read_orca_forces(directory / 'engrad')
     return results
