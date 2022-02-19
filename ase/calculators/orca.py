@@ -31,7 +31,8 @@ class OrcaTemplate(CalculatorTemplate):
 
     def __init__(self):
         super().__init__(name='orca',
-                         implemented_properties=['energy', 'forces'])
+                         implemented_properties=['energy', 'free_energy',
+                                                 'forces'])
 
         self.input_file = f'{self.label}.inp'
         self.output_file = f'{self.label}.out'
@@ -51,7 +52,14 @@ class OrcaTemplate(CalculatorTemplate):
         io.write_orca(atoms=atoms, **kw)
 
     def read_results(self, directory):
-        return io.read_orca_outputs(directory, self.label)
+        results = {}
+        energy = io.read_orca_energy(directory / self.output_file)
+        results['energy'] = energy
+        results['free_energy'] = energy
+
+        # Does engrad always exist?
+        results['forces'] = io.read_orca_forces(directory / 'engrad')
+        return results
 
 
 class ORCA(GenericFileIOCalculator):

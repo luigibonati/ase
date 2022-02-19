@@ -67,25 +67,30 @@ def write_orca(atoms, **params):
         fd.write('*\n')
 
 
-def read_orca_out(label):
-    results = {}
+@reader
+def read_orca_energy(fd):
     """Read Energy from ORCA output file."""
-    with open(label + '.out', mode='r', encoding='utf-8') as fd:
-        text = fd.read()
-    # Energy:
+    text = fd.read()
     re_energy = re.compile(r"FINAL SINGLE POINT ENERGY.*\n")
     re_not_converged = re.compile(r"Wavefunction not fully converged")
     found_line = re_energy.search(text)
-    if found_line and not re_not_converged.search(found_line.group()):
-        results['energy'] = float(found_line.group().split()[-1]) * Hartree
 
+    if found_line and not re_not_converged.search(found_line.group()):
+        return float(found_line.group().split()[-1]) * Hartree
+    elif found_line:
+        # XXX Who should handle errors?  Maybe raise as SCFError
+        raise RuntimeError('Energy not converged')
+    else:
+        raise RuntimeError('No energy')
+
+
+@reader
+def read_orca_forces(fd):
     """Read Forces from ORCA output file."""
-    with open(f'{label}.engrad', 'r') as fd:
-        lines = fd.readlines()
     getgrad = False
     gradients = []
     tempgrad = []
-    for i, line in enumerate(lines):
+    for i, line in enumerate(fd):
         if line.find('# The current gradient') >= 0:
             getgrad = True
             gradients = []
@@ -99,9 +104,9 @@ def read_orca_out(label):
                 tempgrad = []
         if '# The at' in line:
             getgrad = False
-    results['forces'] = -np.array(gradients) * Hartree / Bohr
 
-    return results
+    forces = -np.array(gradients) * Hartree / Bohr
+    return forces
 
 
 def read_orca_outputs(directory, label):
