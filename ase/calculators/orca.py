@@ -27,13 +27,14 @@ class OrcaProfile:
 
 
 class OrcaTemplate(CalculatorTemplate):
-    # _label = 'orca'  # Controls naming of files within calculation directory
+    label = 'orca'
 
-    def __init__(self, label="orca"):
-        super().__init__(name='orca', implemented_properties=['energy', 'forces'])
-        self._label = label
-        self.input_file = f'{self._label}.inp'
-        self.output_file = f'{self._label}.out'
+    def __init__(self):
+        super().__init__(name='orca',
+                         implemented_properties=['energy', 'forces'])
+
+        self.input_file = f'{self.label}.inp'
+        self.output_file = f'{self.label}.out'
 
     def execute(self, directory, profile) -> None:
         profile.run(directory, self.input_file, self.output_file)
@@ -42,17 +43,15 @@ class OrcaTemplate(CalculatorTemplate):
         directory = Path(directory)
         directory.mkdir(exist_ok=True, parents=True)
         parameters = dict(parameters)
-        if 'label' in parameters:
-            self.input_file = f"{parameters['label']}.inp"
-            self.output_file = f"{parameters['label']}.out"
 
-        kw = dict(charge=0, mult=1, orcasimpleinput='B3LYP def2-TZVP', orcablocks='%pal nprocs 1 end')
+        kw = dict(charge=0, mult=1, orcasimpleinput='B3LYP def2-TZVP',
+                  orcablocks='%pal nprocs 1 end')
         kw.update(parameters)
 
         io.write_orca(atoms=atoms, **kw)
 
     def read_results(self, directory):
-        return io.read_orca_outputs(directory, self._label)  
+        return io.read_orca_outputs(directory, self.label)
 
 
 class ORCA(GenericFileIOCalculator):
@@ -96,4 +95,6 @@ class ORCA(GenericFileIOCalculator):
         if profile is None:
             profile = OrcaProfile(['orca'])
 
-        super().__init__(template=OrcaTemplate(kwargs.get("label", "orca")), profile=profile, directory=directory, parameters=kwargs)
+        super().__init__(template=OrcaTemplate(),
+                         profile=profile, directory=directory,
+                         parameters=kwargs)

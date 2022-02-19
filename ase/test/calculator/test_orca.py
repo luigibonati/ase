@@ -37,7 +37,7 @@ def test_ohh(factory):
     atoms = Atoms('OHH',
                   positions=[(0, 0, 0), (1, 0, 0), (0, 1, 0)])
 
-    atoms.calc = factory.calc(label='orca', orcasimpleinput='BLYP def2-SVP')
+    atoms.calc = factory.calc(orcasimpleinput='BLYP def2-SVP')
 
     with BFGS(atoms) as opt:
         opt.run(fmax=0.05)
