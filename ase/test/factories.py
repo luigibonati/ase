@@ -496,7 +496,7 @@ class OrcaFactory:
 
     def version(self):
         from ase.calculators.orca import orca_version_from_executable
-        return orca_version_from_executable(self.executable)
+        return orca_version_from_executable([self.executable])
 
     def calc(self, **kwargs):
         from ase.calculators.orca import ORCA

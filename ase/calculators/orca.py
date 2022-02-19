@@ -1,6 +1,7 @@
 import re
 import ase.io.orca as io
-from ase.calculators.genericfileio import (CalculatorTemplate, GenericFileIOCalculator)
+from ase.calculators.genericfileio import (CalculatorTemplate,
+                                           GenericFileIOCalculator)
 from pathlib import Path
 
 
@@ -9,19 +10,15 @@ def get_version_from_orca_header(orca_header):
     return match.group(1)
 
 
-def orca_version_from_executable(executable):
-    from ase.calculators.genericfileio import read_stdout
-    stdout = read_stdout([executable, "does_not_exist"])
-    return get_version_from_orca_header(stdout)
-
-
 class OrcaProfile:
-
     def __init__(self, argv):
         self.argv = argv
 
     def version(self):
-        return 'Hello'
+        # XXX Allow MPI in argv; the version call should not be parallel.
+        from ase.calculators.genericfileio import read_stdout
+        stdout = read_stdout([*self.argv, "does_not_exist"])
+        return get_version_from_orca_header(stdout)
 
     def run(self, directory, inputfile, outputfile):
         from subprocess import check_call

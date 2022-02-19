@@ -25,12 +25,10 @@ def test_orca_version_from_string(txt1, ref1):
 
 @calc('orca')
 def test_orca_version_from_executable(factory):
-    from ase.calculators.orca import orca_version_from_executable
-
     # only check the format to be compatible with future versions
     version_regexp = re.compile(r'\d+.\d+.\d+')
-    version = orca_version_from_executable(factory.factory.executable)
 
+    version = factory.version()
     assert version_regexp.match(version)
 
 
