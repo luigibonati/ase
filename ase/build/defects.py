@@ -1127,7 +1127,7 @@ class DefectBuilder():
         D = get_distances(positions, positions, 
                           pbc=pbc, 
                           cell=cell)[1]
-        order = [0, np.argmax(D[0])]
+        order = [0, np.argmax(D[0])] # comment
         for i in range(2, len(D)):
             dists = np.asarray([D[indx] for indx in order])
             avgs = []
