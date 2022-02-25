@@ -61,7 +61,6 @@ class EspressoTemplate(CalculatorTemplate):
         self.outputname = 'espresso.pwo'
 
     def write_input(self, directory, atoms, parameters, properties):
-        directory.mkdir(exist_ok=True, parents=True)
         dst = directory / self.inputname
         write(dst, atoms, format='espresso-in', properties=properties,
               **parameters)

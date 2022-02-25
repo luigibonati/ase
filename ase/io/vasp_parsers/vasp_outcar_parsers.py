@@ -289,7 +289,7 @@ class KpointHeader(SimpleVaspHeaderParser):
         nkpts = int(parts[3])
         nbands = int(parts[-1])
 
-        results = {'nkpts': nkpts, 'nbands': nbands}
+        results: Dict[str, Any] = {'nkpts': nkpts, 'nbands': nbands}
         # We also now get the k-point weights etc.,
         # because we need to know how many k-points we have
         # for parsing that

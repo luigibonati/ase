@@ -205,7 +205,7 @@ def minkowski_reduce(cell, pbc=True):
     Low-dimensional Lattice Basis Reduction Revisited
     Nguyen, Phong Q. and Stehlé, Damien,
     ACM Trans. Algorithms 5(4) 46:1--46:48, 2009
-    https://doi.org/10.1145/1597036.1597050
+    :doi:`10.1145/1597036.1597050`
 
     Parameters:
 

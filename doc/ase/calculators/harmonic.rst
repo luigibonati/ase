@@ -26,7 +26,7 @@ Harmonic Approximation. [1]_
 .. [1] Amsler, J. et al., Anharmonic Correction to Adsorption Free Energy
        from DFT-Based MD Using Thermodynamic Integration,
        J. Chem. Theory Comput. 2021, 17 (2), 1155-1169.
-       https://doi.org/10.1021/acs.jctc.0c01022.
+       :doi:`10.1021/acs.jctc.0c01022`.
 
 .. autoclass:: ase.calculators.harmonic.HarmonicCalculator
 
