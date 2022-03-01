@@ -78,6 +78,16 @@ def animation(guifactory):
     return gui
 
 
+@pytest.mark.xfail
+def test_about(gui):
+    ui.about('name', 'version:1.1.1', 'http://webpage.org')
+
+
+@pytest.mark.xfail
+def test_helpwindow(gui):
+    ui.helpwindow('some\n multiline\n text')
+
+
 def test_nanotube(gui):
     nt = gui.nanotube_window()
     nt.apply()
