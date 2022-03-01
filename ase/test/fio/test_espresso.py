@@ -374,11 +374,11 @@ def test_pw_input_write():
     assert np.allclose(bulk.positions, readback.positions)
     #
     from ase.io.espresso import write_espresso_in
-    sections= {'system' : {
-        'lda_plus_u' : True,
-        'Hubbard_U(1)' : 4.0,
-        'Hubbard_U(2)' : 0.0}}
-    with open('espresso_test.pwi', 'w') as fh :
+    sections = {'system': {
+        'lda_plus_u': True,
+        'Hubbard_U(1)': 4.0,
+        'Hubbard_U(2)': 0.0}}
+    with open('espresso_test.pwi', 'w') as fh:
         write_espresso_in(fh, bulk, sections)
     readback = io.read('espresso_test.pwi')
     assert np.allclose(bulk.positions, readback.positions)
