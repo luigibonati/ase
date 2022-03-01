@@ -1094,6 +1094,8 @@ class Atoms:
             return Atom(atoms=self, index=i)
         elif not isinstance(i, slice):
             i = np.array(i)
+            if len(i) == 0:
+                i = np.array([], dtype=int)
             # if i is a mask
             if i.dtype == bool:
                 if len(i) != len(self):
