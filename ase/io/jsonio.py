@@ -31,8 +31,12 @@ def default(obj):
         flatobj = obj.ravel()
         if np.iscomplexobj(obj):
             flatobj.dtype = obj.real.dtype
+        # We use str(obj.dtype) here instead of obj.dtype.name, because
+        # they are not always the same (e.g. for numpy arrays of strings).
+        # Using obj.dtype.name can break the ability to recursively decode/
+        # encode such arrays.
         return {'__ndarray__': (obj.shape,
-                                obj.dtype.name,
+                                str(obj.dtype),
                                 flatobj.tolist())}
     if isinstance(obj, np.integer):
         return int(obj)
