@@ -474,7 +474,8 @@ class DefectBuilder():
     def get_intercalated_structures(self, kindlist=None, 
                                     Nsites=1, sc=2, 
                                     group_sites=True,
-                                    randomize=False):
+                                    randomize=False,
+                                    ztol=0.2):
         """Create intercalation structures in the desired supercell.
 
         Intercalation structures are created with the following steps:
@@ -504,26 +505,33 @@ class DefectBuilder():
             if False, don't group the hollow sites by symmetry 
             and fill them only according to distances. 
             It will reduce the total number of structures to one per kindlist element
+        ztol: float
+            fraction of the interlayer gap width. Determines how deep in the 
+            interlayer gap to start looking for hollow sites.
         """
         from ase import Atom
         from ase.geometry import get_distances
         from ase.build import make_supercell
+        from ase.visualize import view
 
-        _, atoms = self.create_interstitials(interc=True)
+        tags = get_layer_tags(self.primitive)
+        self.primitive.set_tags(tags)
+
+        _, atoms = self.create_interstitials(interc=True, ztol=ztol)
         if kindlist is None:
             kindlist = self.get_intrinsic_types()
 
         # set up pristine and mock supercells
         prim = self.get_primitive_structure()
-        if Nsites == 0:
-            return prim
-
         if type(sc) == int:
             supercell_prim = setup_supercell(prim, sc)
             supercell_mock = setup_supercell(atoms, sc)
         elif type(sc) in [list, np.ndarray]:
             supercell_prim = make_supercell(prim, sc)
             supercell_mock = make_supercell(atoms, sc)
+
+        if Nsites == 0:
+            return [supercell_prim]
 
         site_positions = self.find_hollow_positions(supercell_mock,
                                                     group_sites=group_sites)
@@ -545,7 +553,7 @@ class DefectBuilder():
     # defect creation methods (vacancies, subst., interstitial, adsorption, intercalation) - end
 
     # interstitial and adsorbate overview methods - start
-    def create_interstitials(self, atoms=None, Nsites=None, ads=False, interc=False):
+    def create_interstitials(self, atoms=None, Nsites=None, ads=False, interc=False, ztol=0.1):
         """Create a 'mock' atomic structure to give an overview over all interstitials.
 
         Setps to create the interstitial position:
@@ -565,20 +573,19 @@ class DefectBuilder():
             flag for creating adsorption sites
         interc : bool
             flag for creating intercalation sites
+        ztol:
+            controls how deep in the slab to start searching for interstitials
         """
         if atoms is None:
             atoms = self.get_primitive_structure()
         sym = self.get_host_symmetry()
         wyck = get_wyckoff_data(sym['number'])
 
-        if interc:
-            tags = get_layer_tags(atoms)
-            atoms.set_tags(tags)
-
         un, struc = self.map_positions(wyck,
                                        structure=atoms,
                                        ads=ads,
-                                       interc=interc)
+                                       interc=interc,
+                                       ztol=ztol)
         if Nsites is None:
             return un, struc
 
@@ -788,7 +795,7 @@ class DefectBuilder():
     # methods related to voronoi tessalation - end
 
     # mapping functionalities - start
-    def map_positions(self, coordinates, structure=None, ads=False, interc=False):
+    def map_positions(self, coordinates, structure=None, ads=False, interc=False, ztol=0.1):
         """Get Voronoi positions and map them onto Wyckoff positions of the host crystal.
 
         Parameters
@@ -826,7 +833,7 @@ class DefectBuilder():
                             tmp_eq = equivalent.copy()
                             tmp_un = unique.copy()
                             dist, tmp_eq = self.check_distances(tmp_eq, pos, indx)
-                            true_int = self.is_true_interstitial(pos, ads, interc)
+                            true_int = self.is_true_interstitial(pos, ads, interc, ztol)
                             if dist and true_int:
                                 unique = self.create_unique(pos, tmp_un)
                                 equivalent = self.create_copies(pos, 
@@ -1103,9 +1110,9 @@ class DefectBuilder():
         """Define order in which hollow positions will be filled.
 
         Criteria: as spread out as possible in terms of distances
-        This is achieved by filling up the hollow position with 
-        index 0 first, then the one at the largest distance.
 
+        The algorithm is initialized by filling up the hollow position with 
+        index 0 first, then the one at the largest distance.
         The following ones are chosen according to two criteria:
             1. maximize the average distance A from the previously filled ones
             2. keep the distances among intercalation sites as uniform as possible. 
@@ -1127,7 +1134,7 @@ class DefectBuilder():
         D = get_distances(positions, positions, 
                           pbc=pbc, 
                           cell=cell)[1]
-        order = [0, np.argmax(D[0])] # comment
+        order = [0, np.argmax(D[0])]
         for i in range(2, len(D)):
             dists = np.asarray([D[indx] for indx in order])
             avgs = []
@@ -1139,7 +1146,10 @@ class DefectBuilder():
                 else:
                     avgs.append(np.average(dists[:, j]))
                     stdevs.append(np.std(dists[:, j]))
-            scores = avgs * (1 - stdevs / np.max(stdevs))
+            if np.allclose(stdevs, 0.0):
+                scores = avgs
+            else:
+                scores = avgs * (1 - stdevs / np.max(stdevs))
             order.append(np.argmax(scores))
         return order
     # Intercalation-specific methods - end
