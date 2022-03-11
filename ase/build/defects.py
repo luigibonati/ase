@@ -203,9 +203,6 @@ class DefectBuilder():
         - 'map_positions' to use Voronoi positions and map them onto Wyckoff positions
           of the host crystal
 
-    Functionalities that need to be added and could be useful:
-        - method to get intercalated structures, e.g. 'get_intercalated_structures'
-
     Attributes
     ----------
     atoms : ASE Atoms object
@@ -475,7 +472,9 @@ class DefectBuilder():
                                     Nsites=1, sc=2, 
                                     group_sites=True,
                                     randomize=False,
-                                    ztol=0.2):
+                                    symprec=1e-2,
+                                    ztol=0.15,
+                                    return_labels=False):
         """Create intercalation structures in the desired supercell.
 
         Intercalation structures are created with the following steps:
@@ -508,6 +507,11 @@ class DefectBuilder():
         ztol: float
             fraction of the interlayer gap width. Determines how deep in the 
             interlayer gap to start looking for hollow sites.
+        return_labels: bool
+            ask to return, for each structure, a symmetry label of the form
+            "[hollow_site_point_group]-[coordination_number]"
+            The local symmetry analysis is performed on a local cluster 
+            formed by the hollow site and its nearest neighbors.
         """
         from ase import Atom
         from ase.geometry import get_distances
@@ -518,6 +522,7 @@ class DefectBuilder():
         self.primitive.set_tags(tags)
 
         _, atoms = self.create_interstitials(interc=True, ztol=ztol)
+
         if kindlist is None:
             kindlist = self.get_intrinsic_types()
 
@@ -536,6 +541,7 @@ class DefectBuilder():
         site_positions = self.find_hollow_positions(supercell_mock,
                                                     group_sites=group_sites)
         structures = []
+        labels = []
         for kind in kindlist:
             for site in site_positions:
                 order = self.get_filling_order(site_positions[site],
@@ -548,7 +554,10 @@ class DefectBuilder():
                                       position=site_positions[site][index],
                                       tag=2)
                 structures.append(supercell)
+                labels.append(site)
 
+        if group_sites and return_labels:
+            return structures, labels
         return structures
     # defect creation methods (vacancies, subst., interstitial, adsorption, intercalation) - end
 
@@ -1085,26 +1094,136 @@ class DefectBuilder():
             1:   atoms in the top layer
             0:   atoms in the bottom layer
             n>1: hollow sites
-        i.e. as returned by create_interstitials()
+        i.e. as assigned by default when get_intercalated_structures is called
 
         If group_sites is set to False, it will set the tags 
         of all hollow sites to 2.
         """
-        all_tags = atoms.get_tags()
+        from ase.visualize import view
 
         if not group_sites:
-            for i, tag in enumerate(all_tags):
-                if tag > 1:
-                    all_tags[i] = 2
+            for atom in atoms:
+                if atom.tag > 1:
+                    atom.tag = 2
 
-        uniq = np.unique([tag for tag in all_tags if tag > 1])
+        uniq = np.unique([tag for tag in atoms.get_tags() if tag > 1])
+        clean = self.clean_cell(atoms)
+
         site_pos = {}
+        labels = []
         for i, tag in enumerate(uniq):
-            site_pos.update({i: []})
-            for j, atom in enumerate(atoms):
-                if all_tags[j] == tag:
-                    site_pos[i].append(atom.position)
+            for atom in atoms:
+                if atom.tag == tag:
+                    position = atom.position
+                    if group_sites:
+                        sym = self.get_site_symmetry(position.copy(), clean)
+                        label = 'h' + str(i) + '-' + sym
+                    else:
+                        label = 'positions'
+                    if label in site_pos.keys():
+                        site_pos[label].append(position)
+                    else:
+                        site_pos[label] = [position]
         return site_pos
+
+    def clean_cell(self, atoms):
+        """Remove ghost atoms 'X' from an Atoms object"""
+        clean = atoms.copy()
+        blacklist = []
+        for i, atom in enumerate(clean):
+            if atom.symbol == 'X':
+                blacklist.append(i)
+        del clean[blacklist]
+        return clean
+
+    def get_site_symmetry(self, pos, atoms, NN=1, symprec=1e-2):
+        """Obtain a symmetry label for a specific defect site.
+
+        The label consists in a number identifying the local symmetry around the defect
+        (according to the international symmetry tables), followed by its coordination number.
+
+        The hollow site local geometry is obtained by selecting neighbors
+        up to the desired order (through the parameter NN). Then the point
+        group symmetry of the resulting cluster is obtained.
+        """
+
+        import spglib as spg
+        from ase.visualize import view
+
+        new = atoms.repeat((3, 3, 1))
+        #center = 0.5 * (new.cell[0] + new.cell[1])
+        T = atoms.cell[0] + atoms.cell[1]
+        T[2] = 0.0
+        pos += T
+        new.translate(T)
+
+        D = get_distances(
+                pos, 
+                new.get_positions(),
+                cell=new.cell, 
+                pbc=new.pbc
+        )
+        D_round = D[1].round(1).flatten()
+        D_neighbors, counts = np.unique(D_round, return_counts=True)
+        coordination = counts[0]
+
+        cluster = np.argwhere(D_round <= D_neighbors[NN - 1]).flatten()
+        atoms = new[cluster]
+        spg_nr = spg.get_symmetry_dataset(atoms, symprec=symprec)
+        spg_str = f"{spg_nr['number']}-{coordination}"
+        return spg_str
+
+    '''
+    def get_site_symmetry(self, mock, NN, symprec):
+        """Returns a list of symmetry labels for each hollow site type.
+
+        Each labels consists in an integer identifying the specific
+        hollow site, followed by its point group number according to 
+        the international symmetry tables.
+
+        The hollow site local geometry is obtained by selecting neighbors
+        up to the desired order (through the parameter NN). Then the point
+        group symmetry of the resulting cluster is obtained.
+        """
+        # TODO rewrite in a way that I can feed in directly a final structure!
+        # IDEA: scan tags until > 1 is found --> take coordinates --> get labels!
+        # or: just start from db.create_interstitials()
+
+        from ase.build import make_supercell
+        from ase.visualize import view
+        import spglib as spg
+
+        symbols = np.asarray(mock.get_chemical_symbols())
+        hollow = np.argwhere(symbols=='X').flatten()
+        new = self.get_primitive_structure().repeat((3, 3, 1))
+        T = mock.cell[0] + mock.cell[1]
+
+        spg_labels = []
+        for n, site in enumerate(hollow):
+            pos = mock.get_positions()[site]
+            pos += T
+            D = get_distances(
+                    pos, 
+                    new.get_positions(cell=new.cell, pbc=new.pbc)
+            )
+            D_round = D[1].round(1).flatten()
+            D_neighbors, counts = np.unique(D_round, return_counts=True)
+            coordination = counts[0]
+            cluster = []
+            for i, dist in enumerate(D_round):
+                if dist in D_neighbors[:NN]:
+                    cluster.append(i)
+            atoms = new[cluster]
+            view(atoms)
+            spg_nr = spg.get_symmetry_dataset(atoms, symprec=symprec)
+            spg_str = f"{n+1}-{spg_nr['number']}-{coordination}"
+            spg_labels.append(spg_str)
+
+        return spg_labels
+    '''
+
+
+
 
     def get_filling_order(self, positions, pbc, cell, randomize):
         """Define order in which hollow positions will be filled.
