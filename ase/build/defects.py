@@ -556,7 +556,7 @@ class DefectBuilder():
                 structures.append(supercell)
                 labels.append(site)
 
-        if group_sites and return_labels:
+        if group_sites and return_labels and Nsites > 0:
             return structures, labels
         return structures
     # defect creation methods (vacancies, subst., interstitial, adsorption, intercalation) - end
@@ -1108,7 +1108,6 @@ class DefectBuilder():
 
         uniq = np.unique([tag for tag in atoms.get_tags() if tag > 1])
         clean = self.clean_cell(atoms)
-
         site_pos = {}
         labels = []
         for i, tag in enumerate(uniq):
@@ -1172,58 +1171,6 @@ class DefectBuilder():
         spg_nr = spg.get_symmetry_dataset(atoms, symprec=symprec)
         spg_str = f"{spg_nr['number']}-{coordination}"
         return spg_str
-
-    '''
-    def get_site_symmetry(self, mock, NN, symprec):
-        """Returns a list of symmetry labels for each hollow site type.
-
-        Each labels consists in an integer identifying the specific
-        hollow site, followed by its point group number according to 
-        the international symmetry tables.
-
-        The hollow site local geometry is obtained by selecting neighbors
-        up to the desired order (through the parameter NN). Then the point
-        group symmetry of the resulting cluster is obtained.
-        """
-        # TODO rewrite in a way that I can feed in directly a final structure!
-        # IDEA: scan tags until > 1 is found --> take coordinates --> get labels!
-        # or: just start from db.create_interstitials()
-
-        from ase.build import make_supercell
-        from ase.visualize import view
-        import spglib as spg
-
-        symbols = np.asarray(mock.get_chemical_symbols())
-        hollow = np.argwhere(symbols=='X').flatten()
-        new = self.get_primitive_structure().repeat((3, 3, 1))
-        T = mock.cell[0] + mock.cell[1]
-
-        spg_labels = []
-        for n, site in enumerate(hollow):
-            pos = mock.get_positions()[site]
-            pos += T
-            D = get_distances(
-                    pos, 
-                    new.get_positions(cell=new.cell, pbc=new.pbc)
-            )
-            D_round = D[1].round(1).flatten()
-            D_neighbors, counts = np.unique(D_round, return_counts=True)
-            coordination = counts[0]
-            cluster = []
-            for i, dist in enumerate(D_round):
-                if dist in D_neighbors[:NN]:
-                    cluster.append(i)
-            atoms = new[cluster]
-            view(atoms)
-            spg_nr = spg.get_symmetry_dataset(atoms, symprec=symprec)
-            spg_str = f"{n+1}-{spg_nr['number']}-{coordination}"
-            spg_labels.append(spg_str)
-
-        return spg_labels
-    '''
-
-
-
 
     def get_filling_order(self, positions, pbc, cell, randomize):
         """Define order in which hollow positions will be filled.
