@@ -127,7 +127,7 @@ More specifics can be found in the sourcecode and respective docstrings.
 
 .. |unique|    image:: unique.png
 .. |equivalent|   image:: equivalent.png
-.. |adsorption_sites|   image:: adsorption_sites.png
+.. |adsorption_sites|   image:: adsorption.png
 .. |hollow_top|   image:: hollow_top.png
 .. |hollow_side|   image:: hollow_side.png
 .. |top_top|   image:: top_top.png
