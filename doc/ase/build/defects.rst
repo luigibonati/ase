@@ -76,5 +76,59 @@ GUI and look like this:
  * unique interstitials: |unique|
  * equivalent interstitials: |equivalent|
 
+
+Example - Adsorption sites
+--------------------------
+
+Let us know set up adsorption sites on a 2D material, e.g. MoS2. Therefore, we
+need to set up MoS:sub:`2` first and initialize the :class: `DefectBuilder`
+just like in the previous example::
+
+  from ase.build import mx2
+  from ase.build.defects import DefectBuilder
+  mos2 = mx2('MoS2', vacuum=5)
+  builder = DefectBuilder(mos2, min_dist=0.5)
+
+Note, that we reduced the ``min_dist`` parameter such that we don't miss any
+adsorption sites that are close to each other. Next, we want to get an overview
+what kind of adsorption sites are present with the given setup::
+
+  from ase.visualize import view
+  adsorption_sites = builder.create_adsorption_sites()
+  view(adsorption_sites)
+
+|adsorption_sites|
+
+Once we confirmed that the setup is sane we can actually create the adsorbate
+structures (in a 3x3x1 supercell by default) for a list of elements. Here,
+we just want to dope the material with carbon atoms::
+
+  adsorption_structures = builder.get_adsorbate_structures(kindlist=['C'])
+
+The method will return a list of structures where each adsorption site from
+before is occupied with an element of ``kindlist`` (only carbon here).
+The method automatically adjusts the distance from the top of the layer by
+calculating the sum of covalent radius of closest lying pristine atom and the
+adsorbate. That means, that for different positions on the layer and for different
+dopants, the z-coordinate of the adsorbate varies. Let us for example look at the
+top and hollow site (i.e. element 0 and 5 in ``adsorption_structures``)::
+
+  view(adsorption_structures[0]) # top adsorption site
+  view(adsorption_structures[5]) # hollow adsorption site
+
+and we get:
+
+  * hollow site: |hollow_top| |hollow_side|
+  * top site: |top_top| |top_side|
+
+Other
+-----
+More specifics can be found in the sourcecode and respective docstrings.
+
 .. |unique|    image:: unique.png
 .. |equivalent|   image:: equivalent.png
+.. |adsorption_sites|   image:: adsorption_sites.png
+.. |hollow_top|   image:: hollow_top.png
+.. |hollow_side|   image:: hollow_side.png
+.. |top_top|   image:: top_top.png
+.. |top_side|   image:: top_side.png
