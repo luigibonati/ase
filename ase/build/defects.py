@@ -521,7 +521,9 @@ class DefectBuilder():
         tags = get_layer_tags(self.primitive)
         self.primitive.set_tags(tags)
 
-        _, atoms = self.create_interstitials(interc=True, ztol=ztol)
+        _, atoms = self.create_interstitials(atoms=self.primitive,
+                                             interc=True,
+                                             ztol=ztol)
 
         if kindlist is None:
             kindlist = self.get_intrinsic_types()
@@ -888,7 +890,7 @@ class DefectBuilder():
             except SyntaxError:
                 string = self.reconstruct_string(string)
             val = numexpr.evaluate(string)
-            if math.isclose(val, scaled_position[i], abs_tol=1e-5):
+            if math.isclose(val, scaled_position[i], abs_tol=1e-3):
                 continue
             else:
                 fit = False
