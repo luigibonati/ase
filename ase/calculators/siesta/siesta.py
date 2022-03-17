@@ -1150,28 +1150,29 @@ class Siesta(FileIOCalculator):
     def read_eigenvalues(self):
         """ A robust procedure using the suggestion by Federico Marchesin """
 
-        fname = self.getpath(ext='EIG')
+        file_name = self.getpath(ext='EIG')
         try:
-            with open(fname, "r") as fd:
+            with open(file_name, "r") as fd:
                 self.results['fermi_energy'] = float(fd.readline())
-                n, nspin, nkp = map(int, fd.readline().split())
+                n, num_spin, nkp = map(int, fd.readline().split())
                 _ee = np.split(
                     np.array(fd.read().split()).astype(float), nkp)
-        except (IOError):
+        except IOError:
             return 1
 
-        ksn2e = np.delete(_ee, 0, 1).reshape([nkp, nspin, n])
+        n_spin = 1 if num_spin > 2 else num_spin
+        ksn2e = np.delete(_ee, 0, 1).reshape([nkp, n_spin, n])
 
-        eigarray = np.empty((nspin, nkp, n))
-        eigarray[:] = np.inf
+        eig_array = np.empty((n_spin, nkp, n))
+        eig_array[:] = np.inf
 
         for k, sn2e in enumerate(ksn2e):
             for s, n2e in enumerate(sn2e):
-                eigarray[s, k, :] = n2e
+                eig_array[s, k, :] = n2e
 
-        assert np.isfinite(eigarray).all()
+        assert np.isfinite(eig_array).all()
 
-        self.results['eigenvalues'] = eigarray
+        self.results['eigenvalues'] = eig_array
         return 0
 
     def read_kpoints(self):
