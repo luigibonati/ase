@@ -552,7 +552,7 @@ class Siesta(FileIOCalculator):
             if self['spin'] == 'collinear':
                 fd.write(format_fdf('SpinPolarized', (True, "# Backwards compatibility.")))
             elif self['spin'] == 'non-collinear':
-                fd.write(format_fdf('NonCollinear', (True, "# Backwards compatibility.")))
+                fd.write(format_fdf('NonCollinearSpin', (True, "# Backwards compatibility.")))
 
             # Write functional.
             functional, authors = self['xc']
