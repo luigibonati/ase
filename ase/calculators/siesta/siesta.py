@@ -1154,13 +1154,13 @@ class Siesta(FileIOCalculator):
         try:
             with open(file_name, "r") as fd:
                 self.results['fermi_energy'] = float(fd.readline())
-                n, num_spin, nkp = map(int, fd.readline().split())
+                n, num_hamilton_dim, nkp = map(int, fd.readline().split())
                 _ee = np.split(
                     np.array(fd.read().split()).astype(float), nkp)
         except IOError:
             return 1
 
-        n_spin = 1 if num_spin > 2 else num_spin
+        n_spin = 1 if num_hamilton_dim > 2 else num_hamilton_dim
         ksn2e = np.delete(_ee, 0, 1).reshape([nkp, n_spin, n])
 
         eig_array = np.empty((n_spin, nkp, n))
