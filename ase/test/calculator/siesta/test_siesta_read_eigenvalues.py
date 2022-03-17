@@ -7,6 +7,7 @@ def test_siesta_read_eigenvalues_soc(datadir):
     calc = Siesta()
     assert calc.read_eigenvalues() == 1
     calc.directory = datadir / 'siesta'
+    print(datadir)
     assert calc.read_eigenvalues() == 0
     assert calc.results['eigenvalues'].shape == (1, 1, 30)
 
