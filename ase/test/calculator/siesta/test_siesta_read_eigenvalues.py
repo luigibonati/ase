@@ -21,5 +21,3 @@ def test_siesta_read_eigenvalues(siesta_factory):
     assert calc.results['eigenvalues'].shape[:2] == (1, 2)  # spins x bands
     assert calc.get_k_point_weights().shape == (2,)
     assert calc.get_ibz_k_points().shape == (2, 3)
-
-
