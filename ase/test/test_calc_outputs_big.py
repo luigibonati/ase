@@ -1,6 +1,5 @@
-import pytest
 import numpy as np
-
+import pytest
 from ase.outputs import Properties, all_outputs
 
 
@@ -34,6 +33,10 @@ def props(rng):
         charges=rng.random(natoms),
         magmom=rng.random(),
         magmoms=rng.random(natoms),
+        polarization=rng.random(3),
+        born_charges=rng.random((natoms, 3, 3)),
+        dielectric_tensor=rng.random((3, 3)),
+
     )
     return Properties(results)
 

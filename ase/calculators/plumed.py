@@ -104,7 +104,6 @@ class Plumed(Calculator):
         self.calc = calc
         self.use_charge = use_charge
         self.update_charge = update_charge
-        self.name = '{}+Plumed'.format(self.calc.name)
         
         if world.rank == 0:
             natoms = len(atoms.get_positions())
@@ -130,6 +129,9 @@ class Plumed(Calculator):
             for line in input:
                 self.plumed.cmd("readInputLine", line)
         self.atoms = atoms
+
+    def _get_name(self):
+        return f'{self.calc.name}+Plumed'
 
     def calculate(self, atoms=None, properties=['energy', 'forces'], system_changes=all_changes):
         Calculator.calculate(self, atoms, properties, system_changes)

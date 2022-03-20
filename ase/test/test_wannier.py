@@ -171,7 +171,7 @@ def bravais_lattices():
             ORC(1, 2, 3), ORCF(1, 2, 3), ORCI(1, 2, 3),
             ORCC(1, 2, 3), HEX(1, 2), RHL(1, 110),
             MCL(1, 2, 3, 70), MCLC(1, 2, 3, 70),
-            TRI(1, 2, 3, 60, 70, 80), OBL(1, 2, 110),
+            TRI(1, 2, 3, 60, 70, 80), OBL(1, 2, 70),
             HEX2D(1), RECT(1, 2), CRECT(1, 70), SQR(1),
             LINE(1)]
 

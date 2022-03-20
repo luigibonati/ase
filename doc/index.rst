@@ -63,6 +63,8 @@ Mopac_
 News
 ====
 
+* :ref:`ASE version 3.22.1 <releasenotes>` released (1 December 2021).
+
 * :ref:`ASE version 3.22.0 <releasenotes>` released (24 June 2021).
 
 * :ref:`ASE version 3.21.1 <releasenotes>` released (24 January 2021).

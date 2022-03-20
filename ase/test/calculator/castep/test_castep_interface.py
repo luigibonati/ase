@@ -121,7 +121,7 @@ def test_fundamental_params():
 
     # Test special parsers
     mock_cparam.continuation = 'default'
-    with pytest.warns(None):
+    with pytest.warns(UserWarning):
         mock_cparam.reuse = 'default'
     assert mock_cparam.reuse.value is None
 
