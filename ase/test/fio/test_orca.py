@@ -6,36 +6,36 @@ from ase.io.orca import write_orca, read_geom_orcainp, read_orca_outputs
 
 
 def test_orca_inputfile():
-    sample_inputfile = """ ! engrad B3LYP def2-TZVPP 
- %pal nprocs 4 end 
- *xyz 0 1 
+    sample_inputfile = """ ! engrad B3LYP def2-TZVPP
+ %pal nprocs 4 end
+ *xyz 0 1
  O   0.0 0.0 0.0
  H   1.0 0.0 0.0
  H   0.0 1.0 0.0
  *
 """
-    with open('orcamolecule_test.inp', 'w') as fd:
-        fd.write(sample_inputfile)
-        atoms = Atoms('OHH', positions=[(0, 0, 0), (1, 0, 0), (0, 1, 0)])
+    sample_inputfile_lines = sample_inputfile.splitlines()
 
-        kw = dict(charge=0, mult=1, label='expected', orcasimpleinput='B3LYP def2-TZVPP',
-                  orcablocks='%pal nprocs 4 end')
-        write_orca(atoms=atoms, **kw)
+    atoms = Atoms('OHH', positions=[(0, 0, 0), (1, 0, 0), (0, 1, 0)])
 
-    with open('orcamolecule_test.inp', 'r') as test:
-        test_text = test.readlines()
+    kw = dict(charge=0, mult=1,
+              orcasimpleinput='B3LYP def2-TZVPP',
+              orcablocks='%pal nprocs 4 end')
+    write_orca('orca.inp', atoms, kw)
 
-    with open('expected.inp', 'r') as org:
-        expected_txt = org.readlines()
+    with open('orca.inp') as fd:
+        lines = fd.readlines()
 
-    for (tt, et) in zip(test_text, expected_txt):
-        assert tt.strip() == et.strip()
+    assert len(lines) == len(sample_inputfile_lines)
+    for line, expected_line in zip(lines, sample_inputfile_lines):
+        assert line.strip() == expected_line.strip()
 
 
 def test_read_geom_orcainp():
     atoms = Atoms('OHH', positions=[(0, 0, 0), (1, 0, 0), (0, 1, 0)])
 
-    kw = dict(charge=0, mult=1, label='orcamolecule_test', orcasimpleinput='B3LYP def2-TZVPP',
+    kw = dict(charge=0, mult=1, label='orcamolecule_test',
+              orcasimpleinput='B3LYP def2-TZVPP',
               orcablocks='%pal nprocs 4 end')
     write_orca(atoms=atoms, **kw)
 

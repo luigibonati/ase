@@ -47,7 +47,7 @@ class OrcaTemplate(CalculatorTemplate):
                   orcablocks='%pal nprocs 1 end')
         kw.update(parameters)
 
-        io.write_orca_inp(directory / self.input_file, atoms, kw)
+        io.write_orca(directory / self.input_file, atoms, kw)
 
     def read_results(self, directory):
         return io.read_orca_outputs(directory, directory / self.output_file)

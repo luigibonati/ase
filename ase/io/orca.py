@@ -35,7 +35,7 @@ def read_geom_orcainp(fd):
 
 
 @writer
-def write_orca_inp(fd, atoms, params):
+def write_orca(fd, atoms, params):
     # conventional filename: '<name>.inp'
     fd.write("! engrad %s \n" % params['orcasimpleinput'])
     fd.write("%s \n" % params['orcablocks'])
@@ -99,7 +99,7 @@ def read_orca_forces(fd):
 
 def read_orca_outputs(directory, stdout_path):
     results = {}
-    energy = io.read_orca_energy(stdout_path)
+    energy = read_orca_energy(stdout_path)
     results['energy'] = energy
     results['free_energy'] = energy
 
