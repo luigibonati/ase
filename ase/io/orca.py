@@ -99,10 +99,13 @@ def read_orca_forces(fd):
 
 def read_orca_outputs(directory, stdout_path):
     results = {}
-    energy = read_orca_energy(stdout_path)
+    energy = read_orca_energy(Path(stdout_path))
     results['energy'] = energy
     results['free_energy'] = energy
 
     # Does engrad always exist?
-    results['forces'] = io.read_orca_forces(directory / 'engrad')
+    # Will there be other files?  If not, we should just take engrad
+    # as a direct argument.  Or maybe this function does not even need to
+    # exist.
+    results['forces'] = read_orca_forces(Path(directory) / 'engrad')
     return results
