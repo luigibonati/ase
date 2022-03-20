@@ -4,7 +4,6 @@ from ase.calculators.emt import EMT
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.md.velocitydistribution import Stationary
 from ase.md.langevin import Langevin
-from numpy.linalg import norm
 
 
 def test_langevin_asapcompat():
@@ -27,4 +26,3 @@ def test_langevin_asapcompat():
 
     for attrib in ('temp', 'fr', 'c1', 'c2', 'c3', 'c4', 'c5', 'v', 'rnd_pos', 'rnd_vel'):
         assert hasattr(dyn, attrib), f'Langevin object must have a "{attrib}" attribute or Asap fails.'
-
