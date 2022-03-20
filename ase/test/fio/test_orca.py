@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import os
 from ase.atoms import Atoms
 from ase.calculators.calculator import compare_atoms
@@ -120,10 +121,13 @@ FINAL SINGLE POINT ENERGY       -76.422436201230
             [-1.31748767e+00, -1.10611070e+00, -1.74835028e-09],
             [-1.10611071e+00, -1.31748767e+00, 4.47371984e-09]])}
 
+    results_sample['free_energy'] = results_sample['energy']
+
     results = read_orca_outputs('.', 'orcamolecule_test.out')
 
-    for res1, res2 in zip(results_sample.values(), results.values()):
-        if type(res1) == type(res2) == float:
-            assert res1 == res2
-        if type(res1) == type(res2) == np.ndarray:
-            assert (res1.round(5) == res2.round(5)).all()
+    keys = set(results)
+    assert keys == set(results_sample)
+
+    for key in keys:
+        # each result can be either float or ndarray.
+        assert results[key] == pytest.approx(results_sample[key])
