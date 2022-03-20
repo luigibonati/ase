@@ -10,7 +10,6 @@ import ase.io.abinit as io
 from ase.calculators.genericfileio import (CalculatorTemplate,
                                            GenericFileIOCalculator)
 from subprocess import check_output, check_call
-from pathlib import Path
 
 
 def get_abinit_version(command):

@@ -2,7 +2,6 @@ import re
 import ase.io.orca as io
 from ase.calculators.genericfileio import (CalculatorTemplate,
                                            GenericFileIOCalculator)
-from pathlib import Path
 
 
 def get_version_from_orca_header(orca_header):
