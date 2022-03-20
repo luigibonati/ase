@@ -41,8 +41,6 @@ class OrcaTemplate(CalculatorTemplate):
         profile.run(directory, self.input_file, self.output_file)
 
     def write_input(self, directory, atoms, parameters, properties):
-        directory = Path(directory)
-        directory.mkdir(exist_ok=True, parents=True)
         parameters = dict(parameters)
 
         kw = dict(charge=0, mult=1, orcasimpleinput='B3LYP def2-TZVP',
