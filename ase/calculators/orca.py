@@ -27,15 +27,15 @@ class OrcaProfile:
 
 
 class OrcaTemplate(CalculatorTemplate):
-    label = 'orca'
+    _label = 'orca'
 
     def __init__(self):
         super().__init__(name='orca',
                          implemented_properties=['energy', 'free_energy',
                                                  'forces'])
 
-        self.input_file = f'{self.label}.inp'
-        self.output_file = f'{self.label}.out'
+        self.input_file = f'{self._label}.inp'
+        self.output_file = f'{self._label}.out'
 
     def execute(self, directory, profile) -> None:
         profile.run(directory, self.input_file, self.output_file)
@@ -47,7 +47,7 @@ class OrcaTemplate(CalculatorTemplate):
                   orcablocks='%pal nprocs 1 end')
         kw.update(parameters)
 
-        io.write_orca(atoms=atoms, **kw)
+        io.write_orca_inp(directory / self.input_file, atoms, kw)
 
     def read_results(self, directory):
         return io.read_orca_outputs(directory, directory / self.output_file)
@@ -67,9 +67,6 @@ class ORCA(GenericFileIOCalculator):
 
         Parameters
         ==========
-        label: str
-            Prefix to use for filenames (label.inp, label.out).
-            Default is 'orca'.
         charge: int
 
         mult: int
@@ -84,7 +81,7 @@ class ORCA(GenericFileIOCalculator):
         Use default values:
 
 
-        >>> h = Atoms('H', calculator=Orca(charge=0,mult=1,label='water',
+        >>> h = Atoms('H', calculator=Orca(charge=0,mult=1,directory='water',
         orcasimpleinput='B3LYP def2-TZVP',
         orcablocks='%pal nprocs 16 end')
 
