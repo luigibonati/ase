@@ -505,7 +505,7 @@ class DefectBuilder():
             if False, don't group the hollow sites by symmetry 
             and fill them only according to distances. 
             It will reduce the total number of structures to one per kindlist element
-        depth: float
+        depth: float (0.0 < depth < 0.5)
             fraction of the interlayer gap width. Determines how deep in the 
             interlayer gap to start looking for hollow sites.
         dtol: float
@@ -1043,6 +1043,7 @@ class DefectBuilder():
         if dim == 3:
             return True
         elif dim == 2:
+            assert 0.0 <= depth <= 0.5, 'Max allowed depth is 0.5!'
             top, bottom = get_top_bottom(atoms, interc=interc)
             delta = abs(top - bottom) * depth
             if ads:
