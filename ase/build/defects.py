@@ -474,6 +474,7 @@ class DefectBuilder():
                                     randomize=False,
                                     symprec=1e-2,
                                     ztol=0.15,
+                                    dtol=1.5,
                                     return_labels=False):
         """Create intercalation structures in the desired supercell.
 
@@ -540,8 +541,13 @@ class DefectBuilder():
         if Nsites == 0:
             return [supercell_prim]
 
-        site_positions = self.find_hollow_positions(supercell_mock,
-                                                    group_sites=group_sites)
+        site_positions_raw = self.find_hollow_positions(supercell_mock,
+                                                        group_sites=group_sites)
+        site_positions = self.filter_hollow_positions(
+                site_positions_raw, 
+                supercell_prim, 
+                dtol=dtol)
+
         structures = []
         labels = []
         for kind in kindlist:
@@ -1126,6 +1132,23 @@ class DefectBuilder():
                     else:
                         site_pos[label] = [position]
         return site_pos
+
+    def filter_hollow_positions(self, pos_dct, prim, dtol=2.0):
+        """Filter out hollow site positions if they are within a distance
+           dtol from any atom of the pristine structure"""
+        positions = {}
+        for sites in pos_dct:
+            blacklist = []
+            for i, pos in enumerate(pos_dct[sites]):
+                dists = get_distances(
+                        pos,
+                        prim.get_positions(),
+                        cell=prim.cell,
+                        pbc=prim.pbc)
+                if dists[1].min() < dtol:
+                    blacklist.append(i)
+            positions.update({sites: np.delete(pos_dct[sites], blacklist, axis=0)})
+        return positions
 
     def clean_cell(self, atoms):
         """Remove ghost atoms 'X' from an Atoms object"""
