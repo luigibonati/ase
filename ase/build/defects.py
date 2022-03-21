@@ -504,7 +504,7 @@ class DefectBuilder():
         group_sites : bool
             if False, don't group the hollow sites by symmetry 
             and fill them only according to distances. 
-            It will reduce the total number of structures to one per kindlist element
+            This will reduce the total number of structures to one per kindlist element
         depth: float (0.0 < depth < 0.5)
             fraction of the interlayer gap width. Determines how deep in the 
             interlayer gap to start looking for hollow sites.
@@ -547,7 +547,6 @@ class DefectBuilder():
         site_positions = self.find_hollow_positions(supercell_mock,
                                                     dtol,
                                                     group_sites=group_sites)
-
         structures = []
         labels = []
         for kind in kindlist:
