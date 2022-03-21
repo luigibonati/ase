@@ -473,8 +473,8 @@ class DefectBuilder():
                                     group_sites=True,
                                     randomize=False,
                                     symprec=1e-2,
-                                    ztol=0.15,
-                                    dtol=1.5,
+                                    depth=0.15,
+                                    dtol=2.0,
                                     return_labels=False):
         """Create intercalation structures in the desired supercell.
 
@@ -505,9 +505,12 @@ class DefectBuilder():
             if False, don't group the hollow sites by symmetry 
             and fill them only according to distances. 
             It will reduce the total number of structures to one per kindlist element
-        ztol: float
+        depth: float
             fraction of the interlayer gap width. Determines how deep in the 
             interlayer gap to start looking for hollow sites.
+        dtol: float
+            minimu distance between hollow sites and atoms that belong to the
+            pristine structure.
         return_labels: bool
             ask to return, for each structure, a symmetry label of the form
             "[hollow_site_point_group]-[coordination_number]"
@@ -524,7 +527,7 @@ class DefectBuilder():
 
         _, atoms = self.create_interstitials(atoms=self.primitive,
                                              interc=True,
-                                             ztol=ztol)
+                                             depth=depth)
 
         if kindlist is None:
             kindlist = self.get_intrinsic_types()
@@ -541,12 +544,9 @@ class DefectBuilder():
         if Nsites == 0:
             return [supercell_prim]
 
-        site_positions_raw = self.find_hollow_positions(supercell_mock,
-                                                        group_sites=group_sites)
-        site_positions = self.filter_hollow_positions(
-                site_positions_raw, 
-                supercell_prim, 
-                dtol=dtol)
+        site_positions = self.find_hollow_positions(supercell_mock,
+                                                    dtol,
+                                                    group_sites=group_sites)
 
         structures = []
         labels = []
@@ -570,7 +570,7 @@ class DefectBuilder():
     # defect creation methods (vacancies, subst., interstitial, adsorption, intercalation) - end
 
     # interstitial and adsorbate overview methods - start
-    def create_interstitials(self, atoms=None, Nsites=None, ads=False, interc=False, ztol=0.1):
+    def create_interstitials(self, atoms=None, Nsites=None, ads=False, interc=False, depth=0.1):
         """Create a 'mock' atomic structure to give an overview over all interstitials.
 
         Setps to create the interstitial position:
@@ -590,7 +590,7 @@ class DefectBuilder():
             flag for creating adsorption sites
         interc : bool
             flag for creating intercalation sites
-        ztol:
+        depth:
             controls how deep in the slab to start searching for interstitials
         """
         if atoms is None:
@@ -602,7 +602,7 @@ class DefectBuilder():
                                        structure=atoms,
                                        ads=ads,
                                        interc=interc,
-                                       ztol=ztol)
+                                       depth=depth)
         if Nsites is None:
             return un, struc
 
@@ -812,7 +812,7 @@ class DefectBuilder():
     # methods related to voronoi tessalation - end
 
     # mapping functionalities - start
-    def map_positions(self, coordinates, structure=None, ads=False, interc=False, ztol=0.1):
+    def map_positions(self, coordinates, structure=None, ads=False, interc=False, depth=0.1):
         """Get Voronoi positions and map them onto Wyckoff positions of the host crystal.
 
         Parameters
@@ -850,7 +850,7 @@ class DefectBuilder():
                             tmp_eq = equivalent.copy()
                             tmp_un = unique.copy()
                             dist, tmp_eq = self.check_distances(tmp_eq, pos, indx)
-                            true_int = self.is_true_interstitial(pos, ads, interc, ztol)
+                            true_int = self.is_true_interstitial(pos, ads, interc, depth)
                             if dist and true_int:
                                 unique = self.create_unique(pos, tmp_un)
                                 equivalent = self.create_copies(pos, 
@@ -1037,14 +1037,14 @@ class DefectBuilder():
 
         return R1 + R2
 
-    def is_true_interstitial(self, pos, ads=False, interc=False, ztol=0.1):
+    def is_true_interstitial(self, pos, ads=False, interc=False, depth=0.1):
         dim = self.dim
         atoms = self.get_primitive_structure()
         if dim == 3:
             return True
         elif dim == 2:
             top, bottom = get_top_bottom(atoms, interc=interc)
-            delta = abs(top - bottom) * ztol
+            delta = abs(top - bottom) * depth
             if ads:
                 if pos[2] <= top and pos[2] >= bottom:
                     return True
@@ -1095,17 +1095,18 @@ class DefectBuilder():
     # mapping functionalities - end
 
     # Intercalation-specific methods - start
-    def find_hollow_positions(self, atoms, group_sites=True):
+    def find_hollow_positions(self, atoms, dtol=2.0, group_sites=True):
         """Find the positions and tags of all hollow sites.
 
         Requires the following tagging scheme:
             1:   atoms in the top layer
             0:   atoms in the bottom layer
             n>1: hollow sites
-        i.e. as assigned by default when get_intercalated_structures is called
-
+        i.e. as assigned by default when get_intercalated_structures is called.
         If group_sites is set to False, it will set the tags 
         of all hollow sites to 2.
+
+        'dtol' controls the minimum distance of the hollow sites from lattice atoms.
         """
         from ase.visualize import view
 
@@ -1116,7 +1117,7 @@ class DefectBuilder():
 
         uniq = np.unique([tag for tag in atoms.get_tags() if tag > 1])
         clean = self.clean_cell(atoms)
-        site_pos = {}
+        site_pos_raw = {}
         labels = []
         for i, tag in enumerate(uniq):
             for atom in atoms:
@@ -1127,10 +1128,16 @@ class DefectBuilder():
                         label = 'h' + str(i) + '-' + sym
                     else:
                         label = 'positions'
-                    if label in site_pos.keys():
-                        site_pos[label].append(position)
+                    if label in site_pos_raw.keys():
+                        site_pos_raw[label].append(position)
                     else:
-                        site_pos[label] = [position]
+                        site_pos_raw[label] = [position]
+
+        site_pos = self.filter_hollow_positions(
+                site_pos_raw,
+                clean,
+                dtol)
+
         return site_pos
 
     def filter_hollow_positions(self, pos_dct, prim, dtol=2.0):
