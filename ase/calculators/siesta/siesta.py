@@ -771,6 +771,8 @@ class Siesta(FileIOCalculator):
                         'norm_dir: {} -- must be one of the Cartesian axes...'
                         .format(norm_dir))
                 a2c[c.a] = abs(1 - norm_dir.round().astype(int))
+            elif isinstance(c, FixCartesian):
+                a2c[c.get_indices()] = c.mask.astype(int)
             else:
                 warnings.warn('Constraint {} is ignored at {}'
                               .format(str(c), sys._getframe().f_code))
