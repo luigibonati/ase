@@ -1,10 +1,9 @@
 import os
 from ase.constraints import FixAtoms, FixedLine, FixedPlane, FixCartesian
 from ase import Atoms
-from ase.calculators.siesta.siesta import Siesta
 
 
-def test_siesta_zmat():
+def test_siesta_zmat(siesta_factory):
     atoms = Atoms('CH4', [(0.0, 0.0, 0.0), (0.629118, 0.629118, 0.629118),
                           (-0.629118, -0.629118, 0.629118), 
                           (0.629118, -0.629118, -0.629118),
@@ -20,7 +19,7 @@ def test_siesta_zmat():
     custom_dir = './dir1/'
 
     # Test simple fdf-argument case.
-    siesta = Siesta(
+    siesta = siesta_factory.calc(
         label=custom_dir + 'test_label',
         symlink_pseudos=False,
         atomic_coord_format='zmatrix',
