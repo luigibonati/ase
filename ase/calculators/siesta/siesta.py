@@ -763,14 +763,14 @@ class Siesta(FileIOCalculator):
                     raise RuntimeError(
                         'norm_dir: {} -- must be one of the Cartesian axes...'
                         .format(norm_dir))
-                a2c[c.a] = norm_dir.round().astype(int)
+                a2c[c.get_indices()] = norm_dir.round().astype(int)
             elif isinstance(c, FixedPlane):
                 norm_dir = c.dir / np.linalg.norm(c.dir)
                 if (max(norm_dir) - 1.0) > 1e-6:
                     raise RuntimeError(
                         'norm_dir: {} -- must be one of the Cartesian axes...'
                         .format(norm_dir))
-                a2c[c.a] = abs(1 - norm_dir.round().astype(int))
+                a2c[c.get_indices()] = abs(1 - norm_dir.round().astype(int))
             elif isinstance(c, FixCartesian):
                 a2c[c.get_indices()] = c.mask.astype(int)
             else:
