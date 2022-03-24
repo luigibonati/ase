@@ -155,6 +155,7 @@ class Pourbaix:
 
         self.references.append(({}, -1, False, 0.0, 'e-'))  # an electron
 
+        print(kwargs)
         self.count = kwargs
 
         self.N = {'e-': 0}
@@ -260,6 +261,7 @@ class Pourbaix:
         if verbose:
             print_results(zip(names, result.x, energies))
 
+        stuff = [(n, c, e) for n, c, e in zip(names, result.x, energies)]   # AGGIUNTO DA ME!
         return result.x, result.fun
 
     def diagram(self, U, pH, plot=True, show=False, ax=None):
