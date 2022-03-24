@@ -38,7 +38,7 @@ def test_siesta_zmat(siesta_factory):
     assert ['%block', 'Zmatrix'] in lsl
     assert ['%endblock', 'Zmatrix'] in lsl
     assert ['MD.TypeOfRun', 'CG'] in lsl
-    print(lsl)
+
     assert any([line.split()[4:9] == ['0', '0', '0', '1', 'C']
                 for line in lines])
     assert any([line.split()[4:9] == ['0', '1', '0', '2', 'H']
