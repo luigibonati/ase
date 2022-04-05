@@ -379,6 +379,7 @@ class BaseNEB:
             n2 = n1 + self.natoms
             image.set_positions(positions[n1:n2])
             n1 = n2
+            
 
     def get_forces(self):
         """Evaluate and return the forces."""
