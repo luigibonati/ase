@@ -360,6 +360,6 @@ sys.modules['ase.parallel'] = ParallelModuleWrapper()  # type: ignore
 
 
 def myslice(ntotal, comm):
-    """Return the slize of your tasks for ntotal jobs"""
+    """Return the slice of your tasks for ntotal jobs"""
     n = -(-ntotal // comm.size)  # ceil divide
     return slice(n * comm.rank, n * (comm.rank + 1))
