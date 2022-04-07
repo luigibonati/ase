@@ -48,7 +48,7 @@ So, we can get `a` and `c` from ``ni.cell[0, 0]`` and ``ni.cell[2,
 2]``:
 
 .. literalinclude:: lattice_constant.py
-   :lines: 20-25
+   :lines: 20-26
 
 We fit the energy to this expression:
 
@@ -57,12 +57,12 @@ We fit the energy to this expression:
 The best fit is found like this:
 
 .. literalinclude:: lattice_constant.py
-   :lines: 26-27
+   :lines: 28-29
 
 and we can find the minimum like this:
 
 .. literalinclude:: lattice_constant.py
-   :lines: 29-33
+   :lines: 31-38
 
 Results:
 

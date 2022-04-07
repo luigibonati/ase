@@ -372,13 +372,11 @@ class StrainMutation(OffspringCreator):
 
     For more information, see also:
 
-      * `Glass, Oganov, Hansen, Comp. Phys. Comm. 175 (2006) 713-720`__
+      * :doi:`Glass, Oganov, Hansen, Comp. Phys. Comm. 175 (2006) 713-720
+        <10.1016/j.cpc.2006.07.020>`
 
-        __ https://doi.org/10.1016/j.cpc.2006.07.020
-
-      * `Lonie, Zurek, Comp. Phys. Comm. 182 (2011) 372-387`__
-
-        __ https://doi.org/10.1016/j.cpc.2010.07.048
+      * :doi:`Lonie, Zurek, Comp. Phys. Comm. 182 (2011) 372-387
+        <10.1016/j.cpc.2010.07.048>`
 
     After initialization of the mutation, a scaling volume
     (to which each mutated structure is scaled before checking the
@@ -556,9 +554,8 @@ class PermuStrainMutation(CombinationMutation):
 
     For more information, see also:
 
-      * `Lonie, Zurek, Comp. Phys. Comm. 182 (2011) 372-387`__
-
-        __ https://doi.org/10.1016/j.cpc.2010.07.048
+      * :doi:`Lonie, Zurek, Comp. Phys. Comm. 182 (2011) 372-387
+        <10.1016/j.cpc.2010.07.048>`
 
     Parameters:
 

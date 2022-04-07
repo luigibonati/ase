@@ -29,7 +29,8 @@ class AimsProfile:
         from subprocess import check_call
 
         with open(directory / outputname, "w") as fd:
-            check_call(self.argv, stdout=fd, cwd=directory)
+            check_call(self.argv, stdout=fd, cwd=directory,
+                       env=os.environ)
 
 
 class AimsTemplate(CalculatorTemplate):
@@ -115,7 +116,7 @@ class AimsTemplate(CalculatorTemplate):
             geo_constrain = scaled and "relax_geometry" in parameters
 
         have_lattice_vectors = atoms.pbc.any()
-        have_k_grid = "k_grid" in parameters or "kpts" in parameters
+        have_k_grid = "k_grid" in parameters or "kpts" in parameters or "k_grid_density" in parameters
         if have_lattice_vectors and not have_k_grid:
             raise RuntimeError("Found lattice vectors but no k-grid!")
         if not have_lattice_vectors and have_k_grid:
@@ -146,7 +147,7 @@ class AimsTemplate(CalculatorTemplate):
 
 
 class Aims(GenericFileIOCalculator):
-    def __init__(self, profile=None, **kwargs):
+    def __init__(self, profile=None, directory='.', **kwargs):
         """Construct the FHI-aims calculator.
 
         The keyword arguments (kwargs) can be one of the ASE standard
@@ -173,7 +174,10 @@ class Aims(GenericFileIOCalculator):
         if profile is None:
             profile = AimsProfile(["aims"])
 
-        super().__init__(template=AimsTemplate(), profile=profile, parameters=kwargs)
+        super().__init__(template=AimsTemplate(),
+                         profile=profile,
+                         parameters=kwargs,
+                         directory=directory)
 
 
 class AimsCube:
@@ -228,6 +232,7 @@ class AimsCube:
                 old_name = cube[0] + "_" + s_state + "_spin_1.cube"
                 new_name = basename + "." + old_name
             if found:
+                # XXX Should not use platform dependent commands!
                 os.system("mv " + old_name + " " + new_name)
 
     def add_plot(self, name):
