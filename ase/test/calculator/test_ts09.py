@@ -49,7 +49,8 @@ def test_ts09(testdir):
 
     # check that the output exists
     atoms = io.read(fname)
-    assert atoms.get_potential_energy() == al.get_potential_energy()
+    assert (atoms.get_potential_energy()
+            == pytest.approx(al.get_potential_energy()))
 
     p = atoms.calc.parameters
     assert p['calculator'] == cc.name
