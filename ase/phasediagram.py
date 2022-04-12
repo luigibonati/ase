@@ -2,7 +2,7 @@ import fractions
 import functools
 import re
 from collections import OrderedDict
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
 
 import numpy as np
 from scipy.spatial import ConvexHull
@@ -80,16 +80,25 @@ def solvated(symbols):
 
 
 def bisect(A, X, Y, f):
+    """Bisect is a recursive function!
+
+    It starts from the whole space"""
+    # When bisect is called the first time, 
     a = []
+    # Initialize the phase diagram by updating the corners
     for i in [0, -1]:
         for j in [0, -1]:
             if A[i, j] == -1:
                 A[i, j] = f(X[i], Y[j])
             a.append(A[i, j])
 
+    # If all values in 'a' are the same (i.e. there is only one stable phase),
+    # then return
     if np.ptp(a) == 0:
         A[:] = a[0]
         return
+    
+    # update the edges
     if a[0] == a[1]:
         A[0] = a[0]
     if a[1] == a[3]:
@@ -98,14 +107,46 @@ def bisect(A, X, Y, f):
         A[-1] = a[3]
     if a[2] == a[0]:
         A[:, 0] = a[2]
+
+    # when all the values in the current A have been assigned, return
     if not (A == -1).any():
         return
+
     i = len(X) // 2
     j = len(Y) // 2
     bisect(A[:i + 1, :j + 1], X[:i + 1], Y[:j + 1], f)
     bisect(A[:i + 1, j:], X[:i + 1], Y[j:], f)
     bisect(A[i:, :j + 1], X[i:], Y[:j + 1], f)
     bisect(A[i:, j:], X[i:], Y[j:], f)
+
+
+def edge_detection(array):
+    edges = {}
+    for i in range(array.shape[0] - 1):
+        for j in range(array.shape[1] - 1):
+            xpair = (array[i, j], array[i+1, j])
+            ypair = (array[i, j], array[i, j+1])
+            for pair in [xpair, ypair]:
+                if np.ptp(pair) != 0:
+                    if pair in edges.keys():
+                        edges[pair].append([i+1, j])
+                    else:
+                        edges.update({
+                            pair: [[i+1, j]]
+                            })
+    for key, value in edges.items():
+        edges.update({key: np.asarray(value)})
+    return edges
+
+
+def get_linear_fit(X, Y, indexes, vertical=False):
+    Xvals = [X[i] for i in indexes[:, 1]]
+    Yvals = [Y[i] for i in indexes[:, 0]]
+    if vertical:
+        return Xvals, Yvals
+    fit = np.polyfit(Xvals, Yvals, deg=1)
+    Yfit = [x * fit[0] + fit[1] for x in Xvals]
+    return Xvals, Yfit
 
 
 def print_results(results):
@@ -139,6 +180,12 @@ class Pourbaix:
             assert not kwargs
             kwargs = parse_formula(formula)[0]
 
+        if kwargs:
+            assert not formula
+            formula = Formula.from_dict(kwargs).format('metal')
+
+        self.formula = formula
+
         if 'O' not in kwargs:
             kwargs['O'] = 0
         if 'H' not in kwargs:
@@ -155,7 +202,6 @@ class Pourbaix:
 
         self.references.append(({}, -1, False, 0.0, 'e-'))  # an electron
 
-        print(kwargs)
         self.count = kwargs
 
         self.N = {'e-': 0}
@@ -261,10 +307,115 @@ class Pourbaix:
         if verbose:
             print_results(zip(names, result.x, energies))
 
-        stuff = [(n, c, e) for n, c, e in zip(names, result.x, energies)]   # AGGIUNTO DA ME!
-        return result.x, result.fun
+        return result.x, result.fun, names
 
-    def diagram(self, U, pH, plot=True, show=False, ax=None):
+
+    def get_stable_phases(self, U, pH):
+        a = np.empty((len(U), len(pH)), int)
+        a[:] = -1
+        phases = {}
+        f = functools.partial(self.colorfunction, colors=phases)
+        bisect(a, U, pH, f)
+        return a, phases
+
+
+    def metastability(self, U, pH,
+                      T: float=298.0,
+                      conc: float=1e-6,
+                      plot: bool=True,
+                      show: bool=True,
+                      savefig: Union[str, None]='metastability.png',
+                      cap=5.0, **kwargs):
+        """
+        Each 'phase' is a collection of the solid and acqueous
+        species present in a given region of the diagram, with their
+        respective stoichiometric coefficients.
+        Consumption of the target material as a reactant is not included
+        in Pourbaix.decompose(), so we need to add it when the material
+        actually decomposes to other species by setting 
+        its coefficient to -1. On the other hand, when the target material
+        is found as the stable phase, the stoichiometric coefficient 
+        is set to 1, which would give the wrong energy since there is
+        no reaction and the actual change in the coefficient is 0.
+        """
+        import matplotlib.pyplot as plt
+
+        diagram, phases = self.get_stable_phases(U, pH)
+        meta_diag = np.zeros_like(diagram, float)
+        const = units._k * T * np.log(10) / units._e
+
+        for phase, color in phases.items():
+            phasedict = {name: coef for name, coef in zip(*phase)}
+
+            # Include the target species as a reactant/product.
+            # Fixes some issues with the output coefficients from
+            # Pourbaix.decompose()
+            if self.formula not in phasedict.keys():
+                phasedict.update({self.formula: -1})
+            else:
+                phasedict.update({self.formula: 0})
+
+            # Removing electrons and H+'s. We will consider them later when 
+            # calculating the total energy/potential (pH and U dependent)
+            n_H = phasedict.pop('H+(aq)', 0)
+            n_e = phasedict.pop('e-', 0)
+
+            # Standard reaction Gibbs free energy
+            # ref[3]: formation energy
+            # ref[4]: name
+            hform_std = np.sum([
+                ref[3] * phasedict[ref[4]] 
+                for ref in self.references
+                if ref[4] in phasedict.keys()
+            ])
+
+            # Q_ion represents the reaction quotient of the acqueous species without the pH term.
+            phasedict.pop('H2O(aq)', 0)    # H2O has unit activity
+            Q_ion = np.prod([conc ** coef for name, coef in phasedict.items() if '(aq)' in name])
+
+            # Evaluating the nernst equation for the selected phase 
+            # in the respective region of the diagram.
+            whereis_phase = np.argwhere(diagram == color)
+            for U_i, pH_i in whereis_phase:
+                G_eq = hform_std + const * (np.log10(Q_ion) - n_H * pH[pH_i])     # in eV
+                meta_diag[U_i, pH_i] = - n_e * U[U_i] + G_eq
+
+        if np.any(meta_diag > 1e-4):
+            print('Warning! Found positive values in the diagram, '
+                  'check your references!')
+
+        if plot:
+            diag_capped = np.clip(meta_diag, a_min=-cap, a_max=None)
+            ax1 = plt.figure().add_subplot(111)
+            data = ax1.imshow(
+                      diag_capped, cmap="RdYlGn",
+                      extent=[min(pH), max(pH), min(U), max(U)],
+                      origin='lower',
+                      aspect='auto',
+                      **kwargs
+            )
+            edges = edge_detection(diagram)
+            for indexes in edges.values():
+                if np.ptp(indexes[:, 1]) == 0:
+                    x, y = get_linear_fit(pH, U, indexes, vertical=True)
+                else:
+                    x, y = get_linear_fit(pH, U, indexes)
+                ax1.plot(x, y, 'k--', lw=1)
+            plt.colorbar(data, ax=ax1)
+
+            if savefig:
+                plt.savefig(savefig, dpi=300)
+            if show:
+                plt.show()
+
+        return meta_diag
+
+    #TODO:
+    # collect all plotting (diagram, metastability) into one function
+    # Add text properly
+    # Make things pretty
+
+    def diagram(self, U, pH, plot=True, show=False, ax=None, meta=False):
         """Calculate Pourbaix diagram.
 
         U: list of float
@@ -279,16 +430,11 @@ class Pourbaix:
             When creating plot, plot onto the given axes object.
             If none given, plot onto the current one.
         """
-        a = np.empty((len(U), len(pH)), int)
-        a[:] = -1
-        colors = {}
-        f = functools.partial(self.colorfunction, colors=colors)
-        bisect(a, U, pH, f)
-        compositions = [None] * len(colors)
-        names = [ref[-1] for ref in self.references]
-        for indices, color in colors.items():
-            compositions[color] = ' + '.join(names[i] for i in indices
-                                             if names[i] not in
+        a, phases = self.get_stable_phases(U, pH)
+        compositions = [None] * len(phases)
+        for phase, color in phases.items():
+            compositions[color] = ' + '.join(i for i in phase[0]
+                                             if i not in
                                              ['H2O(aq)', 'H+(aq)', 'e-'])
         text = []
         for i, name in enumerate(compositions):
@@ -309,10 +455,19 @@ class Pourbaix:
             # white border.  Unrasterized pcolormesh produces
             # unreasonably large files.  Avoid this by using the more
             # general imshow.
-            ax.imshow(a, cmap=cm.Accent,
+            cmap = cm.tab20c
+            ax.imshow(a, cmap=cmap,
                       extent=[min(pH), max(pH), min(U), max(U)],
                       origin='lower',
                       aspect='auto')
+
+            edges = edge_detection(a)
+            for colors, indexes in edges.items():
+                if np.ptp(indexes[:, 1]) == 0:
+                    x, y = get_linear_fit(pH, U, indexes, vertical=True)
+                else:
+                    x, y = get_linear_fit(pH, U, indexes)
+                ax.plot(x, y, 'w-', lw=3.5)
 
             for x, y, name in text:
                 ax.text(y, x, name, horizontalalignment='center')
@@ -320,14 +475,24 @@ class Pourbaix:
             ax.set_ylabel('potential [V]')
             ax.set_xlim(min(pH), max(pH))
             ax.set_ylim(min(U), max(U))
+            plt.savefig('pourbaix.png')
             if show:
                 plt.show()
 
         return a, compositions, text
 
     def colorfunction(self, U, pH, colors):
-        coefs, energy = self.decompose(U, pH, verbose=False)
-        indices = tuple(sorted(np.where(abs(coefs) > 1e-3)[0]))
+        """Returns the color index for a given combination of species.
+
+        As new combinations are found at different U's and pH's,
+        it will update the colors dictionary
+        """
+        coefs,_,names = self.decompose(U, pH, verbose=False)
+        mask = sorted(np.where(abs(coefs) > 1e-3)[0])
+        indices = (
+            tuple(np.asarray(names)[mask]), 
+            tuple(coefs[mask].round(1))
+        )
         color = colors.get(indices)
         if color is None:
             color = len(colors)

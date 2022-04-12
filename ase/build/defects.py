@@ -265,7 +265,7 @@ class DefectBuilder():
     def get_host_symmetry(self):
         atoms = self.get_primitive_structure()
         spg_cell = get_spg_cell(atoms)
-        dataset = spg.get_symmetry_dataset(spg_cell, symprec=1e-2)
+        dataset = spg.get_symmetry_dataset(spg_cell, symprec=1e-3)
 
         return dataset
 
@@ -397,7 +397,7 @@ class DefectBuilder():
 
     def get_adsorbate_structures(self, kindlist=None,
                                  sc=3, mechanism='chemisorption',
-                                 size=None, Nsites=None):
+                                 size=None, Nsites=None, tag=0):
         """Create adsorbate structures and return in desired supercell.
 
         Adsorption structures are created with the following steps:
@@ -426,6 +426,8 @@ class DefectBuilder():
         Nsites : int
             choose number of adsorption sites to create (if 'Nsites' is None it will
             just use the 'min_dist' criterion in the constructor of the class)
+        tag : int
+            tag of the adsorbed atoms
         """
         atoms_top = self.create_adsorption_sites('top', Nsites=Nsites)
         atoms_bottom = self.create_adsorption_sites('bottom', Nsites=Nsites)
@@ -454,15 +456,18 @@ class DefectBuilder():
                         structure = supercell.copy()
                         positions = structure.get_positions()
                         symbols = structure.get_chemical_symbols()
+                        tags = list(structure.get_tags())
                         cell = structure.get_cell()
                         for z in z_ranges[j]:
                             pos = atoms.get_positions()[i] + [0, 0, z]
                             if self.check_distance(primitive, pos, kind, mechanism):
                                 positions = np.append(positions, [pos], axis=0)
                                 symbols.append(kind)
+                                tags.append(tag)
                                 structures.append(Atoms(symbols=symbols,
                                                         positions=positions,
                                                         cell=cell,
+                                                        tags=tags,
                                                         pbc=structure.get_pbc()))
                                 break
 
@@ -895,7 +900,7 @@ class DefectBuilder():
             except SyntaxError:
                 string = self.reconstruct_string(string)
             val = numexpr.evaluate(string)
-            if math.isclose(val, scaled_position[i], abs_tol=1e-3):
+            if math.isclose(val, scaled_position[i], abs_tol=1e-2):
                 continue
             else:
                 fit = False
