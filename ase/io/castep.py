@@ -204,6 +204,34 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
 
     if atoms.has('castep_custom_species'):
         elems = atoms.get_array('castep_custom_species')
+
+        if atoms.has('masses'):
+
+            from ase.data import atomic_masses
+            masses = atoms.get_array('masses')
+            elem_atomic_nums = atoms.get_array('numbers')
+            custom_masses = {}
+
+            for i, elem in enumerate(elems):
+                # check if masses match defaults
+                custom_mass = masses[i]
+
+                # if there's a change:
+                if custom_mass != atomic_masses[elem_atomic_nums[i]]:
+                    # check that all custom_species match mass
+                    if elem not in custom_masses.keys():
+                        custom_masses[elem] = custom_mass
+                    # else raise error
+                    elif custom_masses[elem] != custom_mass:
+                        raise ValueError('write_cell: error writing custom masses'
+                                         'Species members % have inconsistent masses'.format(elem))
+
+            # create species_mass block
+            mass_block = []
+            for el, mass in custom_masses.items():
+                mass_block.append('{0} {1}'.format(el, mass))
+            setattr(cell, 'species_mass', mass_block)
+
     else:
         elems = atoms.get_chemical_symbols()
 
