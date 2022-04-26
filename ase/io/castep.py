@@ -549,6 +549,28 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
         for k in add_info:
             add_info_arrays[k] += [info.get(k, add_info[k][1])]
 
+    # read in custom species mass
+    if 'species_mass' in celldict:
+        aargs['masses'] = [None for species in custom_species]
+        lines = celldict.pop('species_mass')[0].split('\n')
+        line_tokens = [l.split() for l in lines]
+
+        if len(line_tokens[0]) == 1:
+            if line_tokens[0][0].lower() not in ('amu', 'u'):
+                warnings.warn('read_cell: Warning - ignoring invalid '
+                              'unit specifier in %BLOCK SPECIES_MASS '
+                              '(assuming AMU instead)')
+
+            line_tokens = line_tokens[1:]
+
+        for tokens in line_tokens:
+            token_pos_list = [i for i, x in enumerate(custom_species) if x == tokens[0]]
+            if len(token_pos_list) == 0:
+                warnings.warn('read_cell: Warning - ignoring unused '
+                              'species mass {0} in %BLOCK SPECIES_MASS'.format(tokens[0]))
+            for idx in token_pos_list:
+                aargs['masses'][idx] = tokens[1]
+
     # Now on to the species potentials...
     if 'species_pot' in celldict:
         lines = celldict.pop('species_pot')[0].split('\n')
