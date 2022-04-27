@@ -204,36 +204,65 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
 
     if atoms.has('castep_custom_species'):
         elems = atoms.get_array('castep_custom_species')
-
-        if atoms.has('masses'):
-
-            from ase.data import atomic_masses
-            masses = atoms.get_array('masses')
-            elem_atomic_nums = atoms.get_array('numbers')
-            custom_masses = {}
-
-            for i, elem in enumerate(elems):
-                # check if masses match defaults
-                custom_mass = masses[i]
-
-                # if there's a change:
-                if custom_mass != atomic_masses[elem_atomic_nums[i]]:
-                    # check that all custom_species match mass
-                    if elem not in custom_masses.keys():
-                        custom_masses[elem] = custom_mass
-                    # else raise error
-                    elif custom_masses[elem] != custom_mass:
-                        raise ValueError('write_cell: error writing custom masses'
-                                         'Species members % have inconsistent masses'.format(elem))
-
-            # create species_mass block
-            mass_block = []
-            for el, mass in custom_masses.items():
-                mass_block.append('{0} {1}'.format(el, mass))
-            setattr(cell, 'species_mass', mass_block)
-
     else:
         elems = atoms.get_chemical_symbols()
+    if atoms.has('masses'):
+
+        from ase.data import atomic_masses
+        masses = atoms.get_array('masses')
+        custom_masses = {}
+
+        for i, species in enumerate(elems):
+            custom_mass = masses[i]
+
+            # build record of different masses for each species
+            if species not in custom_masses.keys():
+
+                # build dictionary of positions of all species with same name and mass value
+                # ideally there should only be one mass per species
+                custom_masses[species] = {custom_mass: [i]}
+
+            # if multiple masses found for a species
+            elif custom_mass not in custom_masses[species].keys():
+
+                # if custom species were already manually defined raise an error
+                if atoms.has('castep_custom_species'):
+                    raise ValueError('write_cell: error writing custom masses '
+                                    'found custom species {0} with inconsistent masses ({1} and {2})'
+                                        ' please fix manually'.format(
+                        species, custom_mass, list(custom_masses[species].keys())[0]))
+
+                # append mass to create custom species later
+                else:
+                    custom_masses[species][custom_mass] = [i]
+            else:
+                custom_masses[species][custom_mass].append(i)
+
+        # create species_mass block
+        mass_block = []
+        for el, mass_dict in custom_masses.items():
+
+            # ignore mass record that match defaults
+            mass_dict.pop(atomic_masses[atoms.get_array('numbers')[elems.index(el)]], None)
+
+            # no custom species need to be created
+            if atoms.has('castep_custom_species'):
+                mass_block.append('{0} {1}'.format(el, list(mass_dict.keys())[0]))
+
+            # for each custom mass, create new species and change names to match in 'elems' list
+            else:
+                warnings.warn('Warning: custom mass specified for'
+                              'standard species {0}, creating custom species'.format(el))
+
+                for i, vals in enumerate(mass_dict.items()):
+                    mass_val, idxs = vals
+                    custom_species_name = "{0}:{1}".format(el, i)
+                    warnings.warn('Warning: creating custom species {0} with mass {1}'.format(custom_species_name, str(mass_dict)))
+                    for idx in idxs:
+                        elems[idx] = custom_species_name
+                    mass_block.append('{0} {1}'.format(custom_species_name, mass_val))
+
+        setattr(cell, 'species_mass', mass_block)
 
     if atoms.has('castep_labels'):
         labels = atoms.get_array('castep_labels')
