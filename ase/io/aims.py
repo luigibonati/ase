@@ -1,18 +1,16 @@
 import os
 import time
 import warnings
-
-import numpy as np
 from pathlib import Path
 
-from ase import Atoms, Atom
+import numpy as np
+from ase import Atom, Atoms
 from ase.calculators.calculator import kpts2mp
 from ase.calculators.singlepoint import SinglePointDFTCalculator
 from ase.constraints import FixAtoms, FixCartesian
 from ase.data import atomic_numbers
 from ase.units import Ang, fs
-from ase.utils import reader, writer, lazyproperty, lazymethod
-
+from ase.utils import lazymethod, lazyproperty, reader, writer
 
 v_unit = Ang / (1000.0 * fs)
 
@@ -221,6 +219,7 @@ def write_aims(
     scaled=False,
     geo_constrain=False,
     write_velocities=False,
+    velocities=False,
     ghosts=None,
     info_str=None,
     wrap=False,
@@ -242,6 +241,8 @@ def write_aims(
             :arxiv:`1908.01610`
         write_velocities: bool
             If True add the atomic velocity vectors to the file
+        velocities: bool
+            NOT AN ARRAY OF VELOCITIES, but the legacy version of `write_velocities`
         ghosts: list of Atoms
             A list of ghost atoms for the system
         info_str: str
@@ -338,6 +339,13 @@ def write_aims(
             fd.write("    initial_moment %16.6f\n" % atom.magmom)
 
         # Write the velocities if this is wanted
+        if velocities:
+            warnings.warn(
+                '`velocities` is deprecated, please use `write_velocities`',
+                np.VisibleDeprecationWarning
+            )
+            write_velocities = True
+
         if write_velocities and atoms.get_velocities() is not None:
             fd.write(
                 "    velocity {:.16f} {:.16f} {:.16f}\n".format(
