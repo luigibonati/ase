@@ -579,7 +579,7 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
 
     # read in custom species mass
     if 'species_mass' in celldict:
-        aargs['masses'] = [None for species in custom_species]
+        aargs['masses'] = [None for species in aargs['symbols']]
         lines = celldict.pop('species_mass')[0].split('\n')
         line_tokens = [l.split() for l in lines]
 
@@ -592,7 +592,7 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
             line_tokens = line_tokens[1:]
 
         for tokens in line_tokens:
-            token_pos_list = [i for i, x in enumerate(custom_species) if x == tokens[0]]
+            token_pos_list = [i for i, x in enumerate(aargs['symbols']) if x == tokens[0]]
             if len(token_pos_list) == 0:
                 warnings.warn('read_cell: Warning - ignoring unused '
                               'species mass {0} in %BLOCK SPECIES_MASS'.format(tokens[0]))
