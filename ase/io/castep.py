@@ -229,8 +229,9 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
                 if atoms.has('castep_custom_species'):
                     raise ValueError('write_cell: error writing custom masses '
                                     'found custom species {0} with inconsistent masses ({1} and {2})'
-                                        ' please fix manually'.format(
-                        species, custom_mass, list(custom_masses[species].keys())[0]))
+                                        ' please fix manually'.format(species,
+                                                                      custom_mass,
+                                                                      list(custom_masses[species].keys())[0]))
 
                 # append mass to create custom species later
                 else:
