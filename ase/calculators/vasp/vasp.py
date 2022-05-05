@@ -1196,7 +1196,6 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         try:
             tree = ElementTree.iterparse(file)
             hessian = None
-            conv = 1.0
             for event, elem in tree:
                 if elem.tag == 'dynmat':
                     for i, entry in enumerate(elem.findall('varray[@name="hessian"]/v')):
@@ -1210,11 +1209,16 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                     assert i == n_items - 1
                     #VASP6+ uses THz**2 as unit, not mEV**2 as before
                     for entry in elem.findall('i[@name="unit"]'):
-                        if not entry.text.strip() == 'THz^2':  # Catch changes in VASP
+                        if entry.text.strip() == 'THz^2':
+                            conv = ase.units._amu / ase.units._e / 1e-4 * (2 * np.pi)**2  # THz**2 to eV**2
+                            # VASP6 uses factor 2pi
+                            # 1e-4 = (angstrom to meter times Hz to THz) squared = (1e10 times 1e-12)**2
+                            break
+                        else:  # Catch changes in VASP
                             raise calculator.ReadError(vasp_version_error_msg)
-                        conv = ase.units._amu / ase.units._e / 1e-4 * (2 * np.pi)**2  # THz**2 to eV**2
-                        # VASP6 uses factor 2pi
-                        # 1e-4 = (angstrom to meter times Hz to THz) squared = (1e10 times 1e-12)**2
+
+                    else:
+                        conv = 1.0 # VASP version <6 unit is meV**2
                     assert isinstance(hessian, np.ndarray)
                     hessian *= conv
             if hessian is None:
