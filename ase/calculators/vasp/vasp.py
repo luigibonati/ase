@@ -1218,7 +1218,7 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                             raise calculator.ReadError(vasp_version_error_msg)
 
                     else:
-                        conv = 1.0 # VASP version <6 unit is meV**2
+                        conv = 1.0  # VASP version <6 unit is meV**2
                     assert isinstance(hessian, np.ndarray)
                     hessian *= conv
             if hessian is None:
