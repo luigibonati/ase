@@ -35,10 +35,6 @@ def test_vasp_freq(factory, atoms_nh3, calc_settings):
 
     Tests read_vib_freq and get_vibrations against each other.
     """
-    def array_almost_equal(a1, a2, tol=np.finfo(type(1.0)).eps):
-        """Replacement for old numpy.testing.utils.array_almost_equal."""
-        return (np.abs(a1 - a2) < tol).all()
-
     calc = factory.calc(**calc_settings)
     mol = atoms_nh3
     #one constraint
@@ -58,6 +54,6 @@ def test_vasp_freq(factory, atoms_nh3, calc_settings):
 
     vib_obj = calc.get_vibrations()
     vib_data = vib_obj.get_energies()*1000  # to meV
-    assert array_almost_equal(vib_data, outcar_data, tol=1e-3), "Difference{:}".format(str(vib_data-outcar_data))
+    np.testing.assert_allclose(vib_data, outcar_data, rtol=1e-6)
     # Cleanup
     calc.clean()
