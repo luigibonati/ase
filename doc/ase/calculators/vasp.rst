@@ -502,9 +502,9 @@ Vibrational Analysis
 ====================
 Vibrational analysis can be performed using the :class:`~ase.vibrations.Vibrations`
 class or using the VASP internals (e.g. with ``IBRION=5``).
-When using VASP only, the corresponding vibrational
+When using IBRION=5-8, the corresponding vibrational
 analysis can be represented by retrieving a :class:`~ase.vibrations.VibrationsData`
-object form the calculator using :meth:`ase.calculators.vasp.Vasp.get_vibrations`.
+object from the calculator using :meth:`ase.calculators.vasp.Vasp.get_vibrations`.
 From the OUTCAR, the energies of all modes can be retrieved using
 :meth:`ase.calculators.vasp.Vasp.read_vib_freq`.
 
