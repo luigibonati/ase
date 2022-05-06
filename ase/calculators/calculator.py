@@ -835,7 +835,16 @@ class Calculator(BaseCalculator):
         if atoms is not None:
             self.atoms = atoms.copy()
         if not os.path.isdir(self._directory):
-            os.makedirs(self._directory)
+            try:
+                os.makedirs(self._directory)
+            except FileExistsError as e:
+                # We can only end up here in case of a race condition if
+                # multiple Calculators are running concurrently *and* use the
+                # same _directory, which cannot be expected to work anyway.
+                msg = ('Concurrent use of directory ' + self._directory +
+                       'by multiple Calculator instances detected. Please '
+                       'use one directory per instance.')
+                raise RuntimeError(msg) from e
 
     def calculate_numerical_forces(self, atoms, d=0.001):
         """Calculate numerical forces using finite difference.
