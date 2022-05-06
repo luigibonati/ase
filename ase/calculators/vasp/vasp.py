@@ -38,7 +38,6 @@ from ase.calculators.calculator import Calculator
 from ase.calculators.singlepoint import SinglePointDFTCalculator
 from ase.calculators.vasp.create_input import GenerateVaspInput
 from ase.vibrations.data import VibrationsData
-from ase.constraints import constrained_indices, FixCartesian, FixAtoms
 
 
 class Vasp(GenerateVaspInput, Calculator):  # type: ignore
@@ -1245,24 +1244,16 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         """
 
         mass_weighted_hessian = self._read_massweighted_hessian_xml()
-        #Only fully fixed atoms supported by VibrationsData
-        const_indices = constrained_indices(self.atoms, only_include=(FixCartesian, FixAtoms))
-        #Invert the selection to get free atoms
-        indices = np.setdiff1d(np.array(range(len(self.atoms))), const_indices).astype(int)
+        #get indices of freely moving atoms, i.e. respect constraints.
+        indices = VibrationsData.indices_from_constraints(self.atoms)
         #save the corresponding sorted atom numbers
         sort_indices = np.array(self.sort)[indices]
-        n_free_atoms = len(indices)
         #mass weights = 1/sqrt(mass)
         mass_weights = np.repeat(self.atoms.get_masses()[sort_indices]**-0.5, 3)
         #get the unweighted hessian = H_w / m_w / m_w^T
         #ugly and twice the work, but needed since vasprun.xml does not have the unweighted
         #ase.vibrations.vibration will do the opposite in Vibrations.read
         hessian = mass_weighted_hessian / mass_weights / mass_weights[:, np.newaxis]
-        if not hessian.shape == (3*n_free_atoms, 3*n_free_atoms):
-            print("Hessian is not n_free_atoms x n_free_atoms")
-            msg = "VibrationsData only implements fully fixed atoms, " +\
-                  "not partially constrained atoms."
-            raise NotImplementedError(msg)
 
         return VibrationsData.from_2d(self.atoms[self.sort], hessian, indices)
 

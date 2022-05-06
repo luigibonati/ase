@@ -15,6 +15,7 @@ from ase.utils import jsonable, lazymethod
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.spectrum.dosdata import RawDOSData
 from ase.spectrum.doscollection import DOSCollection
+from ase.constraints import constrained_indices, FixCartesian, FixAtoms
 
 RealSequence4D = Sequence[Sequence[Sequence[Sequence[Real]]]]
 VD = TypeVar('VD', bound='VibrationsData')
@@ -34,15 +35,22 @@ class VibrationsData:
     This provides access to q-point-dependent analyses such as phonon
     dispersion plotting.
 
+    If the Atoms object has FixedAtoms or FixedCartesian constraints, these
+    will be respected and the Hessian should be sized accordingly.
+
     Args:
         atoms:
             Equilibrium geometry of vibrating system. This will be stored as a
-            lightweight copy with just positions, masses, unit cell.
+            full copy.
 
         hessian: Second-derivative in energy with respect to
             Cartesian nuclear movements as an (N, 3, N, 3) array.
+
         indices: indices of atoms which are included
-            in Hessian.  Default value (None) includes all atoms.
+            in Hessian.  Default value (None) includes all freely
+            moving atoms (i.e. not fixed ones). Leave at None if
+            constraints should be determined automatically from the
+            atoms object.
 
     """
 
@@ -53,7 +61,7 @@ class VibrationsData:
                  ) -> None:
 
         if indices is None:
-            self._indices = np.arange(len(atoms), dtype=int)
+            self._indices = self.indices_from_constraints(atoms)
         else:
             self._indices = np.array(indices, dtype=int)
 
@@ -93,6 +101,27 @@ class VibrationsData:
 
         return cls(atoms, hessian_2d_array.reshape(n_atoms, 3, n_atoms, 3),
                    indices=indices)
+
+    @staticmethod
+    def indices_from_constraints(atoms: Atoms) -> List[int]:
+        """Indices corresponding to Atoms Constraints
+
+        Deduces the freely moving atoms from the constraints set on the
+        atoms object. VibrationsData only supports FixCartesian and
+        FixAtoms. All others are neglected.
+
+        Args:
+            atoms: Atoms object.
+
+        Retruns:
+            indices of free atoms.
+
+        """
+        #Only fully fixed atoms supported by VibrationsData
+        const_indices = constrained_indices(atoms, only_include=(FixCartesian, FixAtoms))
+        #Invert the selection to get free atoms
+        indices = np.setdiff1d(np.array(range(len(atoms))), const_indices).astype(int)
+        return indices.tolist()
 
     @staticmethod
     def indices_from_mask(mask: Union[Sequence[bool], np.ndarray]
