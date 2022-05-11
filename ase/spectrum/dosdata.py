@@ -15,6 +15,9 @@ if False:
 # later we will allow other types that have reliable comparison operations.
 Info = Dict[str, str]
 
+# Still no good solution to type checking with arrays.
+Floats = Union[Sequence[float], np.ndarray]
+
 
 class DOSData(metaclass=ABCMeta):
     """Abstract base class for a single series of DOS-like data
@@ -30,11 +33,11 @@ class DOSData(metaclass=ABCMeta):
             raise TypeError("Info must be a dict or None")
 
     @abstractmethod
-    def get_energies(self) -> Sequence[float]:
+    def get_energies(self) -> Floats:
         """Get energy data stored in this object"""
 
     @abstractmethod
-    def get_weights(self) -> Sequence[float]:
+    def get_weights(self) -> Floats:
         """Get DOS weights stored in this object"""
 
     @abstractmethod
@@ -42,7 +45,7 @@ class DOSData(metaclass=ABCMeta):
         """Returns a copy in which info dict can be safely mutated"""
 
     def _sample(self,
-                energies: Sequence[float],
+                energies: Floats,
                 width: float = 0.1,
                 smearing: str = 'Gauss') -> np.ndarray:
         """Sample the DOS data at chosen points, with broadening
@@ -204,8 +207,8 @@ class GeneralDOSData(DOSData):
 
     """
     def __init__(self,
-                 energies: Union[Sequence[float], np.ndarray],
-                 weights: Union[Sequence[float], np.ndarray],
+                 energies: Floats,
+                 weights: Floats,
                  info: Info = None) -> None:
         super().__init__(info=info)
 
@@ -345,8 +348,8 @@ class GridDOSData(GeneralDOSData):
 
     """
     def __init__(self,
-                 energies: Sequence[float],
-                 weights: Sequence[float],
+                 energies: Floats,
+                 weights: Floats,
                  info: Info = None) -> None:
         n_entries = len(energies)
         if not np.allclose(energies,
@@ -368,7 +371,7 @@ class GridDOSData(GeneralDOSData):
         return current_spacing
 
     def _sample(self,
-                energies: Sequence[float],
+                energies: Floats,
                 width: float = 0.1,
                 smearing: str = 'Gauss') -> np.ndarray:
         current_spacing = self._check_spacing(width)

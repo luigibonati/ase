@@ -117,6 +117,8 @@ def _defineprop(
         prop = ScalarProperty(name, dtype)
     else:
         prop = ArrayProperty(name, dtype, shape)
+
+    assert name not in all_outputs, name
     all_outputs[name] = prop
     return prop
 
@@ -140,9 +142,14 @@ _defineprop('ibz_kpoints', float, shape=('nkpts', 3))
 _defineprop('eigenvalues', float, shape=('nspins', 'nkpts', 'nbands'))
 _defineprop('occupations', float, shape=('nspins', 'nkpts', 'nbands'))
 
+# Miscellaneous:
 _defineprop('dipole', float, shape=3)
+_defineprop('charges', float, shape='natoms')
 _defineprop('magmom', float)
-_defineprop('magmoms', float, shape='natoms')
+_defineprop('magmoms', float, shape='natoms')  # XXX spinors?
+_defineprop('polarization', float, shape=3)
+_defineprop('born_charges', float, shape=('natoms', 3, 3))
+_defineprop('dielectric_tensor', float, shape=(3, 3))
 
 # We might want to allow properties that are part of Atoms, such as
 # positions, numbers, pbc, cell.  It would be reasonable for those

@@ -58,10 +58,10 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     # XXX below stuff only valid for TDDFT excitation stuff
     def save_ov_nn(self, ov_nn):
-        np.save(self.name + '.ov', ov_nn)
+        np.save(Path(self.vib.exname) / (self.name + '.ov'), ov_nn)
 
     def load_ov_nn(self):
-        return np.load(self.name + '.ov.npy')
+        return np.load(Path(self.vib.exname) / (self.name + '.ov.npy'))
 
     @property
     def _exname(self):
@@ -69,7 +69,7 @@ class Displacement(namedtuple('Displacement', ['a', 'i', 'sign', 'ndisp',
 
     def calculate_and_save_static_polarizability(self, atoms):
         exobj = self.vib._new_exobj()
-        excitation_data = exobj.calculate(atoms)
+        excitation_data = exobj(atoms)
         np.savetxt(self._exname, excitation_data)
 
     def load_static_polarizability(self):

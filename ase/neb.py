@@ -152,7 +152,8 @@ class ASENEBMethod(NEBMethod):
 
     def add_image_force(self, state, tangential_force, tangent, imgforce,
                         spring1, spring2, i):
-        tangent_mag = np.vdot(tangent, tangent)  # Magnitude for normalizing
+        # Magnitude for normalizing. Ensure it is not 0
+        tangent_mag = np.vdot(tangent, tangent) or 1
         factor = tangent / tangent_mag
         imgforce -= tangential_force * factor
         imgforce -= np.vdot(
@@ -271,9 +272,15 @@ class BaseNEB:
             if np.any(img.get_atomic_numbers() !=
                       images[0].get_atomic_numbers()):
                 raise ValueError('Images have atoms in different orders')
-            if np.any(np.abs(img.get_cell() - images[0].get_cell()) > 1e-8):
-                raise NotImplementedError("Variable cell NEB is not "
-                                          "implemented yet")
+            # check periodic cell directions
+            cell_ok = True
+            for pbc, vc, vc0 in zip(img.pbc, img.cell, images[0].cell):
+                if pbc and np.any(np.abs(vc - vc0) > 1e-8):
+                    cell_ok = False
+            if not cell_ok:
+                raise NotImplementedError(
+                    "Variable cell in periodic directions "
+                    "is not implemented yet for NEB")
 
         self.emax = np.nan
 
@@ -402,13 +409,13 @@ class BaseNEB:
         if not self.parallel:
             # Do all images - one at a time:
             for i in range(1, self.nimages - 1):
-                energies[i] = images[i].get_potential_energy()
                 forces[i - 1] = images[i].get_forces()
+                energies[i] = images[i].get_potential_energy()
 
         elif self.world.size == 1:
             def run(image, energies, forces):
-                energies[:] = image.get_potential_energy()
                 forces[:] = image.get_forces()
+                energies[:] = image.get_potential_energy()
 
             threads = [threading.Thread(target=run,
                                         args=(images[i],
@@ -423,8 +430,8 @@ class BaseNEB:
             # Parallelize over images:
             i = self.world.rank * (self.nimages - 2) // self.world.size + 1
             try:
-                energies[i] = images[i].get_potential_energy()
                 forces[i - 1] = images[i].get_forces()
+                energies[i] = images[i].get_potential_energy()
             except Exception:
                 # Make sure other images also fail:
                 error = self.world.sum(1.0)
@@ -732,19 +739,19 @@ class NEB(DyNEB):
         Paper I:
 
             G. Henkelman and H. Jonsson, Chem. Phys, 113, 9978 (2000).
-            https://doi.org/10.1063/1.1323224
+            :doi:`10.1063/1.1323224`
 
         Paper II:
 
             G. Henkelman, B. P. Uberuaga, and H. Jonsson, Chem. Phys,
             113, 9901 (2000).
-            https://doi.org/10.1063/1.1329672
+            :doi:`10.1063/1.1329672`
 
         Paper III:
 
             E. L. Kolsbjerg, M. N. Groves, and B. Hammer, J. Chem. Phys,
             145, 094107 (2016)
-            https://doi.org/10.1063/1.4961868
+            :doi:`10.1063/1.4961868`
 
         Paper IV:
 

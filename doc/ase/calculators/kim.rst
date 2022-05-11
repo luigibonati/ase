@@ -155,8 +155,8 @@ object ``calc`` returned is an instance of :class:`ase.calculators.lammpslib.LAM
 Finally, if one instantiates the calculator for a KIM Portable Model that registers its
 parameters, they can be accessed or mutated using the ``get_parameters`` and
 ``set_parameters`` methods.  For example, to print the components of the
-parameters ``epsilons`` and ``sigmas`` in the `Lennard-Jones universal model
-<https://doi.org/10.25950/962b4967>`_ corresponding to Mo-Mo (index 4879), Mo-S
+parameters ``epsilons`` and ``sigmas`` in the :doi:`Lennard-Jones universal
+model <10.25950/962b4967>` corresponding to Mo-Mo (index 4879), Mo-S
 (index 2006) and S-S (index 1980) interactions, one can do the following:
 
 ::

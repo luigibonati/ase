@@ -287,6 +287,18 @@ def test_kpoints():
         assert np.allclose(kpt.f_n, exp_f_n[i])
 
 
+def test_kpoints_header_multiple_lines():
+    # Correct line
+    line1 = "k-points           NKPTS =      2   k-points in BZ     NKDIM =      2   number of bands    NBANDS=    336"
+    # Wrong line (unclear when this is written.)
+    line2 = "k-points           NKPTS =      1   k-points in BZ     NKDIM ="
+
+    parser = vop.KpointHeader()
+
+    assert parser.has_property(0, [line1])
+    assert not parser.has_property(0, [line2])
+
+
 def test_kpoints_header(do_test_header_parser):
     lines = """
    k-points           NKPTS =     63   k-points in BZ     NKDIM =     63   number of bands    NBANDS=     32
@@ -510,8 +522,74 @@ def test_default_header_parser_make_parsers():
         # We should've made instances of the same type
         assert type(p1) == type(p2)
         assert p1.get_name() == p2.get_name()
-        assert p1.LINE_DELIMITER == p2.LINE_DELIMITER
-        assert p1.LINE_DELIMITER is not None
+        if isinstance(p1, vop.SimpleProperty):
+            assert p1.LINE_DELIMITER == p2.LINE_DELIMITER
+            assert p1.LINE_DELIMITER is not None
         # However, they should not actually BE the same parser
         # but separate instances, i.e. two separate memory addresses
         assert p1 is not p2
+
+
+def test_vasp6_kpoints_reading():
+    """Vasp6 v6.2 introduced a new line in the kpoints lines.
+    Verify we can read them.
+    """
+
+    lines = """
+     spin component 1
+
+    k-point     1 :       0.0000    0.0000   0.0000
+    band No.  band energies     occupation
+        1      -10.000      1.00000
+        2       0.0000      1.00000
+
+    k-point     2 :       0.1250    0.0417    0.0417
+    band No.  band energies     occupation
+        1      -10.000      1.00000
+        2       -5.000      1.00000
+     Fermi energy:         -6.789
+
+     spin component 2
+
+    k-point     1 :       0.0000    0.0000   0.0000
+    band No.  band energies     occupation
+        1      -10.000      1.00000
+        2       0.0000      1.00000
+
+    k-point     2 :       0.1250    0.0417    0.0417
+    band No.  band energies     occupation
+        1      -10.000      1.00000
+        2       -5.000      1.00000
+     Fermi energy:         -8.123
+
+    """
+    lines = lines.splitlines()
+    cursor = 1
+    header = {
+        'nbands': 2,
+        'spinpol': True,
+        'nkpts': 2,
+        'kpt_weights': [1, 0.75]
+    }
+
+    parser = vop.Kpoints(header=header)
+    assert parser.has_property(cursor, lines)
+
+    kpts = parser.parse(cursor, lines)['kpts']
+
+    # Some expected values
+    exp_s = [0, 0, 1, 1]  # spin
+    exp_w = 2 * [1, 0.75]  # weights
+    exp_eps_n = [
+        [-10, 0.],
+        [-10, -5],
+        [-10, 0],
+        [-10, -5],
+    ]
+    exp_f_n = 4 * [[1.0, 1.0]]
+    # Test the first two kpoints
+    for i, kpt in enumerate(kpts):
+        assert kpt.s == exp_s[i]
+        assert kpt.weight == pytest.approx(exp_w[i])
+        assert np.allclose(kpt.eps_n, exp_eps_n[i])
+        assert np.allclose(kpt.f_n, exp_f_n[i])

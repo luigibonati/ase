@@ -1,12 +1,15 @@
+
 def test_mixingcalc():
     """This test checks the basic functionality of the MixingCalculators.
     The example system is based on the SinglePointCalculator test case.
     """
+    import pytest
     import numpy as np
 
     from ase.build import fcc111
     from ase.calculators.emt import EMT
     from ase.calculators.mixing import SumCalculator, LinearCombinationCalculator, AverageCalculator, MixedCalculator
+    from ase.calculators.calculator import CalculatorSetupError
     from ase.constraints import FixAtoms
 
     # Calculate reference values:
@@ -18,17 +21,13 @@ def test_mixingcalc():
     atoms.calc = calc
     forces = atoms.get_forces()
 
-    # SumCalculator: Alternative ways to associate a calculator with an atoms object.
+    # SumCalculator: Only one way to associate a calculator with an atoms object.
     atoms1 = atoms.copy()
     calc1 = SumCalculator([EMT(), EMT()])
     atoms1.calc = calc1
 
-    atoms2 = atoms.copy()
-    SumCalculator(calcs=[EMT(), EMT()], atoms=atoms2)
-
     # Check the results.
     assert np.isclose(2 * forces, atoms1.get_forces()).all()
-    assert np.isclose(2 * forces, atoms2.get_forces()).all()
 
     # testing  step
     atoms1[0].x += 0.2
@@ -47,7 +46,8 @@ def test_mixingcalc():
     # LinearCombinationCalculator:
 
     atoms2 = atoms.copy()
-    LinearCombinationCalculator([EMT(), EMT()], weights=[.5, .5], atoms=atoms2)
+    calc2 = LinearCombinationCalculator([EMT(), EMT()], weights=[.5, .5])
+    atoms2.calc = calc2
 
     # Check the results (it should be the same because it is tha average of the same values).
     assert np.isclose(forces, atoms1.get_forces()).all()
@@ -57,15 +57,11 @@ def test_mixingcalc():
     atoms1[0].x += 0.2
     assert not np.isclose(2 * forces, atoms1.get_forces()).all()
 
-    try:
+    with pytest.raises(CalculatorSetupError):
         calc1 = LinearCombinationCalculator([], [])
-    except ValueError:
-        assert True
 
-    try:
+    with pytest.raises(CalculatorSetupError):
         calc1 = AverageCalculator([])
-    except ValueError:
-        assert True
 
     # test  MixedCalculator and energy contributions
     w1, w2 = 0.78, 0.22

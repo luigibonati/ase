@@ -46,7 +46,8 @@ Quick links:
    * :ref:`tutorials`
    * :ref:`cli`
    * :git:`Source code <>`
-   * Presentation about ASE: :download:`ase-talk.pdf`
+   * Presentation about ASE:
+     `ase-talk.pdf <https://wiki.fysik.dtu.dk/ase-files/ase-talk.pdf>`__
    * List of :ref:`removed features <removed_features>`
 
 List of all modules:

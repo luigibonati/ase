@@ -2,6 +2,7 @@ import json
 import sys
 from collections import defaultdict
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Iterable, Iterator
 
 import ase.io
@@ -322,7 +323,7 @@ def main(args):
                 plots[name].append([x] + [row.get(key) for key in keys[1:]])
         import matplotlib.pyplot as plt
         for name, plot in plots.items():
-            xyy = zip(*plot)
+            xyy = list(zip(*plot))
             x = xyy[0]
             for y, key in zip(xyy[1:], keys[1:]):
                 plt.plot(x, y, label=name + ':' + key)
@@ -433,8 +434,7 @@ def no_progressbar(iterable: Iterable,
 
 
 def check_jsmol():
-    from ase.db.app import root
-    static = root / 'ase/db/static'
+    static = Path(__file__).parent / 'static'
     if not (static / 'jsmol/JSmol.min.js').is_file():
         print(f"""
     WARNING:

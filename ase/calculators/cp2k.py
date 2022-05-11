@@ -393,9 +393,12 @@ class CP2K(Calculator):
                 # libxc input section changed over time
                 if functional.startswith("XC_") and self._shell.version < 3.0:
                     legacy_libxc += " " + functional  # handled later
-                elif functional.startswith("XC_"):
+                elif functional.startswith("XC_") and self._shell.version < 5.0:
                     s = InputSection(name='LIBXC')
                     s.keywords.append('FUNCTIONAL ' + functional)
+                    xc_sec.subsections.append(s)
+                elif functional.startswith("XC_"):
+                    s = InputSection(name=functional[3:])
                     xc_sec.subsections.append(s)
                 else:
                     s = InputSection(name=functional.upper())
@@ -467,7 +470,6 @@ class Cp2kShell:
 
         self.isready = False
         self.version = 1.0  # assume oldest possible version until verified
-        self._child = None
         self._debug = debug
 
         # launch cp2k_shell child process
@@ -500,11 +502,13 @@ class Cp2kShell:
         """Terminate cp2k_shell child process"""
         if self.isready:
             self.send('EXIT')
+            self._child.communicate()
             rtncode = self._child.wait()
             assert rtncode == 0  # child process exited properly?
         else:
             warn("CP2K-shell not ready, sending SIGTERM.", RuntimeWarning)
             self._child.terminate()
+            self._child.communicate()
         self._child = None
         self.version = None
         self.isready = False

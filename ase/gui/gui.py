@@ -331,7 +331,7 @@ class GUI(View, Status):
 
     def quick_info_window(self, key=None):
         from ase.gui.quickinfo import info
-        info_win = ui.Window(_('Quick Info'))
+        info_win = ui.Window(_('Quick Info'), wmtype='utility')
         info_win.add(info(self))
 
         # Update quickinfo window when we change frame

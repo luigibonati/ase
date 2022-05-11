@@ -4,6 +4,19 @@ from ase.build.connected import connected_atoms, split_bond, separate
 from ase.data.s22 import data
 
 
+def test_split_Si2H6():
+    """Ensure transferring of arguments from split_bond to connected_atoms"""
+    mol = molecule('Si2H6')
+
+    # connect to more atoms using scale
+    mol1, mol2 = split_bond(mol, 0, 1, scale=3)
+    assert len(mol) < len(mol1) + len(mol2)
+
+    # default scale splits into two SiH3
+    mol1, mol2 = split_bond(mol, 0, 1)
+    assert len(mol) == len(mol1) + len(mol2)
+
+
 def test_split_biphenyl():
     mol = molecule('biphenyl')
 

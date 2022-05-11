@@ -4,8 +4,9 @@ Read multiple structures and results from pw.x output files. Read
 structures from pw.x input files.
 
 Built for PWSCF v.5.3.0 but should work with earlier and later versions.
-Can deal with most major functionality, but might fail with ibrav =/= 0
-or crystal_sg positions.
+Can deal with most major functionality, with the notable exception of ibrav,
+for which we only support ibrav == 0 and force CELL_PARAMETERS to be provided
+explicitly.
 
 Units are converted using CODATA 2006, as used internally by Quantum
 ESPRESSO.
@@ -21,6 +22,7 @@ from os import path
 import numpy as np
 
 from ase.atoms import Atoms
+from ase.cell import Cell
 from ase.calculators.singlepoint import (SinglePointDFTCalculator,
                                          SinglePointKPoint)
 from ase.calculators.calculator import kpts2ndarray, kpts2sizeandoffsets
@@ -50,9 +52,16 @@ _PW_KPTS = 'number of k points='
 _PW_BANDS = _PW_END
 _PW_BANDSTRUCTURE = 'End of band structure calculation'
 
+# ibrav error message
+ibrav_error_message = 'ASE does not support ibrav != 0. Note that with ibrav ' \
+                      '== 0, Quantum ESPRESSO will still detect the symmetries ' \
+                      'of your system because the CELL_PARAMETERS are defined ' \
+                      'to a high level of precision.'
+
 
 class Namelist(OrderedDict):
     """Case insensitive dict that emulates Fortran Namelists."""
+
     def __contains__(self, key):
         return super(Namelist, self).__contains__(key.lower())
 
@@ -261,7 +270,7 @@ def read_espresso_out(fileobj, index=-1, results_required=True):
         for magmoms_index in indexes[_PW_MAGMOM]:
             if image_index < magmoms_index < next_index:
                 magmoms = [
-                    float(mag_line.split()[5]) for mag_line
+                    float(mag_line.split()[-1]) for mag_line
                     in pwo_lines[magmoms_index + 1:
                                  magmoms_index + 1 + len(structure)]]
 
@@ -524,9 +533,9 @@ def read_espresso_in(fileobj):
             alat = data['system']['A']
         else:
             alat = None
-        cell, cell_alat = get_cell_parameters(card_lines, alat=alat)
+        cell, _ = get_cell_parameters(card_lines, alat=alat)
     else:
-        alat, cell = ibrav_to_cell(data['system'])
+        raise ValueError(ibrav_error_message)
 
     # species_info holds some info for each element
     species_card = get_atomic_species(card_lines, n_species=data['system']['ntyp'])
@@ -570,9 +579,8 @@ def ibrav_to_cell(system):
 
     Returns
     -------
-    alat, cell : float, np.array
-        Cell parameter in Angstrom, and
-        The 3x3 array representation of the cell.
+    cell : Cell
+        The cell as an ASE Cell object
 
     Raises
     ------
@@ -598,14 +606,9 @@ def ibrav_to_cell(system):
             cosab = system.get('celldm(6)', 0.0)
     elif 'a' in system:
         # a, b, c, cosAB, cosAC, cosBC in Angstrom
-        alat = system['a']
-        b_over_a = system.get('b', 0.0) / alat
-        c_over_a = system.get('c', 0.0) / alat
-        cosab = system.get('cosab', 0.0)
-        cosac = system.get('cosac', 0.0)
-        cosbc = system.get('cosbc', 0.0)
+        raise NotImplementedError('params_to_cell() does not yet support A/B/C/cosAB/cosAC/cosBC')
     else:
-        raise KeyError("Missing celldm(1) or a cell parameter.")
+        raise KeyError("Missing celldm(1)")
 
     if system['ibrav'] == 1:
         cell = np.identity(3) * alat
@@ -668,7 +671,7 @@ def ibrav_to_cell(system):
     elif system['ibrav'] == 11:
         cell = np.array([[1.0 / 2.0, b_over_a / 2.0, c_over_a / 2.0],
                          [-1.0 / 2.0, b_over_a / 2.0, c_over_a / 2.0],
-                         [-1.0, 2.0, -b_over_a / 2.0, c_over_a / 2.0]]) * alat
+                         [-1.0 / 2.0, -b_over_a / 2.0, c_over_a / 2.0]]) * alat
     elif system['ibrav'] == 12:
         sinab = (1.0 - cosab**2)**0.5
         cell = np.array([[1.0, 0.0, 0.0],
@@ -697,7 +700,7 @@ def ibrav_to_cell(system):
         raise NotImplementedError('ibrav = {0} is not implemented'
                                   ''.format(system['ibrav']))
 
-    return alat, cell
+    return Cell(cell)
 
 
 def get_pseudo_dirs(data):
@@ -1213,8 +1216,7 @@ KEYS = Namelist((
         'lelfield', 'nberrycyc', 'lorbm', 'lberry', 'gdir', 'nppstr',
         'lfcpopt', 'monopole']),
     ('SYSTEM', [
-        'ibrav', 'celldm', 'A', 'B', 'C', 'cosAB', 'cosAC', 'cosBC', 'nat',
-        'ntyp', 'nbnd', 'tot_charge', 'tot_magnetization',
+        'ibrav', 'nat', 'ntyp', 'nbnd', 'tot_charge', 'tot_magnetization',
         'starting_magnetization', 'ecutwfc', 'ecutrho', 'ecutfock', 'nr1',
         'nr2', 'nr3', 'nr1s', 'nr2s', 'nr3s', 'nosym', 'nosym_evc', 'noinv',
         'no_t_rev', 'force_symmorphic', 'use_all_frac', 'occupations',
@@ -1333,7 +1335,7 @@ def construct_namelist(parameters=None, warn=False, **kwargs):
                 sec_list[key] = kwargs.pop(key)
 
             # Check if there is a key(i) version (no extra parsing)
-            for arg_key in parameters.get(section, {}):
+            for arg_key in list(parameters.get(section, {})):
                 if arg_key.split('(')[0].strip().lower() == key.lower():
                     sec_list[arg_key] = parameters[section].pop(arg_key)
             cp_parameters = parameters.copy()
@@ -1404,105 +1406,6 @@ def grep_valence(pseudopotential):
             raise ValueError('Valence missing in {}'.format(pseudopotential))
 
 
-def cell_to_ibrav(cell, ibrav):
-    """
-    Calculate the appropriate `celldm(..)` parameters for the given ibrav
-    using the given cell. The units for `celldm(..)` are Bohr.
-
-    Does minimal checking of the cell shape, so it is possible to create
-    a nonsense structure if the ibrav is inapproprite for the cell. These
-    are derived to be symmetric with the routine for constructing the cell
-    from ibrav parameters so directions of some vectors may be unexpected.
-
-    Parameters
-    ----------
-    cell : np.array
-        A 3x3 representation of a unit cell
-    ibrav : int
-        Bravais-lattice index according to the pw.x designations.
-
-    Returns
-    -------
-    parameters : dict
-        A dictionary with all the necessary `celldm(..)` keys assigned
-        necessary values (in units of Bohr). Also includes `ibrav` so it
-        can be passed back to `ibrav_to_cell`.
-
-    Raises
-    ------
-    NotImplementedError
-        Only a limited number of ibrav settings can be parsed. An error
-        is raised if the ibrav interpretation is not implemented.
-    """
-    parameters = {'ibrav': ibrav}
-
-    if ibrav == 1:
-        parameters['celldm(1)'] = cell[0][0] / units['Bohr']
-    elif ibrav in [2, 3, -3]:
-        parameters['celldm(1)'] = cell[0][2] * 2 / units['Bohr']
-    elif ibrav in [4, 6]:
-        parameters['celldm(1)'] = cell[0][0] / units['Bohr']
-        parameters['celldm(3)'] = cell[2][2] / cell[0][0]
-    elif ibrav in [5, -5]:
-        # Manually derive
-        a = np.linalg.norm(cell[0])
-        cosab = np.dot(cell[0], cell[1]) / (a ** 2)
-        parameters['celldm(1)'] = a / units['Bohr']
-        parameters['celldm(4)'] = cosab
-    elif ibrav == 7:
-        parameters['celldm(1)'] = cell[0][0] * 2 / units['Bohr']
-        parameters['celldm(3)'] = cell[2][2] / cell[0][0]
-    elif ibrav == 8:
-        parameters['celldm(1)'] = cell[0][0] / units['Bohr']
-        parameters['celldm(2)'] = cell[1][1] / cell[0][0]
-        parameters['celldm(3)'] = cell[2][2] / cell[0][0]
-    elif ibrav in [9, -9]:
-        parameters['celldm(1)'] = cell[0][0] * 2 / units['Bohr']
-        parameters['celldm(2)'] = cell[1][1] / cell[0][0]
-        parameters['celldm(3)'] = cell[2][2] * 2 / cell[0][0]
-    elif ibrav in [10, 11]:
-        parameters['celldm(1)'] = cell[0][0] * 2 / units['Bohr']
-        parameters['celldm(2)'] = cell[1][1] / cell[0][0]
-        parameters['celldm(3)'] = cell[2][2] / cell[0][0]
-    elif ibrav == 12:
-        # cos^2 + sin^2
-        b = (cell[1][0]**2 + cell[1][1]**2)**0.5
-        parameters['celldm(1)'] = cell[0][0] / units['Bohr']
-        parameters['celldm(2)'] = b / cell[0][0]
-        parameters['celldm(3)'] = cell[2][2] / cell[0][0]
-        parameters['celldm(4)'] = cell[1][0] / b
-    elif ibrav == -12:
-        # cos^2 + sin^2
-        c = (cell[2][0]**2 + cell[2][2]**2)**0.5
-        parameters['celldm(1)'] = cell[0][0] / units['Bohr']
-        parameters['celldm(2)'] = cell[1][1] / cell[0][0]
-        parameters['celldm(3)'] = c / cell[0][0]
-        parameters['celldm(4)'] = cell[2][0] / c
-    elif ibrav == 13:
-        b = (cell[1][0]**2 + cell[1][1]**2)**0.5
-        parameters['celldm(1)'] = cell[0][0] * 2 / units['Bohr']
-        parameters['celldm(2)'] = b / (cell[0][0] * 2)
-        parameters['celldm(3)'] = cell[2][2] / cell[0][0]
-        parameters['celldm(4)'] = cell[1][0] / b
-    elif ibrav == 14:
-        # Manually derive
-        a, b, c = np.linalg.norm(cell, axis=1)
-        cosbc = np.dot(cell[1], cell[2]) / (b * c)
-        cosac = np.dot(cell[0], cell[2]) / (a * c)
-        cosab = np.dot(cell[0], cell[1]) / (a * b)
-        parameters['celldm(1)'] = a / units['Bohr']
-        parameters['celldm(2)'] = b / a
-        parameters['celldm(3)'] = c / a
-        parameters['celldm(4)'] = cosbc
-        parameters['celldm(5)'] = cosac
-        parameters['celldm(6)'] = cosab
-    else:
-        raise NotImplementedError('ibrav = {0} is not implemented'
-                                  ''.format(ibrav))
-
-    return parameters
-
-
 def kspacing_to_grid(atoms, spacing, calculated_spacing=None):
     """
     Calculate the kpoint mesh that is equivalent to the given spacing
@@ -1546,6 +1449,48 @@ def kspacing_to_grid(atoms, spacing, calculated_spacing=None):
     return kpoint_grid
 
 
+def format_atom_position(atom, crystal_coordinates, mask='', tidx=None):
+    """Format one line of atomic positions in
+    Quantum ESPRESSO ATOMIC_POSITIONS card.
+
+    >>> for atom in make_supercell(bulk('Li', 'bcc'), np.ones(3)-np.eye(3)):
+    >>>     format_atom_position(atom, True)
+    Li 0.0000000000 0.0000000000 0.0000000000 
+    Li 0.5000000000 0.5000000000 0.5000000000
+
+    Parameters
+    ----------
+    atom : Atom
+        A structure that has symbol and [position | (a, b, c)].
+    crystal_coordinates: bool
+        Whether the atomic positions should be written to the QE input file in
+        absolute (False, default) or relative (crystal) coordinates (True).
+    mask, optional : str
+        String of ndim=3 0 or 1 for constraining atomic positions.
+    tidx, optional : int
+        Magnetic type index.
+
+    Returns
+    -------
+    atom_line : str
+        Input line for atom position
+    """
+    if crystal_coordinates:
+        coords = [atom.a, atom.b, atom.c]
+    else:
+        coords = atom.position
+    line_fmt = '{atom.symbol}'
+    inps = dict(atom=atom)
+    if tidx is not None:
+        line_fmt += '{tidx}'
+        inps["tidx"] = tidx
+    line_fmt += ' {coords[0]:.10f} {coords[1]:.10f} {coords[2]:.10f} '
+    inps["coords"] = coords
+    line_fmt += ' ' + mask + '\n'
+    astr = line_fmt.format(**inps)
+    return astr
+
+
 def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
                       kspacing=None, kpts=None, koffset=(0, 0, 0),
                       crystal_coordinates=False, **kwargs):
@@ -1571,17 +1516,15 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
     - `starting_magnetization` derived from the `mgmoms` and pseudopotentials
       (searches default paths for pseudo files.)
     - Automatic assignment of options to their correct sections.
-    - Interpretation of ibrav (cell must exactly match the vectors defined
-      in the QE docs).
 
     Not implemented:
 
+    - Non-zero values of ibrav
     - Lists of k-points
     - Other constraints
     - Hubbard parameters
     - Validation of the argument types for input
     - Validation of required options
-    - Reorientation for ibrav settings
     - Noncollinear magnetism
 
     Parameters
@@ -1638,6 +1581,15 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
             constraint_mask[constraint.a] = constraint.mask
         else:
             warnings.warn('Ignored unknown constraint {}'.format(constraint))
+    masks = []
+    for atom in atoms:
+        # only inclued mask if something is fixed
+        if not all(constraint_mask[atom.index]):
+            mask = ' {mask[0]} {mask[1]} {mask[2]}'.format(
+                mask=constraint_mask[atom.index])
+        else:
+            mask = ''
+        masks.append(mask)
 
     # Species info holds the information on the pseudopotential and
     # associated for each element
@@ -1669,7 +1621,7 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
 
     if nspin == 2:
         # Spin on
-        for atom, magmom in zip(atoms, atoms.get_initial_magnetic_moments()):
+        for atom, mask, magmom in zip(atoms, masks, atoms.get_initial_magnetic_moments()):
             if (atom.symbol, magmom) not in atomic_species:
                 # spin as fraction of valence
                 fspin = float(magmom) / species_info[atom.symbol]['valence']
@@ -1687,45 +1639,23 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
                         pseudo=species_info[atom.symbol]['pseudo']))
             # lookup tidx to append to name
             sidx, tidx = atomic_species[(atom.symbol, magmom)]
-
-            # only inclued mask if something is fixed
-            if not all(constraint_mask[atom.index]):
-                mask = ' {mask[0]} {mask[1]} {mask[2]}'.format(
-                    mask=constraint_mask[atom.index])
-            else:
-                mask = ''
-
             # construct line for atomic positions
             atomic_positions_str.append(
-                '{atom.symbol}{tidx} '
-                '{atom.x:.10f} {atom.y:.10f} {atom.z:.10f}'
-                '{mask}\n'.format(atom=atom, tidx=tidx, mask=mask))
-
+                format_atom_position(atom, crystal_coordinates, mask=mask, tidx=tidx)
+            )
     else:
         # Do nothing about magnetisation
-        for atom in atoms:
+        for atom, mask in zip(atoms, masks):
             if atom.symbol not in atomic_species:
                 atomic_species[atom.symbol] = True  # just a placeholder
                 atomic_species_str.append(
                     '{species} {mass} {pseudo}\n'.format(
                         species=atom.symbol, mass=atom.mass,
                         pseudo=species_info[atom.symbol]['pseudo']))
-
-            # only inclued mask if something is fixed
-            if not all(constraint_mask[atom.index]):
-                mask = ' {mask[0]} {mask[1]} {mask[2]}'.format(
-                    mask=constraint_mask[atom.index])
-            else:
-                mask = ''
-
-            if crystal_coordinates:
-                coords = [atom.a, atom.b, atom.c]
-            else:
-                coords = atom.position
+            # construct line for atomic positions
             atomic_positions_str.append(
-                '{atom.symbol} '
-                '{coords[0]:.10f} {coords[1]:.10f} {coords[2]:.10f} '
-                '{mask}\n'.format(atom=atom, coords=coords, mask=mask))
+                format_atom_position(atom, crystal_coordinates, mask=mask)
+            )
 
     # Add computed parameters
     # different magnetisms means different types
@@ -1736,12 +1666,7 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
     if 'ibrav' in input_parameters['system']:
         ibrav = input_parameters['system']['ibrav']
         if ibrav != 0:
-            celldm = cell_to_ibrav(atoms.cell, ibrav)
-            regen_cell = ibrav_to_cell(celldm)[1]
-            if not np.allclose(atoms.cell, regen_cell):
-                warnings.warn('Input cell does not match requested ibrav'
-                              '{} != {}'.format(regen_cell, atoms.cell))
-            input_parameters['system'].update(celldm)
+            raise ValueError(ibrav_error_message)
     else:
         # Just use standard cell block
         input_parameters['system']['ibrav'] = 0

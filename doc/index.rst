@@ -41,10 +41,11 @@ Supported :mod:`Calculators <ase.calculators>`
 |dftd4| |DFTK| |elk| |exciting| |EMT|
 |fhi-aims| |fleur| |gamess_us| |gpaw| |gromacs|
 |hotbit| |jdftx| |kim| |lammps| |nwchem|
-|octopus| |onetep| |openmx| |psi4| |qchem| |q_espresso| |siesta| |turbomole| |vasp|
+|octopus| |onetep| |openmx| |plumed|  |psi4| |qchem| |q_espresso| |siesta| |turbomole| |vasp|
 |xtb| |orca|
 :mod:`ACE-Molecule <ase.calculators.acemolecule>`
 :mod:`~ase.calculators.amber`
+DeePMD-kit_
 :mod:`DMol³ <ase.calculators.dmol>`
 :mod:`Gaussian <ase.calculators.gaussian>`
 :mod:`Grimme DFT-D3 <ase.calculators.dftd3>`
@@ -62,6 +63,8 @@ Mopac_
 
 News
 ====
+
+* :ref:`ASE version 3.22.1 <releasenotes>` released (1 December 2021).
 
 * :ref:`ASE version 3.22.0 <releasenotes>` released (24 June 2021).
 
@@ -272,6 +275,9 @@ Contents
 .. |openmx| image:: static/openmx.png
    :target: ase/calculators/openmx.html
    :align: middle
+.. |plumed| image:: static/plumed.png
+   :target: ase/calculators/plumed.html
+   :align: middle
 .. |psi4| image:: static/psi4.png
    :target: ase/calculators/psi4.html
    :align: middle
@@ -303,3 +309,4 @@ Contents
 .. _Sphinx: http://sphinx.pocoo.org
 .. _Asap: https://wiki.fysik.dtu.dk/asap
 .. _CAMd: https://www.fysik.dtu.dk/english/research/camd/
+.. _DeePMD-kit: https://github.com/deepmodeling/deepmd-kit

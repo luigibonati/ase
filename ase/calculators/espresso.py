@@ -1,35 +1,87 @@
 """Quantum ESPRESSO Calculator
 
-export ASE_ESPRESSO_COMMAND="/path/to/pw.x -in PREFIX.pwi > PREFIX.pwo"
-
 Run pw.x jobs.
 """
 
 
-import warnings
-from ase import io
-from ase.calculators.calculator import FileIOCalculator, PropertyNotPresent
+import os
+from ase.calculators.genericfileio import (
+    GenericFileIOCalculator, CalculatorTemplate, read_stdout)
+from ase.io import read, write
 
 
-error_template = 'Property "%s" not available. Please try running Quantum\n' \
-                 'Espresso first by calling Atoms.get_potential_energy().'
-
-warn_template = 'Property "%s" is None. Typically, this is because the ' \
-                'required information has not been printed by Quantum ' \
-                'Espresso at a "low" verbosity level (the default). ' \
-                'Please try running Quantum Espresso with "high" verbosity.'
+compatibility_msg = (
+    'Espresso calculator is being restructured.  Please use e.g. '
+    'Espresso(profile=EspressoProfile(argv=[\'mpiexec\', \'pw.x\'])) '
+    'to customize command-line arguments.')
 
 
-class Espresso(FileIOCalculator):
-    """
-    """
-    implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
-    command = 'pw.x -in PREFIX.pwi > PREFIX.pwo'
-    discard_results_on_any_change = True
+# XXX We should find a way to display this warning.
+# warn_template = 'Property "%s" is None. Typically, this is because the ' \
+#                 'required information has not been printed by Quantum ' \
+#                 'Espresso at a "low" verbosity level (the default). ' \
+#                 'Please try running Quantum Espresso with "high" verbosity.'
 
-    def __init__(self, restart=None,
-                 ignore_bad_restart_file=FileIOCalculator._deprecated,
-                 label='espresso', atoms=None, **kwargs):
+
+class EspressoProfile:
+    def __init__(self, argv):
+        self.argv = tuple(argv)
+
+    @staticmethod
+    def parse_version(stdout):
+        import re
+        match = re.match(r'\s*Program PWSCF\s*v\.(\S+)', stdout, re.M)
+        assert match is not None
+        return match.group(1)
+
+    def version(self):
+        stdout = read_stdout(self.argv)
+        return self.parse_version(stdout)
+
+    def run(self, directory, inputfile, outputfile):
+        from subprocess import check_call
+        argv = list(self.argv) + ['-in', str(inputfile)]
+        with open(directory / outputfile, 'wb') as fd:
+            check_call(argv, stdout=fd, cwd=directory)
+
+    def socketio_argv_unix(self, socket):
+        template = EspressoTemplate()
+        # It makes sense to know the template for this kind of choices,
+        # but is there a better way?
+        return list(self.argv) + ['--ipi', f'{socket}:UNIX', '-in',
+                                  template.inputname]
+
+
+class EspressoTemplate(CalculatorTemplate):
+    def __init__(self):
+        super().__init__(
+            'espresso',
+            ['energy', 'free_energy', 'forces', 'stress', 'magmoms'])
+        self.inputname = 'espresso.pwi'
+        self.outputname = 'espresso.pwo'
+
+    def write_input(self, directory, atoms, parameters, properties):
+        dst = directory / self.inputname
+        write(dst, atoms, format='espresso-in', properties=properties,
+              **parameters)
+
+    def execute(self, directory, profile):
+        profile.run(directory,
+                    self.inputname,
+                    self.outputname)
+
+    def read_results(self, directory):
+        path = directory / self.outputname
+        atoms = read(path, format='espresso-out')
+        return dict(atoms.calc.properties())
+
+
+class Espresso(GenericFileIOCalculator):
+    def __init__(self, *, profile=None,
+                 command=GenericFileIOCalculator._deprecated,
+                 label=GenericFileIOCalculator._deprecated,
+                 directory='.',
+                 **kwargs):
         """
         All options for pw.x are copied verbatim to the input file, and put
         into the correct section. Use ``input_data`` for parameters that are
@@ -103,52 +155,22 @@ class Espresso(FileIOCalculator):
               >>> bs.plot()
 
         """
-        FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
-                                  label, atoms, **kwargs)
-        self.calc = None
 
-    def write_input(self, atoms, properties=None, system_changes=None):
-        FileIOCalculator.write_input(self, atoms, properties, system_changes)
-        io.write(self.label + '.pwi', atoms, **self.parameters)
+        if command is not self._deprecated:
+            raise RuntimeError(compatibility_msg)
 
-    def read_results(self):
-        output = io.read(self.label + '.pwo')
-        self.calc = output.calc
-        self.results = output.calc.results
+        if label is not self._deprecated:
+            import warnings
+            warnings.warn('Ignoring label, please use directory instead',
+                          FutureWarning)
 
-    def get_fermi_level(self):
-        if self.calc is None:
-            raise PropertyNotPresent(error_template % 'Fermi level')
-        return self.calc.get_fermi_level()
+        if 'ASE_ESPRESSO_COMMAND' in os.environ and profile is None:
+            import warnings
+            warnings.warn(compatibility_msg, FutureWarning)
 
-    def get_ibz_k_points(self):
-        if self.calc is None:
-            raise PropertyNotPresent(error_template % 'IBZ k-points')
-        ibzkpts = self.calc.get_ibz_k_points()
-        if ibzkpts is None:
-            warnings.warn(warn_template % 'IBZ k-points')
-        return ibzkpts
-
-    def get_k_point_weights(self):
-        if self.calc is None:
-            raise PropertyNotPresent(error_template % 'K-point weights')
-        k_point_weights = self.calc.get_k_point_weights()
-        if k_point_weights is None:
-            warnings.warn(warn_template % 'K-point weights')
-        return k_point_weights
-
-    def get_eigenvalues(self, **kwargs):
-        if self.calc is None:
-            raise PropertyNotPresent(error_template % 'Eigenvalues')
-        eigenvalues = self.calc.get_eigenvalues(**kwargs)
-        if eigenvalues is None:
-            warnings.warn(warn_template % 'Eigenvalues')
-        return eigenvalues
-
-    def get_number_of_spins(self):
-        if self.calc is None:
-            raise PropertyNotPresent(error_template % 'Number of spins')
-        nspins = self.calc.get_number_of_spins()
-        if nspins is None:
-            warnings.warn(warn_template % 'Number of spins')
-        return nspins
+        template = EspressoTemplate()
+        if profile is None:
+            profile = EspressoProfile(argv=['pw.x'])
+        super().__init__(profile=profile, template=template,
+                         directory=directory,
+                         parameters=kwargs)
