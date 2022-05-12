@@ -311,7 +311,10 @@ def register_external_io_formats(group):
         fmt_entry_points = entry_points().get(group, ())
 
     for entry_point in fmt_entry_points:
-        print(entry_point.dist._path)
+        try:
+            print('P', entry_point.dist._path)
+        except AttributeError:
+            print('E', entry_point, dir(entry_point))
         try:
             define_external_io_format(entry_point)
         except Exception as exc:
