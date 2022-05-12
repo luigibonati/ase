@@ -311,6 +311,7 @@ def register_external_io_formats(group):
         fmt_entry_points = entry_points().get(group, ())
 
     for entry_point in fmt_entry_points:
+        print(entry_point)
         try:
             define_external_io_format(entry_point)
         except Exception as exc:
@@ -323,6 +324,7 @@ def register_external_io_formats(group):
 def define_external_io_format(entry_point):
 
     fmt = entry_point.load()
+    print(fmt, entry_point)
     if entry_point.name in ioformats:
         raise ValueError(f'Format {entry_point.name} already defined')
     if not isinstance(fmt, ExternalIOFormat):
