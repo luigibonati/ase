@@ -564,7 +564,7 @@ potentials)
         # read_log depends on that the first (three) thermo_style custom args
         # can be capitalized and matched against the log output. I.e.
         # don't use e.g. 'ke' or 'cpu' which are labeled KinEng and CPU.
-        mark_re = r"^\s*" + r"\s*".join(
+        mark_re = r"^\s*" + r"\s+".join(
             [x.capitalize() for x in self.parameters.thermo_args[0:3]]
         )
         _custom_thermo_mark = re_compile(mark_re)
@@ -575,7 +575,7 @@ potentials)
         n_args = len(self.parameters["thermo_args"])
         # Create a re matching exactly N white space separated floatish things
         _custom_thermo_re = re_compile(
-            r"^\s*" + r"\s*".join([f_re] * n_args) + r"\s*$", flags=IGNORECASE
+            r"^\s*" + r"\s+".join([f_re] * n_args) + r"\s*$", flags=IGNORECASE
         )
 
         thermo_content = []
