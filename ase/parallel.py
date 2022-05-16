@@ -86,6 +86,9 @@ class MPI:
         self.comm = None
 
     def __getattr__(self, name):
+        if name == '__setstate__':
+            raise AttributeError(name)
+            
         if self.comm is None:
             self.comm = _get_comm()
         return getattr(self.comm, name)
