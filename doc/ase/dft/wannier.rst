@@ -61,10 +61,10 @@ Usual invocation::
   from ase.dft import Wannier
   wan = Wannier(nwannier=18, calc=GPAW('save.gpw'), fixedstates=15)
   wan.localize() # Optimize rotation to give maximal localization
-  wan.save('file.pickle') # Save localization and rotation matrix
+  wan.save('wannier.json') # Save localization and rotation matrix
 
   # Re-load using saved wannier data
-  wan = Wannier(nwannier=18, calc=calc, fixedstates=15, file='file.pickle')
+  wan = Wannier(nwannier=18, calc=calc, fixedstates=15, file='wannier.json')
 
   # Write a cube file
   wan.write_cube(index=5, fname='wannierfunction5.cube')
