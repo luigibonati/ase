@@ -6,7 +6,9 @@ from gpaw import restart
 atoms, calc = restart('poly.gpw', txt=None)
 
 # Make wannier functions using (one) extra degree of freedom
-wan = Wannier(nwannier=6, calc=calc, fixedenergy=1.5)
+wan = Wannier(nwannier=6, calc=calc, fixedenergy=1.5,
+              initialwannier='orbitals',
+              functional='var')
 wan.localize()
 wan.save('poly.json')
 wan.translate_all_to_cell((2, 0, 0))
