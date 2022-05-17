@@ -12,7 +12,7 @@ class :class:`Wannier`. The page is organized as follows:
 * `The Wannier class`_ : A description of how the Wannier class is
   used, and the methods defined within.
 
-  
+
 Introduction
 ============
 
@@ -74,34 +74,6 @@ For examples of how to use the **Wannier** class, see the
 
 .. autoclass:: Wannier
    :members:
-
-In Dacapo, the inialwannier keyword can be a list as described below:
-
-    Setup an initial set of Wannier orbitals.
-    *initialwannier* can set up a starting guess for the Wannier
-    functions.  This is important to speed up convergence in
-    particular for large systems For transition elements with **d**
-    electrons you will always find 5 highly localized **d**-orbitals
-    centered at the atom.  Placing 5 **d**-like orbitals with a radius
-    of 0.4 Angstroms and center at atom no. 7, and 3 **p**-like
-    orbitals with a radius of 0.4 Angstroms and center at atom no. 27
-    looks like this::
-
-       initialwannier = [[[7],2,0.4],[[27],1,0.4]]
-
-    Placing only the l=2, m=-2 and m=-1 orbitals at atom no. 7 looks
-    like this::
-
-       initialwannier = [[[7],2,-2,0.4],[[7],2,-1,0.4]]
-
-    I.e. if you do not specify the m quantum number all allowed values
-    are used.  Instead of placing an orbital at an atom, you can place
-    it at a specified position. For example the following::
-
-       initialwannier = [[[0.5,0.5,0.5],0,0.5]]
-
-    places an **s** orbital with radius 0.5 Angstroms at the position
-    (0.5, 0.5, 0.5) in scaled coordinates of the unit cell.
 
 .. note:: For calculations using **k**-points, make sure that the
    `\Gamma`-point is included in the **k**-point grid.
