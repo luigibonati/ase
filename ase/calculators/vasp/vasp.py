@@ -26,9 +26,8 @@ import subprocess
 from contextlib import contextmanager
 from pathlib import Path
 from warnings import warn
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 from xml.etree import ElementTree
-from typing import Tuple
 
 import ase
 from ase.io import read, jsonio
@@ -1153,11 +1152,11 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
     def get_bz_k_points(self):
         raise NotImplementedError
 
-    def read_vib_freq(self, lines=None) -> Tuple[list, list]:
+    def read_vib_freq(self, lines=None) -> Tuple[List[float], List[float]]:
         """Read vibrational frequencies.
 
         Returns:
-            List of real and list of imaginary frequencies.
+            List of real and list of imaginary frequencies (imaginary number as real number).
         """
         freq = []
         i_freq = []
@@ -1186,12 +1185,6 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         """
 
         file = self._indir('vasprun.xml')
-        incomplete_msg = (
-            f'The file "{file}" is incomplete, and no DFT data was available. '
-            'This is likely due to an incomplete calculation.')
-        vasp_version_error_msg = (
-            f'The file "{file}" is from a non-supported VASP version. '
-            'Not sure what unit the Hessian is in, aborting.')
         try:
             tree = ElementTree.iterparse(file)
             hessian = None
@@ -1199,13 +1192,15 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                 if elem.tag == 'dynmat':
                     for i, entry in enumerate(elem.findall('varray[@name="hessian"]/v')):
                         text_split = entry.text.split()
-                        assert text_split
+                        if not text_split:
+                            raise ElementTree.ParseError
                         if i == 0:
                             n_items = len(text_split)
                             hessian = np.zeros((n_items, n_items))
                         assert isinstance(hessian, np.ndarray)
                         hessian[i, :] = np.array([float(val) for val in text_split])
-                    assert i == n_items - 1
+                    if i != n_items - 1:
+                        raise ElementTree.ParseError
                     #VASP6+ uses THz**2 as unit, not mEV**2 as before
                     for entry in elem.findall('i[@name="unit"]'):
                         if entry.text.strip() == 'THz^2':
@@ -1214,6 +1209,9 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                             # 1e-4 = (angstrom to meter times Hz to THz) squared = (1e10 times 1e-12)**2
                             break
                         else:  # Catch changes in VASP
+                            vasp_version_error_msg = (
+                                f'The file "{file}" is from a non-supported VASP version. '
+                                'Not sure what unit the Hessian is in, aborting.')
                             raise calculator.ReadError(vasp_version_error_msg)
 
                     else:
@@ -1224,6 +1222,9 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                 raise ElementTree.ParseError
 
         except ElementTree.ParseError as exc:
+            incomplete_msg = (
+                f'The file "{file}" is incomplete, and no DFT data was available. '
+                'This is likely due to an incomplete calculation.')
             raise calculator.ReadError(incomplete_msg) from exc
         # VASP uses the negative definition of the hessian compared to ASE
         return -hessian
