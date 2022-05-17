@@ -289,6 +289,7 @@ def test_rotation_from_projection(rng):
     assert normalization_error(U_ww) < 1e-10, 'U_ww not normalized'
 
 
+@pytest.mark.calculator_lite
 def test_save(tmpdir, wan):
     wanf = wan(nwannier=4, fixedstates=2, initialwannier='bloch')
     jsonfile = tmpdir.join('wanf.json')
@@ -334,6 +335,7 @@ def test_get_functional_value(fun, wan):
     assert f1 < f2
 
 
+@pytest.mark.calculator_lite
 @calc('gpaw')
 def test_get_centers(factory):
     # Rough test on the position of the Wannier functions' centers
@@ -425,6 +427,7 @@ def test_get_spectral_weight_random(wan, rng):
         assert wanf.get_spectral_weight(i).sum() == pytest.approx(1)
 
 
+@pytest.mark.calculator_lite
 def test_get_pdos(wan):
     nwannier = 4
     gpaw = pytest.importorskip('gpaw')
@@ -597,6 +600,7 @@ def test_get_function(wan):
                 wanf.get_function(index=i, repeat=[1, 2, 3]).shape).all()
 
 
+@pytest.mark.calculator_lite
 @pytest.mark.parametrize('fun', ['std', 'var'])
 def test_get_gradients(fun, wan, rng):
     wanf = wan(nwannier=4, fixedstates=2, kpts=(1, 1, 1),
