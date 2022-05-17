@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from ase.dft import Wannier
+from ase.dft.wannier import Wannier
 from gpaw import restart
 
 atoms, calc = restart('benzene.gpw', txt=None)

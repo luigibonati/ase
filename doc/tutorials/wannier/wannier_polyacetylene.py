@@ -1,6 +1,6 @@
 import numpy as np
 
-from ase.dft import Wannier
+from ase.dft.wannier import Wannier
 from gpaw import restart
 
 atoms, calc = restart('poly.gpw', txt=None)
