@@ -89,5 +89,5 @@ class WannierSpec:
 
 class WannierState:
     def __init__(self, C_kul, U_kww):
-        self.C_kul = C_kul
+        self.C_kul = np.array(C_kul, dtype=complex)
         self.U_kww = U_kww
