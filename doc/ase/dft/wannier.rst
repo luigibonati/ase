@@ -48,9 +48,19 @@ eigenvalues (this is irrelevant, as the fixed space is usually chosen
 large enough, i.e. high enough above the fermilevel, that the
 remaining DFT eigenvalues are meaningless anyway).
 
-For the theory behind this method see the paper "Partly Occupied
-Wannier Functions" Thygesen, Hansen and Jacobsen, *Phys. Rev. Lett*,
-Vol. **94**, 26405 (2005).
+The theory behind this method can be found in
+"Partly Occupied Wannier Functions" Thygesen, Hansen, and Jacobsen,
+*Phys. Rev. Lett*, Vol. **94**, 26405 (2005),
+:doi:`10.1103/PhysRevLett.94.026405`.
+
+An improved localization method based on penalizing the
+spread functional proportionally to the variance of spread distributions
+has since been published as
+"Spread-balanced Wannier functions:
+Robust and automatable orbital localization"
+Fontana, Larsen, Olsen, and Thygesen,
+*Phys. Rev. B* **104**, 125140 (2021),
+:doi:`10.1103/PhysRevB.104.125140`.
 
 
 The Wannier class
@@ -71,6 +81,11 @@ Usual invocation::
 
 For examples of how to use the **Wannier** class, see the
 :ref:`wannier tutorial` tutorial.
+
+To enable the improved localization method from the 2021 paper,
+use ``Wannier(functional='var', ...)``.
+Computations from the 2021 paper were performed using
+``Wannier(functional='var', initialwannier='orbitals', ...)``.
 
 .. autoclass:: Wannier
    :members:
