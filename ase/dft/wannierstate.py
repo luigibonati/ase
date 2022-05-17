@@ -23,6 +23,7 @@ def random_orthogonal_matrix(dim, rng=np.random, real=False):
 def _empty():
     return np.empty(0, complex)
 
+
 class WannierSpec:
     def __init__(self, Nk, Nw, Nb, fixedstates_k):
         self.Nk = Nk
