@@ -600,7 +600,8 @@ def test_get_function(wan):
                 wanf.get_function(index=i, repeat=[1, 2, 3]).shape).all()
 
 
-@pytest.mark.calculator_lite
+# Make sure this can run in CI: https://gitlab.com/ase/ase/-/issues/1100
+# @pytest.mark.calculator_lite
 @pytest.mark.parametrize('fun', ['std', 'var'])
 def test_get_gradients(fun, wan, rng):
     wanf = wan(nwannier=4, fixedstates=2, kpts=(1, 1, 1),
