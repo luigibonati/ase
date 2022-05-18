@@ -1193,14 +1193,14 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                     for i, entry in enumerate(elem.findall('varray[@name="hessian"]/v')):
                         text_split = entry.text.split()
                         if not text_split:
-                            raise ElementTree.ParseError
+                            raise ElementTree.ParseError("Could not find varray hessian!")
                         if i == 0:
                             n_items = len(text_split)
                             hessian = np.zeros((n_items, n_items))
                         assert isinstance(hessian, np.ndarray)
                         hessian[i, :] = np.array([float(val) for val in text_split])
                     if i != n_items - 1:
-                        raise ElementTree.ParseError
+                        raise ElementTree.ParseError("Hessian is not quadratic!")
                     #VASP6+ uses THz**2 as unit, not mEV**2 as before
                     for entry in elem.findall('i[@name="unit"]'):
                         if entry.text.strip() == 'THz^2':
@@ -1219,7 +1219,7 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                     assert isinstance(hessian, np.ndarray)
                     hessian *= conv
             if hessian is None:
-                raise ElementTree.ParseError
+                raise ElementTree.ParseError("Hessian is None!")
 
         except ElementTree.ParseError as exc:
             incomplete_msg = (
