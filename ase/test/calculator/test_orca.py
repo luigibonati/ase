@@ -6,6 +6,7 @@ from ase.atoms import Atoms
 from ase.units import Hartree
 from ase.optimize import BFGS
 
+
 @pytest.fixture
 def water():
     return Atoms('OHH', positions=[(0, 0, 0), (1, 0, 0), (0, 1, 0)])
