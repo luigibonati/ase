@@ -19,7 +19,7 @@ class ORCA(FileIOCalculator):
     default_parameters = dict(
         charge=0, mult=1,
         task='gradient',
-        orcasimpleinput='tightscf PBE def2-SVP',
+        orcasimpleinput='engrad tightscf PBE def2-SVP',
         orcablocks='%scf maxiter 200 end')
 
     def __init__(self, restart=None,
@@ -35,6 +35,7 @@ class ORCA(FileIOCalculator):
 
             orcasimpleinput: str
                 What you'd put after the "!" in an orca input file.
+                Should in most cases contain "engrad".
 
             orcablocks: str
                 What you'd put in the "% ... end"-blocks.

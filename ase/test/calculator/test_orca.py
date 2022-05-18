@@ -1,7 +1,9 @@
 import pytest
+import numpy as np
 
 from ase.calculators.orca import ORCA
 from ase.atoms import Atoms
+from ase.units import Hartree
 
 @pytest.fixture
 def water():
@@ -21,3 +23,8 @@ def test_orca(water):
 
     assert abs(final_energy + 2077.24420) < 1.0
 
+def test_orca_use_last_energy(water):
+    water.calc = ORCA(label='water', orcasimpleinput='PBE def2-SVP Opt TightOpt')
+    energy = water.get_potential_energy() / Hartree
+
+    assert np.testing.assert_almost_equal(energy, -76.272686944630, decimal=5)
