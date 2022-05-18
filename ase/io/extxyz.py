@@ -474,10 +474,10 @@ def _read_xyz_frame(lines, natoms, properties_parser=key_val_str_to_dict,
             duplicate_numbers = arrays['numbers']
         del arrays['numbers']
 
-    charges = None
-    if 'charges' in arrays:
-        charges = arrays['charges']
-        del arrays['charges']
+    initial_charges = None
+    if 'initial_charges' in arrays:
+        initial_charges = arrays['initial_charges']
+        del arrays['initial_charges']
 
     positions = None
     if 'positions' in arrays:
@@ -487,7 +487,7 @@ def _read_xyz_frame(lines, natoms, properties_parser=key_val_str_to_dict,
     atoms = Atoms(symbols=symbols,
                   positions=positions,
                   numbers=numbers,
-                  charges=charges,
+                  charges=initial_charges,
                   cell=cell,
                   pbc=pbc,
                   info=info)
