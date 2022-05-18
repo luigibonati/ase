@@ -86,6 +86,11 @@ class MPI:
         self.comm = None
 
     def __getattr__(self, name):
+        # Pickling of objects that carry instances of MPI class (e.g. NEB) raises
+        # RecursionError since it tries to access the optional __setstate__ method 
+        # (which we do not implement) when unpickling. The two lines below prevent the 
+        # RecursionError. This also affects modules that use pickling e.g. multiprocessing. 
+        # For more details see: https://gitlab.com/ase/ase/-/merge_requests/2695
         if name == '__setstate__':
             raise AttributeError(name)
             
