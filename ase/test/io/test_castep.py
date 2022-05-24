@@ -1,6 +1,5 @@
 import pytest
 import re
-import numpy as np
 
 import ase.build
 from ase.io import write, read
@@ -16,13 +15,18 @@ def write_read_atom(atom, tmp_path):
 @pytest.mark.parametrize(
     "mol, custom_masses, expected_species, expected_mass_block",
     [
-        ("CH4", {2: [1]}, ['C','H:0','H','H','H'], ["H:0 2.0"]),
-        ("CH4", {2: [1, 2, 3, 4]}, ['C','H','H','H','H'], ["H 2.0"]),
-        ("C2H5", {2: [2, 3]}, ['C','C','H:0','H:0','H','H','H'], ["H:0 2.0"]),
-        ("C2H5", {2: [2], 3: [3]}, ['C','C','H:0','H:1','H','H','H'], ["H:0 2.0", "H:1 3.0"]),
+        ("CH4", {2: [1]}, ["C", "H:0", "H", "H", "H"], ["H:0 2.0"]),
+        ("CH4", {2: [1, 2, 3, 4]}, ["C", "H", "H", "H", "H"], ["H 2.0"]),
+        ("C2H5", {2: [2, 3]}, ["C", "C", "H:0", "H:0", "H", "H", "H"], ["H:0 2.0"]),
+        (
+            "C2H5",
+            {2: [2], 3: [3]},
+            ["C", "C", "H:0", "H:1", "H", "H", "H"],
+            ["H:0 2.0", "H:1 3.0"],
+        ),
     ],
 )
-@pytest.mark.filterwarnings('ignore::UserWarning')
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_custom_mass_write(
     mol, custom_masses, expected_species, expected_mass_block, tmp_path
 ):
@@ -42,25 +46,25 @@ def test_custom_mass_write(
     assert (atom_masses == new_atom.get_masses()).all()
 
     # check that file contains appropriate blocks
-    with open('{0}/{1}'.format(tmp_path, "castep_test.cell"), "r") as f:
-        data = f.read().replace('\n', '\\n')
+    with open("{0}/{1}".format(tmp_path, "castep_test.cell"), "r") as f:
+        data = f.read().replace("\n", "\\n")
 
-    position_block = re.search(r'%BLOCK POSITIONS_ABS.*%ENDBLOCK POSITIONS_ABS', data)
+    position_block = re.search(r"%BLOCK POSITIONS_ABS.*%ENDBLOCK POSITIONS_ABS", data)
     assert position_block
 
-    pos = position_block.group().split('\\n')[1:-1]
-    species = [p.split(' ')[0] for p in pos]
+    pos = position_block.group().split("\\n")[1:-1]
+    species = [p.split(" ")[0] for p in pos]
     assert species == expected_species
 
     mass_block = re.search(r"%BLOCK SPECIES_MASS.*%ENDBLOCK SPECIES_MASS", data)
     assert mass_block
 
-    masses = mass_block.group().split('\\n')[1:-1]
+    masses = mass_block.group().split("\\n")[1:-1]
     assert masses == expected_mass_block
 
 
 # test setting a custom species on different atom before write
-@pytest.mark.filterwarnings('ignore::UserWarning')
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_custom_mass_overwrite(tmp_path):
     custom_atom = ase.build.molecule("CH4")
     custom_atom[1].mass = 2
@@ -69,7 +73,10 @@ def test_custom_mass_overwrite(tmp_path):
     # test that changing masses when custom masses defined causes errors
     atoms[3].mass = 3
     with pytest.raises(ValueError) as e:
-        atoms.write('{0}/{1}'.format(tmp_path, "castep_test2.cell"))
+        atoms.write("{0}/{1}".format(tmp_path, "castep_test2.cell"))
 
     print(e)
-    assert "Could not write custom mass block for H." == e.value.args[0].split("\n")[0].strip()
+    assert (
+        "Could not write custom mass block for H."
+        == e.value.args[0].split("\n")[0].strip()
+    )
