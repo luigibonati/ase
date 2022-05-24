@@ -249,12 +249,11 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
         for el, mass_dict in custom_masses.items():
 
             # ignore mass record that match defaults
-            mass_dict.pop(atomic_masses[atoms.get_array('numbers')[list(elems).index(el)]], None)
+            default = mass_dict.pop(atomic_masses[atoms.get_array('numbers')[list(elems).index(el)]], None)
             if mass_dict:
                 # no custom species need to be created
-                if atoms.has('castep_custom_species'):
+                if len(mass_dict) == 1 and not default:
                     mass_block.append('{0} {1}'.format(el, list(mass_dict.keys())[0]))
-
                 # for each custom mass, create new species and change names to match in 'elems' list
                 else:
                     warnings.warn('Custom mass specified for '
