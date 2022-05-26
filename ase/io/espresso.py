@@ -1599,7 +1599,7 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
     for species in set(atoms.get_chemical_symbols()):
         # Look in all possible locations for the pseudos and try to figure
         # out the number of valence electrons
-        pseudo = pseudopotentials.get(species, None)
+        pseudo = pseudopotentials[species]
         valence = get_valence_electrons(species, input_parameters, pseudo)
         species_info[species] = {'pseudo': pseudo, 'valence': valence}
 
