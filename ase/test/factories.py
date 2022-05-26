@@ -18,15 +18,16 @@ class NotInstalled(Exception):
 def get_testing_executables():
     # TODO: better cross-platform support (namely Windows),
     # and a cross-platform global config file like /etc/ase/ase.conf
-    paths = [Path.home() / '.config' / 'ase' / 'ase.conf']
-    try:
-        paths += [Path(x) for x in os.environ['ASE_CONFIG'].split(':')]
-    except KeyError:
-        pass
-    conf = configparser.ConfigParser()
-    conf['executables'] = {}
-    effective_paths = conf.read(paths)
-    return effective_paths, conf['executables']
+    from ase.config import cfg
+
+    parser = cfg.parser
+
+    executables = {}
+    if 'espresso' in parser:
+        print(parser)
+        executables['espresso'] = parser['espresso']['argv']
+
+    return cfg.paths, executables
 
 
 factory_classes = {}
@@ -255,7 +256,7 @@ class EspressoFactory:
 
     def _profile(self):
         from ase.calculators.espresso import EspressoProfile
-        return EspressoProfile([self.executable])
+        return EspressoProfile([self.executable], self.pseudo_dir)
 
     def version(self):
         self._profile().version()
@@ -273,7 +274,6 @@ class EspressoFactory:
         kw = self._base_kw()
         kw.update(kwargs)
         return Espresso(profile=self._profile(),
-                        pseudo_dir=str(self.pseudo_dir),
                         pseudopotentials=pseudopotentials,
                         **kw)
 
@@ -595,10 +595,10 @@ class Factories:
     }
 
     def __init__(self, requested_calculators):
-        executable_config_paths, executables = get_testing_executables()
+        configpaths, executables = get_testing_executables()
         assert isinstance(executables, Mapping), executables
+        self.executable_config_paths = configpaths
         self.executables = executables
-        self.executable_config_paths = executable_config_paths
 
         datafiles_module = None
         datafiles = {}
