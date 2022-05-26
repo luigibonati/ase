@@ -53,7 +53,7 @@ class AbinitTemplate(CalculatorTemplate):
     def execute(self, directory, profile) -> None:
         profile.run(directory, self.input_file, self.output_file)
 
-    def write_input(self, directory, atoms, parameters, properties):
+    def write_input(self, profile, directory, atoms, parameters, properties):
         directory = Path(directory)
         parameters = dict(parameters)
         pp_paths = parameters.pop('pp_paths', None)
@@ -103,9 +103,6 @@ class Abinit(GenericFileIOCalculator):
         >>> e = h.get_potential_energy()
 
         """
-
-        if profile is None:
-            profile = AbinitProfile(['abinit'])
 
         super().__init__(template=AbinitTemplate(),
                          profile=profile,

@@ -86,7 +86,7 @@ class AimsTemplate(CalculatorTemplate):
 
         return parameters
 
-    def write_input(self, directory, atoms, parameters, properties):
+    def write_input(self, profile, directory, atoms, parameters, properties):
         """Write the geometry.in and control.in files for the calculation
 
         Parameters
@@ -170,9 +170,6 @@ class Aims(GenericFileIOCalculator):
             Any of the base class arguments.
 
         """
-
-        if profile is None:
-            profile = AimsProfile(["aims"])
 
         super().__init__(template=AimsTemplate(),
                          profile=profile,

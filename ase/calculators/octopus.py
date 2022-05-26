@@ -67,10 +67,13 @@ class OctopusTemplate(CalculatorTemplate):
     def execute(self, directory, profile):
         profile.run(directory, 'octopus.out')
 
-    def write_input(self, directory, atoms, parameters, properties):
+    def write_input(self, profile, directory, atoms, parameters, properties):
         txt = generate_input(atoms, process_special_kwargs(atoms, parameters))
         inp = directory / 'inp'
         inp.write_text(txt)
+
+    def load_profile(self, cfg):
+        return OctopusProfile(cfg.
 
 
 class Octopus(GenericFileIOCalculator):
@@ -86,9 +89,6 @@ class Octopus(GenericFileIOCalculator):
 
         Label is always taken as a subdirectory.
         Restart is taken to be a label."""
-
-        if profile is None:
-            profile = OctopusProfile(['octopus'])
 
         super().__init__(profile=profile, template=OctopusTemplate(),
                          directory=directory,

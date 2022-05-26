@@ -23,9 +23,10 @@ def get_testing_executables():
     parser = cfg.parser
 
     executables = {}
-    if 'espresso' in parser:
-        print(parser)
-        executables['espresso'] = parser['espresso']['argv']
+
+    for name, section in parser.items():
+        if 'argv' in section:
+            executables[name] = section['argv']
 
     return cfg.paths, executables
 
