@@ -24,8 +24,9 @@ compatibility_msg = (
 
 
 class EspressoProfile:
-    def __init__(self, argv):
+    def __init__(self, argv, pseudo_path=None):
         self.argv = tuple(argv)
+        self.pseudo_path = pseudo_path
 
     @staticmethod
     def parse_version(stdout):
@@ -60,9 +61,10 @@ class EspressoTemplate(CalculatorTemplate):
         self.inputname = 'espresso.pwi'
         self.outputname = 'espresso.pwo'
 
-    def write_input(self, directory, atoms, parameters, properties):
+    def write_input(self, profile, directory, atoms, parameters, properties):
         dst = directory / self.inputname
         write(dst, atoms, format='espresso-in', properties=properties,
+              pseudo_dir=str(profile.pseudo_path),
               **parameters)
 
     def execute(self, directory, profile):
@@ -74,6 +76,13 @@ class EspressoTemplate(CalculatorTemplate):
         path = directory / self.outputname
         atoms = read(path, format='espresso-out')
         return dict(atoms.calc.properties())
+
+    def load_profile(self, cfg):
+        import shlex
+        print(dict(cfg))
+        return EspressoProfile(
+            argv=shlex.split(cfg['argv']),
+            pseudo_path=cfg['pseudo_path'])
 
 
 class Espresso(GenericFileIOCalculator):
@@ -169,8 +178,6 @@ class Espresso(GenericFileIOCalculator):
             warnings.warn(compatibility_msg, FutureWarning)
 
         template = EspressoTemplate()
-        if profile is None:
-            profile = EspressoProfile(argv=['pw.x'])
         super().__init__(profile=profile, template=template,
                          directory=directory,
                          parameters=kwargs)

@@ -52,6 +52,12 @@ class CalculatorTemplate(ABC):
 class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
     def __init__(self, *, template, profile, directory, parameters=None):
         self.template = template
+
+        if profile is None:
+            from ase.config import cfg
+            myconfig = cfg.parser[template.name]
+            profile = template.load_profile(myconfig)
+
         self.profile = profile
 
         # Maybe we should allow directory to be a factory, so
@@ -76,13 +82,17 @@ class GenericFileIOCalculator(BaseCalculator, GetOutputsMixin):
         return self.template.name
 
     def calculate(self, atoms, properties, system_changes):
-        directory = self.directory
-        directory.mkdir(exist_ok=True, parents=True)
+        self.directory.mkdir(exist_ok=True, parents=True)
 
-        self.template.write_input(directory, atoms, self.parameters,
-                                  properties)
-        self.template.execute(directory, self.profile)
-        self.results = self.template.read_results(directory)
+        self.template.write_input(
+            profile=self.profile,
+            atoms=atoms,
+            parameters=self.parameters,
+            properties=properties,
+            directory=self.directory)
+
+        self.template.execute(self.directory, self.profile)
+        self.results = self.template.read_results(self.directory)
         # XXX Return something useful?
 
     def _outputmixin_get_results(self):
