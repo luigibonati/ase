@@ -36,15 +36,18 @@ class CLICommand:
                 print()
                 print_formats()
             if args.calculators:
+                from ase.config import cfg
                 print()
-                from ase.calculators.autodetect import (detect_calculators,
-                                                        format_configs)
-                configs = detect_calculators()
-                print('Calculators:')
-                for message in format_configs(configs):
-                    print('  {}'.format(message))
-                print()
-                print('Available: {}'.format(','.join(sorted(configs))))
+                cfg.print_everything()
+                # print()
+                # from ase.calculators.autodetect import (detect_calculators,
+                #                                        format_configs)
+                # configs = detect_calculators()
+                # print('Calculators:')
+                # for message in format_configs(configs):
+                #     print('  {}'.format(message))
+                # print()
+                # print('Available: {}'.format(','.join(sorted(configs))))
             return
 
         n = max(len(filename) for filename in args.filename) + 2

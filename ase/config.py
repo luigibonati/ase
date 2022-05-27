@@ -25,5 +25,24 @@ class Config:
     def parser(self):
         return self.paths_and_parser()[1]
 
+    def print_everything(self):
+        print('Configuration')
+        print('-------------')
+        print()
+        if not cfg.paths:
+            print('No configuration loaded.')
+
+        for path in cfg.paths:
+            print(f'Loaded: {path}')
+
+        print()
+        for name, section in cfg.parser.items():
+            print(name)
+            if not section:
+                print('  (Nothing configured)')
+            for key, val in section.items():
+                print(f'  {key}: {val}')
+            print()
+
 
 cfg = Config()
