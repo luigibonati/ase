@@ -1657,9 +1657,9 @@ class GenerateVaspInput:
         column. It is used for restart purposes to get sorting right
         when reading in an old calculation to ASE."""
 
-        file = open(join(directory, 'ase-sort.dat'), 'w')
-        for n in range(len(self.sort)):
-            file.write('%5i %5i \n' % (self.sort[n], self.resort[n]))
+        with open(join(directory, 'ase-sort.dat'), 'w') as fd:
+            for n in range(len(self.sort)):
+                fd.write('%5i %5i \n' % (self.sort[n], self.resort[n]))
 
     # The below functions are used to restart a calculation
 
