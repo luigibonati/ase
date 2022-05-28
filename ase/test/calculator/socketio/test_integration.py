@@ -28,8 +28,9 @@ commands = dict(
 calc = pytest.mark.calculator
 
 
+@pytest.mark.calculator_lite
 @calc('espresso', ecutwfc=200 / Ry)
-@calc('abinit', ecut=200, **abinit_boilerplate)
+# @calc('abinit', ecut=200, **abinit_boilerplate)
 def test_socketio_espresso(factory):
     name = factory.name
     if name == 'abinit':
