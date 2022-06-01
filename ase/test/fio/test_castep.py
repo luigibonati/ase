@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 import re
 
@@ -5,8 +6,8 @@ import ase.build
 from ase.io import write, read
 
 
-# create atom with custom mass - from a list of positions or using ase.build.molecule
-def write_read_atom(atom, tmp_path):
+# create mol with custom mass - from a list of positions or using ase.build.molecule
+def write_read_atoms(atom, tmp_path):
     write("{0}/{1}".format(tmp_path, "castep_test.cell"), atom)
     return read("{0}/{1}".format(tmp_path, "castep_test.cell"))
 
@@ -26,24 +27,24 @@ def write_read_atom(atom, tmp_path):
         ),
     ],
 )
-@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_custom_mass_write(
     mol, custom_masses, expected_species, expected_mass_block, tmp_path
 ):
 
-    custom_atom = ase.build.molecule(mol)
-    atom_positions = custom_atom.positions
+    custom_atoms = ase.build.molecule(mol)
+    atom_positions = custom_atoms.positions
 
     for mass, pos_list in custom_masses.items():
         for pos in pos_list:
-            custom_atom[pos].mass = mass
+            custom_atoms[pos].mass = mass
 
-    atom_masses = custom_atom.get_masses()
-    new_atom = write_read_atom(custom_atom, tmp_path)
+    atom_masses = custom_atoms.get_masses()
+    with pytest.warns(UserWarning):
+        new_atoms = write_read_atoms(custom_atoms, tmp_path)
 
-    # check atom has been written and read correctly
-    assert (atom_positions == new_atom.positions).all()
-    assert (atom_masses == new_atom.get_masses()).all()
+    # check atoms have been written and read correctly
+    np.testing.assert_allclose(atom_positions, new_atoms.positions)
+    np.testing.assert_allclose(atom_masses, new_atoms.get_masses())
 
     # check that file contains appropriate blocks
     with open("{0}/{1}".format(tmp_path, "castep_test.cell"), "r") as f:
@@ -60,23 +61,22 @@ def test_custom_mass_write(
     assert mass_block
 
     masses = mass_block.group().split("\\n")[1:-1]
-    assert masses == expected_mass_block
+    for i, m in enumerate(masses):
+        species_name, mass_read = m.split(' ')
+        expected_species_name, expected_mass = expected_mass_block[i].split(' ')
+        print(mass_read, expected_mass)
+        assert pytest.approx(float(mass_read), abs=1e-6) == float(expected_mass)
+        assert species_name == expected_species_name
 
 
 # test setting a custom species on different atom before write
-@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_custom_mass_overwrite(tmp_path):
-    custom_atom = ase.build.molecule("CH4")
-    custom_atom[1].mass = 2
-    atoms = write_read_atom(custom_atom, tmp_path)
+    custom_atoms = ase.build.molecule("CH4")
+    custom_atoms[1].mass = 2
+    with pytest.warns(UserWarning):
+        atoms = write_read_atoms(custom_atoms, tmp_path)
 
     # test that changing masses when custom masses defined causes errors
     atoms[3].mass = 3
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError, match="Could not write custom mass block for H."):
         atoms.write("{0}/{1}".format(tmp_path, "castep_test2.cell"))
-
-    print(e)
-    assert (
-        "Could not write custom mass block for H."
-        == e.value.args[0].split("\n")[0].strip()
-    )
