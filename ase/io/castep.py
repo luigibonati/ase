@@ -621,10 +621,8 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
 
         if len(line_tokens[0]) == 1:
             if line_tokens[0][0].lower() not in ('amu', 'u'):
-                warnings.warn('read_cell: Warning - ignoring invalid '
-                              'unit specifier in %BLOCK SPECIES_MASS '
-                              '(assuming AMU instead)')
-
+                raise ValueError("unit specifier '{0}' in %BLOCK SPECIES_MASS "
+                                 "not recognised".format(line_tokens[0][0].lower()))
             line_tokens = line_tokens[1:]
 
         for tokens in line_tokens:
