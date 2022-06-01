@@ -39,7 +39,7 @@ def test_custom_mass_write(
             custom_atoms[i].mass = mass
 
     atom_masses = custom_atoms.get_masses()
-    with pytest.warns(UserWarning):
+    with pytest.warns(UserWarning):  # CASTEP IO is noisy while handling keywords JSON
         new_atoms = write_read_atoms(custom_atoms, tmp_path)
 
     # check atoms have been written and read correctly
@@ -72,7 +72,7 @@ def test_custom_mass_write(
 def test_custom_mass_overwrite(tmp_path):
     custom_atoms = ase.build.molecule("CH4")
     custom_atoms[1].mass = 2
-    with pytest.warns(UserWarning):
+    with pytest.warns(UserWarning):  # CASTEP IO is noisy while handling keywords JSON
         atoms = write_read_atoms(custom_atoms, tmp_path)
 
     # test that changing masses when custom masses defined causes errors
