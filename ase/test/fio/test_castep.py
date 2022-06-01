@@ -64,7 +64,6 @@ def test_custom_mass_write(
     for i, m in enumerate(masses):
         species_name, mass_read = m.split(' ')
         expected_species_name, expected_mass = expected_mass_block[i].split(' ')
-        print(mass_read, expected_mass)
         assert pytest.approx(float(mass_read), abs=1e-6) == float(expected_mass)
         assert species_name == expected_species_name
 
