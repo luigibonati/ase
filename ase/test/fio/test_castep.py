@@ -34,9 +34,9 @@ def test_custom_mass_write(
     custom_atoms = ase.build.molecule(mol)
     atom_positions = custom_atoms.positions
 
-    for mass, pos_list in custom_masses.items():
-        for pos in pos_list:
-            custom_atoms[pos].mass = mass
+    for mass, indices in custom_masses.items():
+        for i in indices:
+            custom_atoms[i].mass = mass
 
     atom_masses = custom_atoms.get_masses()
     with pytest.warns(UserWarning):
@@ -61,9 +61,9 @@ def test_custom_mass_write(
     assert mass_block
 
     masses = mass_block.group().split("\\n")[1:-1]
-    for i, m in enumerate(masses):
-        species_name, mass_read = m.split(' ')
-        expected_species_name, expected_mass = expected_mass_block[i].split(' ')
+    for line, expected_line in zip(masses, expected_mass_block):
+        species_name, mass_read = line.split(' ')
+        expected_species_name, expected_mass = expected_line.split(' ')
         assert pytest.approx(float(mass_read), abs=1e-6) == float(expected_mass)
         assert species_name == expected_species_name
 
