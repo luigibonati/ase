@@ -227,11 +227,15 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
 
                 # if custom species were already manually defined raise an error
                 if atoms.has('castep_custom_species'):
-                    raise ValueError('write_cell: error writing custom masses '
-                                    'found custom species {0} with inconsistent masses ({1} and {2})'
-                                        ' please fix manually'.format(species,
-                                                                      custom_mass,
-                                                                      list(custom_masses[species].keys())[0]))
+                    raise ValueError("Could not write custom mass block for {0}. \n"
+                                     "Custom mass was set ({1}), but an inconsistent set of "
+                                     "castep_custom_species already defines ({2}) for {0}. \n"
+                                     "If using both features, ensure that "
+                                     "each species type in atoms.arrays['castep_custom_species'] "
+                                     "has consistent mass values and that each atom with non-standard "
+                                     "mass belongs to a custom species type.""".format(species, custom_mass,
+                                                                                       list(custom_masses[species].keys())[0])
+                                     )
 
                 # append mass to create custom species later
                 else:
@@ -241,27 +245,29 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
 
         # create species_mass block
         mass_block = []
+
         for el, mass_dict in custom_masses.items():
 
             # ignore mass record that match defaults
-            mass_dict.pop(atomic_masses[atoms.get_array('numbers')[elems.index(el)]], None)
+            mass_dict.pop(atomic_masses[atoms.get_array('numbers')[list(elems).index(el)]], None)
+            if mass_dict:
+                # no custom species need to be created
+                if atoms.has('castep_custom_species'):
+                    mass_block.append('{0} {1}'.format(el, list(mass_dict.keys())[0]))
 
-            # no custom species need to be created
-            if atoms.has('castep_custom_species'):
-                mass_block.append('{0} {1}'.format(el, list(mass_dict.keys())[0]))
+                # for each custom mass, create new species and change names to match in 'elems' list
+                else:
+                    warnings.warn('Custom mass specified for '
+                                  'standard species {0}, creating custom species'.format(el))
 
-            # for each custom mass, create new species and change names to match in 'elems' list
-            else:
-                warnings.warn('Warning: custom mass specified for'
-                              'standard species {0}, creating custom species'.format(el))
-
-                for i, vals in enumerate(mass_dict.items()):
-                    mass_val, idxs = vals
-                    custom_species_name = "{0}:{1}".format(el, i)
-                    warnings.warn('Warning: creating custom species {0} with mass {1}'.format(custom_species_name, str(mass_dict)))
-                    for idx in idxs:
-                        elems[idx] = custom_species_name
-                    mass_block.append('{0} {1}'.format(custom_species_name, mass_val))
+                    for i, vals in enumerate(mass_dict.items()):
+                        mass_val, idxs = vals
+                        custom_species_name = "{0}:{1}".format(el, i)
+                        warnings.warn(
+                            'Creating custom species {0} with mass {1}'.format(custom_species_name, str(mass_dict)))
+                        for idx in idxs:
+                            elems[idx] = custom_species_name
+                        mass_block.append('{0} {1}'.format(custom_species_name, mass_val))
 
         setattr(cell, 'species_mass', mass_block)
 
@@ -1278,7 +1284,6 @@ def read_castep_md(fd, index=None, return_scalars=False,
 # Routines that only the calculator requires
 
 def read_param(filename='', calc=None, fd=None, get_interface_options=False):
-
     if fd is None:
         if filename == '':
             raise ValueError('One between filename and fd must be provided')
