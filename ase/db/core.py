@@ -131,7 +131,7 @@ def str_represents(value, t=int):
 
 
 def connect(name, type='extract_from_name', create_indices=True,
-            use_lock_file=True, append=True, serial=False):
+            use_lock_file=True, append=True):
     """Create connection to database.
 
     name: str
@@ -177,11 +177,10 @@ def connect(name, type='extract_from_name', create_indices=True,
 
     if type == 'json':
         from ase.db.jsondb import JSONDatabase
-        return JSONDatabase(name, use_lock_file=use_lock_file, serial=serial)
+        return JSONDatabase(name, use_lock_file=use_lock_file)
     if type == 'db':
         from ase.db.sqlite import SQLite3Database
-        return SQLite3Database(name, create_indices, use_lock_file,
-                               serial=serial)
+        return SQLite3Database(name, create_indices, use_lock_file)
     if type == 'postgresql':
         from ase.db.postgresql import PostgreSQLDatabase
         return PostgreSQLDatabase(name)
@@ -292,14 +291,7 @@ def parse_selection(selection, **kwargs):
 class Database:
     """Base class for all databases."""
     def __init__(self, filename=None, create_indices=True,
-                 use_lock_file=False, serial=False):
-        """Database object.
-
-        serial: bool
-            Let someone else handle parallelization.  Default behavior is
-            to interact with the database on the master only and then
-            distribute results to all slaves.
-        """
+                 use_lock_file=False):
         if isinstance(filename, str):
             filename = os.path.expanduser(filename)
         self.filename = filename
@@ -308,7 +300,6 @@ class Database:
             self.lock = Lock(filename + '.lock', world=DummyMPI())
         else:
             self.lock = None
-        self.serial = serial
 
         # Decription of columns and other stuff:
         self._metadata: Dict[str, Any] = None

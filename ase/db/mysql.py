@@ -127,16 +127,14 @@ class MySQLDatabase(SQLite3Database):
         created for MySQL, as TEXT fields cannot be hashed by MySQL.
     use_lock_file: bool
         See SQLite
-    serial: bool
-        See SQLite
     """
     type = 'mysql'
     default = 'DEFAULT'
 
     def __init__(self, url=None, create_indices=True,
-                 use_lock_file=False, serial=False):
+                 use_lock_file=False):
         super(MySQLDatabase, self).__init__(
-            url, create_indices, use_lock_file, serial)
+            url, create_indices, use_lock_file)
 
         self.host = None
         self.username = None
