@@ -66,6 +66,10 @@ def atoms2dict(atoms):
 
 
 class AtomsRow:
+    mtime: float
+    positions: np.ndarray
+    id: int
+
     def __init__(self, dct):
         if isinstance(dct, dict):
             dct = dct.copy()
