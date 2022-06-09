@@ -206,6 +206,69 @@ def write_castep_cell(fd, atoms, positions_frac=False, force_write=False,
         elems = atoms.get_array('castep_custom_species')
     else:
         elems = atoms.get_chemical_symbols()
+    if atoms.has('masses'):
+
+        from ase.data import atomic_masses
+        masses = atoms.get_array('masses')
+        custom_masses = {}
+
+        for i, species in enumerate(elems):
+            custom_mass = masses[i]
+
+            # build record of different masses for each species
+            if species not in custom_masses.keys():
+
+                # build dictionary of positions of all species with same name and mass value
+                # ideally there should only be one mass per species
+                custom_masses[species] = {custom_mass: [i]}
+
+            # if multiple masses found for a species
+            elif custom_mass not in custom_masses[species].keys():
+
+                # if custom species were already manually defined raise an error
+                if atoms.has('castep_custom_species'):
+                    raise ValueError("Could not write custom mass block for {0}. \n"
+                                     "Custom mass was set ({1}), but an inconsistent set of "
+                                     "castep_custom_species already defines ({2}) for {0}. \n"
+                                     "If using both features, ensure that "
+                                     "each species type in atoms.arrays['castep_custom_species'] "
+                                     "has consistent mass values and that each atom with non-standard "
+                                     "mass belongs to a custom species type.""".format(species, custom_mass,
+                                                                                       list(custom_masses[species].keys())[0])
+                                     )
+
+                # append mass to create custom species later
+                else:
+                    custom_masses[species][custom_mass] = [i]
+            else:
+                custom_masses[species][custom_mass].append(i)
+
+        # create species_mass block
+        mass_block = []
+
+        for el, mass_dict in custom_masses.items():
+
+            # ignore mass record that match defaults
+            default = mass_dict.pop(atomic_masses[atoms.get_array('numbers')[list(elems).index(el)]], None)
+            if mass_dict:
+                # no custom species need to be created
+                if len(mass_dict) == 1 and not default:
+                    mass_block.append('{0} {1}'.format(el, list(mass_dict.keys())[0]))
+                # for each custom mass, create new species and change names to match in 'elems' list
+                else:
+                    warnings.warn('Custom mass specified for '
+                                  'standard species {0}, creating custom species'.format(el))
+
+                    for i, vals in enumerate(mass_dict.items()):
+                        mass_val, idxs = vals
+                        custom_species_name = "{0}:{1}".format(el, i)
+                        warnings.warn(
+                            'Creating custom species {0} with mass {1}'.format(custom_species_name, str(mass_dict)))
+                        for idx in idxs:
+                            elems[idx] = custom_species_name
+                        mass_block.append('{0} {1}'.format(custom_species_name, mass_val))
+
+        setattr(cell, 'species_mass', mass_block)
 
     if atoms.has('castep_labels'):
         labels = atoms.get_array('castep_labels')
@@ -548,6 +611,27 @@ def read_castep_cell(fd, index=None, calculator_args={}, find_spg=False,
         info = parse_info(info)
         for k in add_info:
             add_info_arrays[k] += [info.get(k, add_info[k][1])]
+
+    # read in custom species mass
+    if 'species_mass' in celldict:
+        spec_list = custom_species if custom_species else aargs['symbols']
+        aargs['masses'] = [None for _ in spec_list]
+        lines = celldict.pop('species_mass')[0].split('\n')
+        line_tokens = [l.split() for l in lines]
+
+        if len(line_tokens[0]) == 1:
+            if line_tokens[0][0].lower() not in ('amu', 'u'):
+                raise ValueError("unit specifier '{0}' in %BLOCK SPECIES_MASS "
+                                 "not recognised".format(line_tokens[0][0].lower()))
+            line_tokens = line_tokens[1:]
+
+        for tokens in line_tokens:
+            token_pos_list = [i for i, x in enumerate(spec_list) if x == tokens[0]]
+            if len(token_pos_list) == 0:
+                warnings.warn('read_cell: Warning - ignoring unused '
+                              'species mass {0} in %BLOCK SPECIES_MASS'.format(tokens[0]))
+            for idx in token_pos_list:
+                aargs['masses'][idx] = tokens[1]
 
     # Now on to the species potentials...
     if 'species_pot' in celldict:
@@ -1197,7 +1281,6 @@ def read_castep_md(fd, index=None, return_scalars=False,
 # Routines that only the calculator requires
 
 def read_param(filename='', calc=None, fd=None, get_interface_options=False):
-
     if fd is None:
         if filename == '':
             raise ValueError('One between filename and fd must be provided')
