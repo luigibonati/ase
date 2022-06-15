@@ -2653,7 +2653,6 @@ class ExpCellFilter(UnitCellFilter):
         self.expm = expm
         self.logm = logm
 
-
     def get_positions(self):
         pos = UnitCellFilter.get_positions(self)
         natoms = len(self.atoms)
