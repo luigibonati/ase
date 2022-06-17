@@ -55,6 +55,8 @@ package_data = {'ase': ['spacegroup/spacegroup.dat',
                         'collections/*.json',
                         'db/templates/*',
                         'db/static/*',
+                        # make ASE a PEP 561 compliant package so that
+                        # other packages can use ASE's type hints:
                         'py.typed'],
                 'ase.test': ['pytest.ini',
                              'testdata/*',
