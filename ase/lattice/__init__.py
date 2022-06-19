@@ -672,13 +672,6 @@ class RHL(BravaisLattice):
         return points
 
 
-def check_mcl(a, b, c, alpha):
-    if not (b <= c and alpha < 90):
-        raise UnconventionalLattice('Expected b <= c, alpha < 90; '
-                                    'got a={}, b={}, c={}, alpha={}'
-                                    .format(a, b, c, alpha))
-
-
 @bravaisclass('primitive monoclinic', 'monoclinic', 'monoclinic', 'mP',
               ('a', 'b', 'c', 'alpha'),
               [['MCL', 'GACDD1EHH1H2MM1M2XYY1Z', 'GYHCEM1AXH1,MDZ,YD', None]])
@@ -687,8 +680,15 @@ class MCL(BravaisLattice):
     conventional_cellmap = _identity
 
     def __init__(self, a, b, c, alpha):
-        check_mcl(a, b, c, alpha)
+        self.check_mcl(a, b, c, alpha)
         super().__init__(a=a, b=b, c=c, alpha=alpha)
+
+    @classmethod
+    def check_mcl(cls, a, b, c, alpha):
+        if not (b <= c and alpha < 90):
+            raise UnconventionalLattice(
+                'Expected b <= c, alpha < 90; '
+                f'got a={a}, b={b}, c={c}, alpha={alpha}')
 
     def _cell(self, a, b, c, alpha):
         alpha *= _degrees
@@ -719,7 +719,6 @@ class MCL(BravaisLattice):
         return points
 
     def _variant_name(self, a, b, c, alpha):
-        check_mcl(a, b, c, alpha)
         return 'MCL'
 
 
@@ -740,8 +739,13 @@ class MCLC(BravaisLattice):
     conventional_cellmap = np.array([[1, -1, 0], [1, 1, 0], [0, 0, 1]])
 
     def __init__(self, a, b, c, alpha):
-        check_mcl(a, b, c, alpha)
+        self.check_mclc(alpha)
         super().__init__(a=a, b=b, c=c, alpha=alpha)
+
+    @classmethod
+    def check_mclc(cls, alpha):
+        if not alpha < 90:
+            raise UnconventionalLattice(f'Expected alpha < 90, got {alpha}')
 
     def _cell(self, a, b, c, alpha):
         alpha *= np.pi / 180
@@ -754,7 +758,6 @@ class MCLC(BravaisLattice):
 
         # We need the same parameters here as when determining the points.
         # Right now we just repeat the code:
-        check_mcl(a, b, c, alpha)
 
         a2 = a * a
         b2 = b * b
@@ -1246,6 +1249,7 @@ class LatticeChecker:
 
         newcell = lat.tocell()
         err = celldiff(self.cell, newcell)
+
         if err < self.eps:
             return lat
 
@@ -1367,29 +1371,29 @@ class LatticeChecker:
         return self._check(MCL, *self.lengths, self.angles[0])
 
     def MCLC(self):
-        # MCLC is similar to ORCC:
-        orcc_ab = self._orcc_ab()
-        if orcc_ab is None:
+        # a1 · a1 + a1 · a2 = b² / 2
+        # a1 · a1 - a1 · a2 = a² / 2
+        # a3 · a3 = c²
+        # a2 · a3 = (b c / 2) cos alpha
+        a1a1 = self.prods[0]
+        a1a2 = self.prods[5]
+        a2a3 = self.prods[3]
+
+        if abs(a1a2) >= a1a1:
             return None
 
-        prods = self.prods
-        C = self.C
-        mclc_a, mclc_b = orcc_ab[::-1]  # a, b reversed wrt. ORCC
-        mclc_cosa = 2.0 * prods[3] / (mclc_b * C)
-        if -1 < mclc_cosa < 1:
-            mclc_alpha = np.arccos(mclc_cosa) * 180 / np.pi
-            if mclc_b > C:
-                # XXX Temporary fix for certain otherwise
-                # unrecognizable lattices.
-                #
-                # This error could happen if the input lattice maps to
-                # something just outside the domain of conventional
-                # lattices (less than the tolerance).  Our solution is to
-                # propose a nearby conventional lattice instead, which
-                # will then be accepted if it's close enough.
-                mclc_b = 0.5 * (mclc_b + C)
-                C = mclc_b
-            return self._check(MCLC, mclc_a, mclc_b, C, mclc_alpha)
+        mclc_a = np.sqrt(2 * (a1a1 - a1a2))
+        mclc_b = np.sqrt(2 * (a1a1 + a1a2))
+        mclc_c = self.C
+
+        bc = mclc_b * mclc_c
+
+        if bc == 0:
+            return None
+
+        cosalpha = 2 * a2a3 / bc
+        mclc_alpha = np.arccos(np.clip(cosalpha, -1, 1)) / _degrees
+        return self._check(MCLC, mclc_a, mclc_b, mclc_c, mclc_alpha)
 
     def TRI(self):
         return self._check(TRI, *self.cellpar)
