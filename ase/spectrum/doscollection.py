@@ -2,6 +2,10 @@ import collections
 from functools import reduce, singledispatch
 from typing import (Any, Dict, Iterable, List, Optional,
                     overload, Sequence, TypeVar, Union)
+try:
+    from typing_extensions import Self
+except ImportError:
+    Self = Any
 
 import numpy as np
 from ase.spectrum.dosdata import DOSData, RawDOSData, GridDOSData, Info, Floats
@@ -327,7 +331,7 @@ class DOSCollection(collections.abc.Sequence):
         return type(self)(collection_data)
 
     def __add__(self, other: Union['DOSCollection', DOSData]
-                ) -> 'DOSCollection':
+                ) -> Self:
         """Join entries between two DOSCollection objects of the same type
 
         It is also possible to add a single DOSData object without wrapping it
