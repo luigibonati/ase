@@ -578,22 +578,6 @@ class Wannier:
             self.Z_dknn = self.new_Z(calc, k0_dkc)
         self.initialize(file=file, initialwannier=initialwannier, rng=rng)
 
-    @property
-    def atoms(self):
-        return self.calcdata.atoms
-
-    @property
-    def kpt_kc(self):
-        return self.calcdata.kpt_kc
-
-    @property
-    def Ndir(self):
-        return len(self.weight_d)  # Number of directions
-
-    @property
-    def Nk(self):
-        return len(self.kpt_kc)
-
     def new_Z(self, calc, k0_dkc):
         Nb = self.nbands
         Z_dknn = np.empty((self.Ndir, self.Nk, Nb, Nb), complex)
@@ -605,18 +589,6 @@ class Wannier:
                     nbands=Nb, dirG=dirG, kpoint=k, nextkpoint=k1,
                     G_I=k0_c, spin=self.spin)
         return Z_dknn
-
-    @property
-    def unitcell_cc(self):
-        return self.atoms.cell
-
-    @property
-    def U_kww(self):
-        return self.wannier_state.U_kww
-
-    @property
-    def C_kul(self):
-        return self.wannier_state.C_kul
 
     def initialize(self, file=None, initialwannier='random', rng=np.random):
         """Re-initialize current rotation matrix.
@@ -649,7 +621,45 @@ class Wannier:
                                                  self.edf_k, self.spin)
 
         self.wannier_state = wannier_state
-        self.update()
+        # Most things on self should in fact be moved to the
+        # WannierCalculator
+
+        self.wannier_calculator = WannierCalculator(
+            calcdata=calcdata, ...)
+        self.wannier_calculator.update()
+
+
+class WannierCalculator:
+    def __init__(self, calcdata, ...):
+        self.calcdata = calcdata
+
+    @property
+    def atoms(self):
+        return self.calcdata.atoms
+
+    @property
+    def kpt_kc(self):
+        return self.calcdata.kpt_kc
+
+    @property
+    def Ndir(self):
+        return len(self.weight_d)  # Number of directions
+
+    @property
+    def Nk(self):
+        return len(self.kpt_kc)
+
+    @property
+    def unitcell_cc(self):
+        return self.atoms.cell
+
+    @property
+    def U_kww(self):
+        return self.wannier_state.U_kww
+
+    @property
+    def C_kul(self):
+        return self.wannier_state.C_kul
 
     def save(self, file):
         """Save information on localization and rotation matrices to file."""
@@ -675,6 +685,13 @@ class Wannier:
         # Update the new Z matrix
         self.Z_dww = self.Z_dkww.sum(axis=1) / self.Nk
 
+    # XXX This depends on calculator, but maybe we can
+    # refactor it later.
+    #
+    # Actually probably we don't really need calc.
+    # We should just create a new WannierCalculator object
+    # from our existing data on self.
+    # The initialization function 'bloch' does not depend on calculator.
     def get_optimal_nwannier(self, nwrange=5, random_reps=5, tolerance=1e-6):
         """
         The optimal value for 'nwannier', maybe.
@@ -715,7 +732,7 @@ class Wannier:
             # Define once with the fastest 'initialwannier',
             # then initialize with random seeds in the for loop
             wan = Wannier(nwannier=int(Nw),
-                          calc=self.calc,
+                          calc=self.calc,  # XXXXXXXXX
                           nbands=self.nbands,
                           spin=self.spin,
                           functional=self.functional,
@@ -938,6 +955,8 @@ class Wannier:
                     Hk += hop_ww * phase
         return Hk
 
+    # XXX depends on calculator
+    # This method should then take calc as an input.
     def get_function(self, index, repeat=None):
         r"""Get Wannier function on grid.
 
@@ -991,6 +1010,7 @@ class Wannier:
         wanniergrid /= np.sqrt(self.Nk)
         return wanniergrid
 
+    # XXX depends on calculator
     def write_cube(self, index, fname, repeat=None, angle=False):
         """
         Dump specified Wannier function to a cube file.
