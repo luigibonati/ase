@@ -1,7 +1,6 @@
 from warnings import warn
 
 import numpy as np
-from scipy.linalg import expm, logm
 from ase.calculators.calculator import PropertyNotImplementedError
 from ase.geometry import (find_mic, wrap_positions, get_distances_derivatives,
                           get_angles_derivatives, get_dihedrals_derivatives,
@@ -2649,16 +2648,21 @@ class ExpCellFilter(UnitCellFilter):
             warn("cell_factor is deprecated")
         self.cell_factor = 1.0
 
+        # We defer the scipy import to avoid high immediate import overhead
+        from scipy.linalg import expm, logm
+        self.expm = expm
+        self.logm = logm
+
     def get_positions(self):
         pos = UnitCellFilter.get_positions(self)
         natoms = len(self.atoms)
-        pos[natoms:] = logm(self.deform_grad())
+        pos[natoms:] = self.logm(self.deform_grad())
         return pos
 
     def set_positions(self, new, **kwargs):
         natoms = len(self.atoms)
         new2 = new.copy()
-        new2[natoms:] = expm(new[natoms:])
+        new2[natoms:] = self.expm(new[natoms:])
         UnitCellFilter.set_positions(self, new2, **kwargs)
 
     def get_forces(self, **kwargs):
@@ -2672,7 +2676,7 @@ class ExpCellFilter(UnitCellFilter):
                             np.diag([self.scalar_pressure] * 3))
 
         cur_deform_grad = self.deform_grad()
-        cur_deform_grad_log = logm(cur_deform_grad)
+        cur_deform_grad_log = self.logm(cur_deform_grad)
 
         if self.hydrostatic_strain:
             vtr = virial.trace()
@@ -2686,8 +2690,8 @@ class ExpCellFilter(UnitCellFilter):
         Y = np.zeros((6, 6))
         Y[0:3, 0:3] = cur_deform_grad_log
         Y[3:6, 3:6] = cur_deform_grad_log
-        Y[0:3, 3:6] = - virial @ expm(-cur_deform_grad_log)
-        deform_grad_log_force = -expm(Y)[0:3, 3:6]
+        Y[0:3, 3:6] = - virial @ self.expm(-cur_deform_grad_log)
+        deform_grad_log_force = -self.expm(Y)[0:3, 3:6]
         for (i1, i2) in [(0, 1), (0, 2), (1, 2)]:
             ff = 0.5 * (deform_grad_log_force[i1, i2] +
                         deform_grad_log_force[i2, i1])
