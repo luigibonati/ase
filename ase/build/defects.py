@@ -160,18 +160,30 @@ def centeroidnp(arr):
     return np.array((sum_x/length, sum_y/length, sum_z/length))
 
 
-def get_top_bottom(atoms, dim=2):
+def get_top_bottom(atoms, interc=False, dim=2):
     positions = atoms.get_scaled_positions()
     assert dim == 2, "Can only be used for 2D structures."
 
     zs = positions[:, 2]
-    for z in zs:
-        if z == max(zs):
-            top = z
-        if z == min(zs):
-            bottom = z
+    if interc:
+        top = zs[atoms.get_tags() == 1].min()
+        bottom = zs[atoms.get_tags() == 0].max()
+    else:
+        for z in zs:
+            if z == max(zs):
+                top = z
+            if z == min(zs):
+                bottom = z
 
     return top, bottom
+
+
+def get_layer_tags(atoms):
+    """Automatically assign tag 1 to top layer and tag 0 to bottom layer"""
+    atoms_tmp = atoms.copy()
+    atoms_tmp.center()
+    tags = [1 if atom.scaled_position[2] > 0.5 else 0 for atom in atoms_tmp]
+    return tags
 
 
 class DefectBuilder():
@@ -190,9 +202,6 @@ class DefectBuilder():
           has modes 'all', 'points', 'lines', 'faces')
         - 'map_positions' to use Voronoi positions and map them onto Wyckoff positions
           of the host crystal
-
-    Functionalities that need to be added and could be useful:
-        - method to get intercalated structures, e.g. 'get_intercalated_structures'
 
     Attributes
     ----------
@@ -256,7 +265,7 @@ class DefectBuilder():
     def get_host_symmetry(self):
         atoms = self.get_primitive_structure()
         spg_cell = get_spg_cell(atoms)
-        dataset = spg.get_symmetry_dataset(spg_cell, symprec=1e-2)
+        dataset = spg.get_symmetry_dataset(spg_cell, symprec=1e-3)
 
         return dataset
 
@@ -388,7 +397,7 @@ class DefectBuilder():
 
     def get_adsorbate_structures(self, kindlist=None,
                                  sc=3, mechanism='chemisorption',
-                                 size=None, Nsites=None):
+                                 size=None, Nsites=None, tag=0):
         """Create adsorbate structures and return in desired supercell.
 
         Adsorption structures are created with the following steps:
@@ -417,6 +426,8 @@ class DefectBuilder():
         Nsites : int
             choose number of adsorption sites to create (if 'Nsites' is None it will
             just use the 'min_dist' criterion in the constructor of the class)
+        tag : int
+            tag of the adsorbed atoms
         """
         atoms_top = self.create_adsorption_sites('top', Nsites=Nsites)
         atoms_bottom = self.create_adsorption_sites('bottom', Nsites=Nsites)
@@ -445,23 +456,125 @@ class DefectBuilder():
                         structure = supercell.copy()
                         positions = structure.get_positions()
                         symbols = structure.get_chemical_symbols()
+                        tags = list(structure.get_tags())
                         cell = structure.get_cell()
                         for z in z_ranges[j]:
                             pos = atoms.get_positions()[i] + [0, 0, z]
                             if self.check_distance(primitive, pos, kind, mechanism):
                                 positions = np.append(positions, [pos], axis=0)
                                 symbols.append(kind)
+                                tags.append(tag)
                                 structures.append(Atoms(symbols=symbols,
                                                         positions=positions,
                                                         cell=cell,
+                                                        tags=tags,
                                                         pbc=structure.get_pbc()))
                                 break
 
         return structures
-    # defect creation methods (vacancies, subst., interstitial, adsorption) - end
+
+    def get_intercalated_structures(self, kindlist=None, 
+                                    Nsites=1, sc=2, 
+                                    group_sites=True,
+                                    randomize=False,
+                                    symprec=1e-2,
+                                    depth=0.15,
+                                    dtol=2.0,
+                                    return_labels=False):
+        """Create intercalation structures in the desired supercell.
+
+        Intercalation structures are created with the following steps:
+            1. find all the hollow sites in the Van der Waals gap,
+               and tag them according to their symmetry
+            2. set up supercell and find the hollow site replicas inside it
+            3. For each element provided in kindlist, 
+               intercalate as many atoms as specified by nsites.
+            4. return list of intercalation structures
+
+        Parameters
+        ----------
+        kindlist : list
+            list of chemical elements to dope the adsorbate structures with
+            (if 'None', only intrisic elements will be considered)
+        sc : int/list/numpy.ndarray
+            if integer -> integer repitition of the primitive supercell to create supercell
+            if 3x3 list or numpy array -> unit vector transformation matrix
+        Nsites : int
+            choose number of atoms to intercalate per element.
+            If set to 0, it will simply return the supercell.
+        randomize : bool
+            if True, randomly choose the intercalation sites among the available ones.
+            Overrides the default behaviour, i.e. spreading out the
+            intercalation sites as much as possible according to their distances.
+        group_sites : bool
+            if False, don't group the hollow sites by symmetry 
+            and fill them only according to distances. 
+            This will reduce the total number of structures to one per kindlist element
+        depth: float (0.0 < depth < 0.5)
+            fraction of the interlayer gap width. Determines how deep in the 
+            interlayer gap to start looking for hollow sites.
+        dtol: float
+            minimu distance between hollow sites and atoms that belong to the
+            pristine structure.
+        return_labels: bool
+            ask to return, for each structure, a symmetry label of the form
+            "[hollow_site_point_group]-[coordination_number]"
+            The local symmetry analysis is performed on a local cluster 
+            formed by the hollow site and its nearest neighbors.
+        """
+        from ase import Atom
+        from ase.geometry import get_distances
+        from ase.build import make_supercell
+        from ase.visualize import view
+
+        tags = get_layer_tags(self.primitive)
+        self.primitive.set_tags(tags)
+
+        _, atoms = self.create_interstitials(atoms=self.primitive,
+                                             interc=True,
+                                             depth=depth)
+
+        if kindlist is None:
+            kindlist = self.get_intrinsic_types()
+
+        # set up pristine and mock supercells
+        prim = self.get_primitive_structure()
+        if type(sc) == int:
+            supercell_prim = setup_supercell(prim, sc)
+            supercell_mock = setup_supercell(atoms, sc)
+        elif type(sc) in [list, np.ndarray]:
+            supercell_prim = make_supercell(prim, sc)
+            supercell_mock = make_supercell(atoms, sc)
+
+        if Nsites == 0:
+            return [supercell_prim]
+
+        site_positions = self.find_hollow_positions(supercell_mock,
+                                                    dtol,
+                                                    group_sites=group_sites)
+        structures = []
+        labels = []
+        for kind in kindlist:
+            for site in site_positions:
+                order = self.get_filling_order(site_positions[site],
+                                               supercell_mock.pbc,
+                                               supercell_mock.get_cell(),
+                                               randomize=randomize)
+                supercell = supercell_prim.copy()
+                for index in order[:Nsites]:
+                    supercell += Atom(symbol=kind,
+                                      position=site_positions[site][index],
+                                      tag=2)
+                structures.append(supercell)
+                labels.append(site)
+
+        if group_sites and return_labels and Nsites > 0:
+            return structures, labels
+        return structures
+    # defect creation methods (vacancies, subst., interstitial, adsorption, intercalation) - end
 
     # interstitial and adsorbate overview methods - start
-    def create_interstitials(self, atoms=None, Nsites=None, ads=False):
+    def create_interstitials(self, atoms=None, Nsites=None, ads=False, interc=False, depth=0.1):
         """Create a 'mock' atomic structure to give an overview over all interstitials.
 
         Setps to create the interstitial position:
@@ -479,14 +592,21 @@ class DefectBuilder():
             to next neighbor)
         ads : bool
             flag for creating adsorption sites
+        interc : bool
+            flag for creating intercalation sites
+        depth:
+            controls how deep in the slab to start searching for interstitials
         """
         if atoms is None:
             atoms = self.get_primitive_structure()
         sym = self.get_host_symmetry()
         wyck = get_wyckoff_data(sym['number'])
+
         un, struc = self.map_positions(wyck,
                                        structure=atoms,
-                                       ads=ads)
+                                       ads=ads,
+                                       interc=interc,
+                                       depth=depth)
         if Nsites is None:
             return un, struc
 
@@ -696,7 +816,7 @@ class DefectBuilder():
     # methods related to voronoi tessalation - end
 
     # mapping functionalities - start
-    def map_positions(self, coordinates, structure=None, ads=False):
+    def map_positions(self, coordinates, structure=None, ads=False, interc=False, depth=0.1):
         """Get Voronoi positions and map them onto Wyckoff positions of the host crystal.
 
         Parameters
@@ -708,6 +828,8 @@ class DefectBuilder():
             input structure for the mapping; will be set to primitive structure if 'None'
         ads : bool
             True if mapping should be for adsorption site generation, False otherwise
+        interc : bool
+            True if mapping should be for intercalation site generation, False otherwise
         """
         if structure is None:
             structure = self.get_primitive_structure()
@@ -715,7 +837,11 @@ class DefectBuilder():
         equivalent = structure.copy()
         unique = structure.copy()
 
-        kinds = ['points', 'lines', 'faces']
+        if interc:
+            kinds = ['faces']
+        else:
+            kinds = ['points', 'lines', 'faces']
+
         for kind in kinds:
             scaled_positions = self.get_voronoi_positions(kind=kind,
                                                           atoms=structure)
@@ -723,15 +849,19 @@ class DefectBuilder():
             for element in coordinates:
                 for wyck in coordinates[element]:
                     true_int = False
-                    for pos in scaled_positions:
+                    for indx, pos in enumerate(scaled_positions):
                         if self.is_mapped(pos, wyck):
                             tmp_eq = equivalent.copy()
                             tmp_un = unique.copy()
-                            dist, tmp_eq = self.check_distances(tmp_eq, pos)
-                            true_int = self.is_true_interstitial(pos, ads)
+                            dist, tmp_eq = self.check_distances(tmp_eq, pos, indx)
+                            true_int = self.is_true_interstitial(pos, ads, interc, depth)
                             if dist and true_int:
                                 unique = self.create_unique(pos, tmp_un)
-                                equivalent = self.create_copies(pos, coordinates[element], tmp_eq)
+                                equivalent = self.create_copies(pos, 
+                                                                coordinates[element], 
+                                                                tmp_eq, 
+                                                                indx,
+                                                                interc)
                                 # mapped = True
                                 break
 
@@ -770,7 +900,7 @@ class DefectBuilder():
             except SyntaxError:
                 string = self.reconstruct_string(string)
             val = numexpr.evaluate(string)
-            if math.isclose(val, scaled_position[i], abs_tol=1e-5):
+            if math.isclose(val, scaled_position[i], abs_tol=1e-2):
                 continue
             else:
                 fit = False
@@ -796,7 +926,7 @@ class DefectBuilder():
 
         return positions
 
-    def create_copies(self, scaled_position, coordinates, tmp_struc):
+    def create_copies(self, scaled_position, coordinates, tmp_struc, index, interc=False):
         import numexpr
 
         new_struc = tmp_struc.copy()
@@ -818,13 +948,13 @@ class DefectBuilder():
             if self.is_planar(new_struc) and value[2] != z:
                 copy = False
             if self.dim == 2 and not self.is_planar(new_struc):
-                top, bottom = get_top_bottom(self.get_primitive_structure())
+                top, bottom = get_top_bottom(self.get_primitive_structure(), interc=interc)
                 if value[2] <= bottom or value[2] >= top:
                     copy = False
             if (value[0] <= 1 and value[0] >= 0
                and value[1] <= 1 and value[1] >= 0
                and value[2] <= 1 and value[2] >= 0 and copy):
-                dist, new_struc = self.check_distances(tmp_struc, value)
+                dist, new_struc = self.check_distances(tmp_struc, value, index)
                 if dist:
                     tmp_struc = new_struc
 
@@ -911,14 +1041,15 @@ class DefectBuilder():
 
         return R1 + R2
 
-    def is_true_interstitial(self, pos, ads=False, delta=0):
+    def is_true_interstitial(self, pos, ads=False, interc=False, depth=0.1):
         dim = self.dim
         atoms = self.get_primitive_structure()
         if dim == 3:
             return True
         elif dim == 2:
-            top, bottom = get_top_bottom(atoms)
-            # delta = abs(top - bottom) / 10
+            assert 0.0 <= depth <= 0.5, 'Max allowed depth is 0.5!'
+            top, bottom = get_top_bottom(atoms, interc=interc)
+            delta = abs(top - bottom) * depth
             if ads:
                 if pos[2] <= top and pos[2] >= bottom:
                     return True
@@ -940,18 +1071,23 @@ class DefectBuilder():
         positions = np.append(positions, [pos], axis=0)
         unique = Atoms(symbols=symbols,
                        scaled_positions=positions,
-                       cell=cell)
+                       cell=cell,
+                       pbc=unique.pbc)
 
         return unique
 
-    def check_distances(self, structure, pos):
+    def check_distances(self, structure, pos, index):
         symbols = structure.get_chemical_symbols()
         symbols.append('X')
         tmp_pos = structure.get_scaled_positions()
         tmp_pos = np.append(tmp_pos, [pos], axis=0)
+        tmp_tags = structure.get_tags()
+        tmp_tags = np.append(tmp_tags, index+2)
         tmp_struc = Atoms(symbols=symbols,
                           scaled_positions=tmp_pos,
-                          cell=structure.get_cell())
+                          cell=structure.get_cell(),
+                          pbc=structure.pbc,
+                          tags=tmp_tags)
         distances = get_distances(tmp_struc.get_positions()[-1],
                                   tmp_struc.get_positions()[:-1],
                                   cell=structure.get_cell(),
@@ -962,6 +1098,164 @@ class DefectBuilder():
         else:
             return False, structure
     # mapping functionalities - end
+
+    # Intercalation-specific methods - start
+    def find_hollow_positions(self, atoms, dtol=2.0, group_sites=True):
+        """Find the positions and tags of all hollow sites.
+
+        Requires the following tagging scheme:
+            1:   atoms in the top layer
+            0:   atoms in the bottom layer
+            n>1: hollow sites
+        i.e. as assigned by default when get_intercalated_structures is called.
+        If group_sites is set to False, it will set the tags 
+        of all hollow sites to 2.
+
+        'dtol' controls the minimum distance of the hollow sites from lattice atoms.
+        """
+        from ase.visualize import view
+
+        if not group_sites:
+            for atom in atoms:
+                if atom.tag > 1:
+                    atom.tag = 2
+
+        uniq = np.unique([tag for tag in atoms.get_tags() if tag > 1])
+        clean = self.clean_cell(atoms)
+        site_pos_raw = {}
+        labels = []
+        for i, tag in enumerate(uniq):
+            for atom in atoms:
+                if atom.tag == tag:
+                    position = atom.position
+                    if group_sites:
+                        sym = self.get_site_symmetry(position.copy(), clean)
+                        label = 'h' + str(i) + '-' + sym
+                    else:
+                        label = 'positions'
+                    if label in site_pos_raw.keys():
+                        site_pos_raw[label].append(position)
+                    else:
+                        site_pos_raw[label] = [position]
+
+        site_pos = self.filter_hollow_positions(
+                site_pos_raw,
+                clean,
+                dtol)
+
+        return site_pos
+
+    def filter_hollow_positions(self, pos_dct, prim, dtol=2.0):
+        """Filter out hollow site positions if they are within a distance
+           dtol from any atom of the pristine structure"""
+        positions = {}
+        for sites in pos_dct:
+            blacklist = []
+            for i, pos in enumerate(pos_dct[sites]):
+                dists = get_distances(
+                        pos,
+                        prim.get_positions(),
+                        cell=prim.cell,
+                        pbc=prim.pbc)
+                if dists[1].min() < dtol:
+                    blacklist.append(i)
+            positions.update({sites: np.delete(pos_dct[sites], blacklist, axis=0)})
+        return positions
+
+    def clean_cell(self, atoms):
+        """Remove ghost atoms 'X' from an Atoms object"""
+        clean = atoms.copy()
+        blacklist = []
+        for i, atom in enumerate(clean):
+            if atom.symbol == 'X':
+                blacklist.append(i)
+        del clean[blacklist]
+        return clean
+
+    def get_site_symmetry(self, pos, atoms, NN=1, symprec=1e-2):
+        """Obtain a symmetry label for a specific defect site.
+
+        The label consists in a number identifying the local symmetry around the defect
+        (according to the international symmetry tables), followed by its coordination number.
+
+        The hollow site local geometry is obtained by selecting neighbors
+        up to the desired order (through the parameter NN). Then the point
+        group symmetry of the resulting cluster is obtained.
+        """
+
+        import spglib as spg
+        from ase.visualize import view
+
+        new = atoms.repeat((3, 3, 1))
+        #center = 0.5 * (new.cell[0] + new.cell[1])
+        T = atoms.cell[0] + atoms.cell[1]
+        T[2] = 0.0
+        pos += T
+        new.translate(T)
+
+        D = get_distances(
+                pos, 
+                new.get_positions(),
+                cell=new.cell, 
+                pbc=new.pbc
+        )
+        D_round = D[1].round(1).flatten()
+        D_neighbors, counts = np.unique(D_round, return_counts=True)
+        coordination = counts[0]
+
+        cluster = np.argwhere(D_round <= D_neighbors[NN - 1]).flatten()
+        atoms = new[cluster]
+        spg_nr = spg.get_symmetry_dataset(atoms, symprec=symprec)
+        spg_str = f"{spg_nr['number']}-{coordination}"
+        return spg_str
+
+    def get_filling_order(self, positions, pbc, cell, randomize):
+        """Define order in which hollow positions will be filled.
+
+        Criteria: as spread out as possible in terms of distances
+
+        The algorithm is initialized by filling up the hollow position with 
+        index 0 first, then the one at the largest distance.
+        The following ones are chosen according to two criteria:
+            1. maximize the average distance A from the previously filled ones
+            2. keep the distances among intercalation sites as uniform as possible. 
+               This is given by F = 1 - s, where s is the standard deviation
+               of the distances between a given position and all the others.
+
+        Each time a position is filled, all the remaining ones 
+        are given a score S = A * F/F_max. The one with the highest S
+        is chosen as the next one. All the filled sites are given S = -1
+
+        If randomize is set to True, the method will just 
+        return the indexes randomly shuffled.
+        """
+        if randomize:
+            indexes = [i for i in range(len(positions))]
+            np.random.shuffle(indexes)
+            return indexes
+
+        D = get_distances(positions, positions, 
+                          pbc=pbc, 
+                          cell=cell)[1]
+        order = [0, np.argmax(D[0])]
+        for i in range(2, len(D)):
+            dists = np.asarray([D[indx] for indx in order])
+            avgs = []
+            stdevs = []
+            for j in range(len(D)):
+                if j in order:
+                    avgs.append(-1)
+                    stdevs.append(0)
+                else:
+                    avgs.append(np.average(dists[:, j]))
+                    stdevs.append(np.std(dists[:, j]))
+            if np.allclose(stdevs, 0.0):
+                scores = avgs
+            else:
+                scores = avgs * (1 - stdevs / np.max(stdevs))
+            order.append(np.argmax(scores))
+        return order
+    # Intercalation-specific methods - end
 
     # some minor helper methods - start
     def reconstruct_string(self, string):
@@ -1045,3 +1339,5 @@ class DefectBuilder():
 
         return atoms.get_positions()[0, 2]
     # some minor helper methods - end
+
+
