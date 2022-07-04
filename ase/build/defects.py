@@ -7,7 +7,7 @@ from ase import Atoms
 import spglib as spg
 
 
-def setup_supercell(atoms, sc=3, size=None):
+def setup_supercell(atoms, sc=(3, 3, 3), size=None):
     """Set up and return supercell with integer repititions.
 
     Parameters
@@ -23,19 +23,21 @@ def setup_supercell(atoms, sc=3, size=None):
     dim = sum(atoms.pbc)
     if size is not None:
         assert size > 0, 'Choose size larger than zero!'
-        sc = get_supercell_repitition(atoms, size, dim=dim)
+        sc = get_supercell_repetition(atoms, size, dim=dim)
 
     if dim == 2:
-        supercell = atoms.repeat((sc, sc, 1))
+        assert sc[2] == 1, ('2D supercell should only have one '
+                            'repitition out of plane!')
+        supercell = atoms.repeat(sc)
     elif dim == 3:
-        supercell = atoms.repeat((sc, sc, sc))
+        supercell = atoms.repeat(sc)
     elif dim == 1:
         raise ValueError('1D not implemented!')
 
     return supercell
 
 
-def get_supercell_repitition(atoms, size, txt=False):
+def get_supercell_repetition(atoms, size, txt=False):
     """Return supercell repitition based on physical size criterion."""
     cell = atoms.get_cell()
     dim = sum(atoms.pbc)
@@ -48,14 +50,17 @@ def get_supercell_repitition(atoms, size, txt=False):
         tmp = N * min_length
         if tmp > size:
             if dim == 2:
+                sc_tuple = (N, N, 1)
                 mesg = f'{N}x{N}x1'
             elif dim == 3:
+                sc_tuple = (N, N, N)
                 mesg = f'{N}x{N}x{N}'
             if txt:
                 print(f'Set supercell extension to {mesg} '
                       f'(corresponds to {tmp:.2f} Ang) based '
                       f'on the input supercell size of {size} Ang.')
-            return N
+            return sc_tuple
+
     raise ValueError('Only works for repetitions smaller '
                      'than 50! Input smaller physical '
                      'supercell size.')
@@ -303,7 +308,7 @@ class DefectBuilder():
     # small helper methods - end
 
     # defect creation methods (vacancies, subst., interstitial, adsorption) - start
-    def get_vacancy_structures(self, sc=3, size=None):
+    def get_vacancy_structures(self, sc=(3, 3, 3), size=None):
         """Create vacancy structures and set up desired supercell."""
         atoms = self.get_primitive_structure()
         spg_host = self.setup_spg_cell()
@@ -323,7 +328,7 @@ class DefectBuilder():
         return vacancies
 
     def get_substitution_structures(self, intrinsic=True, extrinsic=None,
-                                    sc=3, size=None):
+                                    sc=(3, 3, 3), size=None):
         """Create substutitional defect structures with desired supercell."""
         atoms = self.get_primitive_structure().copy()
         spg_host = self.setup_spg_cell()
@@ -344,7 +349,7 @@ class DefectBuilder():
 
         return substitutions
 
-    def get_interstitial_structures(self, kindlist=None, sc=3, size=None, Nsites=None):
+    def get_interstitial_structures(self, kindlist=None, sc=(3, 3, 3), size=None, Nsites=None):
         """Create interstitial structures and return in desired supercell.
 
         Interstitial structures are created with the following steps:
@@ -358,7 +363,7 @@ class DefectBuilder():
         kindlist : list(str)
             list of chemical elements to dope the interstitial structures with
             (if 'None', only intrisic elements will be considered)
-        sc : int
+        sc : tuple(int, int, int)
             integer repitition of the primitive supercell to create supercell
         size : float
             physical size criterion for supercell size in Angstrom
@@ -396,7 +401,7 @@ class DefectBuilder():
         return structures
 
     def get_adsorbate_structures(self, kindlist=None,
-                                 sc=3, mechanism='chemisorption',
+                                 sc=(3, 3, 3), mechanism='chemisorption',
                                  size=None, Nsites=None, tag=0):
         """Create adsorbate structures and return in desired supercell.
 
@@ -537,7 +542,7 @@ class DefectBuilder():
 
         # set up pristine and mock supercells
         prim = self.get_primitive_structure()
-        if type(sc) == int:
+        if type(sc) == tuple:
             supercell_prim = setup_supercell(prim, sc)
             supercell_mock = setup_supercell(atoms, sc)
         elif type(sc) in [list, np.ndarray]:
