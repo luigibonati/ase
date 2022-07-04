@@ -37,29 +37,26 @@ def setup_supercell(atoms, sc=(3, 3, 3), size=None):
     return supercell
 
 
-def get_supercell_repetition(atoms, size, txt=False):
+def get_supercell_repetition(atoms, size, dim):
     """Return supercell repitition based on physical size criterion."""
     cell = atoms.get_cell()
     dim = sum(atoms.pbc)
-    if dim == 3:
-        min_length = min(cell.lengths())
-    elif dim == 2:
-        min_length = min(cell.lengths()[:2])
+    # if dim == 3:
+    #     min_length = min(cell.lengths())
+    # elif dim == 2:
+    #     min_length = min(cell.lengths()[:2])
     # loop over integer repititions until minimum size criterion fulfilled
-    for N in range(1, 50, 1):
-        tmp = N * min_length
-        if tmp > size:
-            if dim == 2:
-                sc_tuple = (N, N, 1)
-                mesg = f'{N}x{N}x1'
-            elif dim == 3:
-                sc_tuple = (N, N, N)
-                mesg = f'{N}x{N}x{N}'
-            if txt:
-                print(f'Set supercell extension to {mesg} '
-                      f'(corresponds to {tmp:.2f} Ang) based '
-                      f'on the input supercell size of {size} Ang.')
-            return sc_tuple
+    sc_list = [1, 1, 1]
+    for i in range(dim):
+        for N in range(1, 50, 1):
+            length = cell.lengths()[i]
+            tmp = N * length
+            if tmp > size:
+                sc_list[i] = N
+                break
+
+    sc_tuple = tuple(sc_list)
+    return sc_tuple
 
     raise ValueError('Only works for repetitions smaller '
                      'than 50! Input smaller physical '
