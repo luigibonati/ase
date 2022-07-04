@@ -523,9 +523,7 @@ class DefectBuilder():
             formed by the hollow site and its nearest neighbors.
         """
         from ase import Atom
-        from ase.geometry import get_distances
         from ase.build import make_supercell
-        from ase.visualize import view
 
         tags = get_layer_tags(self.primitive)
         self.primitive.set_tags(tags)
@@ -1113,8 +1111,6 @@ class DefectBuilder():
 
         'dtol' controls the minimum distance of the hollow sites from lattice atoms.
         """
-        from ase.visualize import view
-
         if not group_sites:
             for atom in atoms:
                 if atom.tag > 1:
@@ -1123,7 +1119,6 @@ class DefectBuilder():
         uniq = np.unique([tag for tag in atoms.get_tags() if tag > 1])
         clean = self.clean_cell(atoms)
         site_pos_raw = {}
-        labels = []
         for i, tag in enumerate(uniq):
             for atom in atoms:
                 if atom.tag == tag:
@@ -1184,7 +1179,6 @@ class DefectBuilder():
         """
 
         import spglib as spg
-        from ase.visualize import view
 
         new = atoms.repeat((3, 3, 1))
         #center = 0.5 * (new.cell[0] + new.cell[1])
@@ -1339,5 +1333,3 @@ class DefectBuilder():
 
         return atoms.get_positions()[0, 2]
     # some minor helper methods - end
-
-
