@@ -29,7 +29,7 @@ and create a trajectory for the results:
 Finally, we do the 9 calculations (three values for `a` and three for `c`):
 
 .. literalinclude:: lattice_constant.py
-   :lines: 10-18
+   :lines: 10-21
 
 
 Analysis
@@ -48,7 +48,7 @@ So, we can get `a` and `c` from ``ni.cell[0, 0]`` and ``ni.cell[2,
 2]``:
 
 .. literalinclude:: lattice_constant.py
-   :lines: 20-26
+   :lines: 23-26
 
 We fit the energy to this expression:
 
