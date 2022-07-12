@@ -685,6 +685,7 @@ class MCL(BravaisLattice):
 
     @classmethod
     def check_mcl(cls, a, b, c, alpha):
+        ccosalpha = c * np.cos(alpha * _degrees)
         if not (b <= c and alpha < 90):
             raise UnconventionalLattice(
                 'Expected b <= c, alpha < 90; '
@@ -900,6 +901,13 @@ class TRI(BravaisLattice):
     conventional_cellmap = _identity
 
     def __init__(self, a, b, c, alpha, beta, gamma):
+        smallest = min(alpha, beta, gamma)
+        largest = max(alpha, beta, gamma)
+        if largest > 90 and smallest < 90:
+            raise UnconventionalLattice(
+                'Expected all angles > 90 or all angles < 90; got a '
+                f'mixture: {alpha, beta, gamma}')
+
         super().__init__(a=a, b=b, c=c, alpha=alpha, beta=beta,
                          gamma=gamma)
 
