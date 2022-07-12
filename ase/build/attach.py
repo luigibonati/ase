@@ -43,6 +43,10 @@ def attach(atoms1, atoms2, distance, direction=(1, 0, 0),
       maximal number of iterations to get required distance, default 100
     accuracy: float
       required accuracy for minimal distance (Angstrom), default 1e-5
+
+    Returns
+    -------
+    Joined structure as an atoms object.
     """
     atoms = atoms1.copy()
     atoms2 = atoms2.copy()
