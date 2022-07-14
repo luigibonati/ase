@@ -14,6 +14,13 @@ import numpy as np
 from ase.units import Hartree, Bohr
 from ase.calculators.calculator import PropertyNotImplementedError
 
+import warnings
+
+warnings.warn('This Calculator is unmaintained and deprecated.\n'
+              'It will be removed in future versions.'
+              'For ASE support for modern FLEUR versions refer to the python package ase-fleur',
+              DeprecationWarning)
+
 
 class FLEUR:
     """Class for doing FLEUR calculations.
