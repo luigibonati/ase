@@ -16,12 +16,6 @@ from ase.calculators.calculator import PropertyNotImplementedError
 
 import warnings
 
-warnings.warn('This Calculator is unmaintained and deprecated.\n'
-              'It will be removed in future versions.'
-              'For ASE support for modern FLEUR versions refer to the python package ase-fleur',
-              DeprecationWarning)
-
-
 class FLEUR:
     """Class for doing FLEUR calculations.
 
@@ -99,6 +93,10 @@ class FLEUR:
         lenergy: float
             Lower energy in eV. Default -1.8 * Hartree.
         """
+        warnings.warn('This Calculator is unmaintained and deprecated.\n'
+                      'It will be removed in future versions.'
+                      'For ASE support for modern FLEUR versions refer to the python package ase-fleur',
+                      DeprecationWarning)
 
         self.xc = xc
         self.kpts = kpts
