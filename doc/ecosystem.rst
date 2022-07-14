@@ -13,6 +13,12 @@ Listed in alphabetical order, for want of a better approach.
    abTEM provides a Python API for running simulations of (scanning)
    transmission electron microscopy images and diffraction patterns.
 
+ * `ACAT <https://asm-dtu.gitlab.io/acat/>`_:
+   ACAT is a Python package for atomistic modelling of metal or alloy catalysts
+   used in heterogeneous catalysis. Synergizing with ASE, ACAT provides useful
+   tools to build atomistic models and perform global optimization tasks for
+   alloy surfaces and nanoparticles with and without adsorbates.
+
  * `atomicrex <https://atomicrex.org/>`_:
    atomicrex is a versatile tool for the construction of interatomic
    potential models. It includes a Python interface for integration
