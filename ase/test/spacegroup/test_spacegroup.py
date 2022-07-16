@@ -71,7 +71,8 @@ def test_spacegroup_parse_sitesym_element():
                          (0, -1)], [(0, 1)], [(1, -1)], [(2, -1)], [(0, 1), (2, 1)])
     expected_trans_list = (0.0, 0.0, 0.0, 0.0, 0.1, -0.125, 0.5, 0.0)
 
-    for element, expected_rot, expected_trans in zip(element_list, expected_rot_list, expected_trans_list):
+    for element, expected_rot, expected_trans in zip(
+            element_list, expected_rot_list, expected_trans_list):
         rot, trans = parse_sitesym_element(element)
         assert rot == expected_rot
         assert np.allclose(trans, expected_trans)

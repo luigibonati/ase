@@ -26,7 +26,8 @@ def Si():
 
 @pytest.fixture
 def H2O():
-    return Atoms("H2O", [(0.9584, 0.0, 0.0), (-0.2400, 0.9279, 0.0), (0.0, 0.0, 0.0)])
+    return Atoms("H2O", [(0.9584, 0.0, 0.0),
+                 (-0.2400, 0.9279, 0.0), (0.0, 0.0, 0.0)])
 
 
 def test_cartesian_Si(Si):

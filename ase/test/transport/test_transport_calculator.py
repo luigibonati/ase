@@ -20,13 +20,13 @@ def test_transport_calculator(testdir):
 
     # Nearest neighbor hopping is -1.0
     for i in range(3):
-        H_lead[i, i+1] = -1.0
-        H_lead[i+1, i] = -1.0
+        H_lead[i, i + 1] = -1.0
+        H_lead[i + 1, i] = -1.0
 
     # Next-nearest neighbor hopping is 0.2
     for i in range(2):
-        H_lead[i, i+2] = 0.2
-        H_lead[i+2, i] = 0.2
+        H_lead[i, i + 2] = 0.2
+        H_lead[i + 2, i] = 0.2
 
     H_scat = np.zeros([6, 6])
     # Principal layers on either side of S
@@ -73,9 +73,9 @@ def test_transport_calculator(testdir):
     write('pdos1_rot.dat', tcalc.energies, pdos_rot[1])
 
     print('Subspace eigenvalues:', eps)
-    assert sum(abs(eps-(-0.8, 0.8))) < 2.0e-15, 'Subdiagonalization. error'
-    print('Max deviation of T after the rotation:', np.abs(T-T_rot).max())
-    assert max(abs(T-T_rot)) < 2.0e-15, 'Subdiagonalization. error'
+    assert sum(abs(eps - (-0.8, 0.8))) < 2.0e-15, 'Subdiagonalization. error'
+    print('Max deviation of T after the rotation:', np.abs(T - T_rot).max())
+    assert max(abs(T - T_rot)) < 2.0e-15, 'Subdiagonalization. error'
 
     # remove coupling
     h_cut, s_cut = tcalc.cutcoupling_bfs([2], apply=True)

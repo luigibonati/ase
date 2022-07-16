@@ -46,7 +46,8 @@ def test_basic_example_main_run(seed, testdir):
     # Define the composition of the atoms to optimize
     atom_numbers = 2 * [47] + 2 * [79]
 
-    # define the closest distance two atoms of a given species can be to each other
+    # define the closest distance two atoms of a given species can be to each
+    # other
     unique_atom_types = get_all_atom_types(slab, atom_numbers)
     blmin = closest_distances_generator(atom_numbers=unique_atom_types,
                                         ratio_of_covalent_radii=0.7)

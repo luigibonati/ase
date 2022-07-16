@@ -13,7 +13,7 @@ from ase.io.cp2k import read_cp2k_restart
 @pytest.fixture
 def inp():
     return StringIO("""\
- # Version information for this restart file 
+ # Version information for this restart file
  &MOTION
    &CELL_OPT
      MAX_ITER  800

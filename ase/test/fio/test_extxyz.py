@@ -383,8 +383,8 @@ def test_write_read_charges(at, tmpdir, enable_initial_charges, enable_charges):
     if enable_charges:
         at.calc = SinglePointCalculator(at, charges=charges)
         at.get_charges()
-    ase.io.write(str(tmpdir/'charge.xyz'), at, format='extxyz')
-    r = ase.io.read(str(tmpdir/'charge.xyz'))
+    ase.io.write(str(tmpdir / 'charge.xyz'), at, format='extxyz')
+    r = ase.io.read(str(tmpdir / 'charge.xyz'))
     assert at == r
     if enable_initial_charges:
         assert np.allclose(r.get_initial_charges(), initial_charges)

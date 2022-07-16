@@ -31,7 +31,8 @@ def test_parameteric_constr():
     )
 
     # Check expression generator
-    for const_expr, passed_expr in zip(constr_lat.expressions.flatten(), expr_lat):
+    for const_expr, passed_expr in zip(
+            constr_lat.expressions.flatten(), expr_lat):
         assert const_expr == passed_expr
 
     # Check adjust_cell

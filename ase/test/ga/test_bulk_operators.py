@@ -26,7 +26,7 @@ def test_bulk_operators(seed, tmp_path):
 
     stoichiometry = []
     for block, count in blocks:
-        if type(block) == str:
+        if isinstance(block, str):
             stoichiometry += list(Atoms(block).numbers) * count
         else:
             stoichiometry += list(block.numbers) * count

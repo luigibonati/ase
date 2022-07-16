@@ -39,11 +39,13 @@ def test_update_coords(KIM, testdir):
     box_len = 0.5 * model_cutoff
     dimer_separation = model_cutoff * 0.3
 
-    atoms = Atoms("Ar" * 2, cell=[[box_len, 0, 0], [0, box_len, 0], [0, 0, box_len]])
+    atoms = Atoms("Ar" * 2, cell=[[box_len, 0, 0],
+                  [0, box_len, 0], [0, 0, box_len]])
 
     # Create calculator.  Either the kimpy neighbor list library or ASE's native neighbor
     # lists should suffice to check this since update_kim_coords() belongs to their parent
-    # class, NeighborList.  Here, we'll use the default mode (kimpy neighbor list).
+    # class, NeighborList.  Here, we'll use the default mode (kimpy neighbor
+    # list).
     neigh_skin_ratio = 0.2
     skin = neigh_skin_ratio * model_cutoff
     calc = KIM(model, options={"neigh_skin_ratio": neigh_skin_ratio})
@@ -63,7 +65,8 @@ def test_update_coords(KIM, testdir):
 
         # Get potential energy so that it will get rid of "pbc" being in the system_changes.
         # The only way that update_kim_coords is called is when system_changes
-        # only contains "positions", as otherwise a neighbor list rebuild is triggered.
+        # only contains "positions", as otherwise a neighbor list rebuild is
+        # triggered.
         atoms.get_potential_energy()
 
         # First squeeze the dimer together by a distance less than the skin and compute the

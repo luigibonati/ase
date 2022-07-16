@@ -6,7 +6,8 @@ import ase.build
 from ase.io import write, read
 
 
-# create mol with custom mass - from a list of positions or using ase.build.molecule
+# create mol with custom mass - from a list of positions or using
+# ase.build.molecule
 def write_read_atoms(atom, tmp_path):
     write("{0}/{1}".format(tmp_path, "castep_test.cell"), atom)
     return read("{0}/{1}".format(tmp_path, "castep_test.cell"))

@@ -16,7 +16,8 @@ def test_lammps_neighlist_buf(factory, testdir):
 
     os.chdir(testdir)
 
-    atoms = Atoms('He', cell=[[2.045, 2.045, 0.0], [2.045, 0.0, 2.045], [0.0, 2.045, 2.045]], pbc=[True]*3)
+    atoms = Atoms('He', cell=[[2.045, 2.045, 0.0], [2.045, 0.0, 2.045], [
+                  0.0, 2.045, 2.045]], pbc=[True] * 3)
     atoms *= 6
 
     calc = factory.calc(lmpcmds=['pair_style lj/cut 0.5995011000293092E+01', 'pair_coeff * * 3.0 3.0'],

@@ -19,7 +19,7 @@ def test_neighbor_kernel():
     i, j, d = neighbor_list("ijd", a, 1.1)
     assert (i == np.array([0, 1])).all()
     assert (j == np.array([1, 0])).all()
-    assert np.abs(d - np.array([np.sqrt(3/4), np.sqrt(3/4)])).max() < tol
+    assert np.abs(d - np.array([np.sqrt(3 / 4), np.sqrt(3 / 4)])).max() < tol
 
     # test_neighbor_list
     for pbc in [True, False, [True, False, True]]:
@@ -32,16 +32,16 @@ def test_neighbor_kernel():
         assert (np.bincount(i) == np.bincount(j)).all()
 
         r = a.get_positions()
-        dr_direct = mic(r[j]-r[i], a.cell)
-        assert np.abs(r[j]-r[i]+shift.dot(a.cell) - dr_direct).max() < tol
+        dr_direct = mic(r[j] - r[i], a.cell)
+        assert np.abs(r[j] - r[i] + shift.dot(a.cell) - dr_direct).max() < tol
 
-        abs_dr_from_dr = np.sqrt(np.sum(dr*dr, axis=1))
-        abs_dr_direct = np.sqrt(np.sum(dr_direct*dr_direct, axis=1))
+        abs_dr_from_dr = np.sqrt(np.sum(dr * dr, axis=1))
+        abs_dr_direct = np.sqrt(np.sum(dr_direct * dr_direct, axis=1))
 
-        assert np.all(np.abs(abs_dr-abs_dr_from_dr) < 1e-12)
-        assert np.all(np.abs(abs_dr-abs_dr_direct) < 1e-12)
+        assert np.all(np.abs(abs_dr - abs_dr_from_dr) < 1e-12)
+        assert np.all(np.abs(abs_dr - abs_dr_direct) < 1e-12)
 
-        assert np.all(np.abs(dr-dr_direct) < 1e-12)
+        assert np.all(np.abs(dr - dr_direct) < 1e-12)
 
     # test_neighbor_list_atoms_outside_box
     for pbc in [True, False, [True, False, True]]:
@@ -58,16 +58,16 @@ def test_neighbor_kernel():
         assert (np.bincount(i) == np.bincount(j)).all()
 
         r = a.get_positions()
-        dr_direct = mic(r[j]-r[i], a.cell)
-        assert np.abs(r[j]-r[i]+shift.dot(a.cell) - dr_direct).max() < tol
+        dr_direct = mic(r[j] - r[i], a.cell)
+        assert np.abs(r[j] - r[i] + shift.dot(a.cell) - dr_direct).max() < tol
 
-        abs_dr_from_dr = np.sqrt(np.sum(dr*dr, axis=1))
-        abs_dr_direct = np.sqrt(np.sum(dr_direct*dr_direct, axis=1))
+        abs_dr_from_dr = np.sqrt(np.sum(dr * dr, axis=1))
+        abs_dr_direct = np.sqrt(np.sum(dr_direct * dr_direct, axis=1))
 
-        assert np.all(np.abs(abs_dr-abs_dr_from_dr) < 1e-12)
-        assert np.all(np.abs(abs_dr-abs_dr_direct) < 1e-12)
+        assert np.all(np.abs(abs_dr - abs_dr_from_dr) < 1e-12)
+        assert np.all(np.abs(abs_dr - abs_dr_direct) < 1e-12)
 
-        assert np.all(np.abs(dr-dr_direct) < 1e-12)
+        assert np.all(np.abs(dr - dr_direct) < 1e-12)
 
     # test_small_cell
     a = ase.Atoms('C', positions=[[0.5, 0.5, 0.5]], cell=[1, 1, 1],
@@ -118,7 +118,7 @@ def test_neighbor_kernel():
     # test_hexagonal_cell
     for sx in range(3):
         a = ase.lattice.hexagonal.Graphite('C', latticeconstant=(2.5, 10.0),
-                                           size=[sx+1, sx+1, 1])
+                                           size=[sx + 1, sx + 1, 1])
         i = neighbor_list("i", a, 1.85)
         assert np.all(np.bincount(i) == 3)
 
@@ -158,7 +158,7 @@ def test_neighbor_kernel():
     a = bulk("Al", cubic=False)
     i, j, d = neighbor_list("ijd", a, 3.1)
     assert (np.bincount(i) == np.array([12])).all()
-    assert np.abs(d - [2.86378246]*12).max() < tol
+    assert np.abs(d - [2.86378246] * 12).max() < tol
 
     # test pbc
     nat = 10
@@ -182,7 +182,7 @@ def test_neighbor_kernel():
                 c2.shape = (-1, nat)
                 dd = d.sum() * (p1 + 1) * (p2 + 1) * (p3 + 1) - d2.sum()
                 dr = np.linalg.solve(
-                    atoms.cell.T, (atoms.positions[1]-atoms.positions[0]).T).T+np.array([0, 0, 3])
+                    atoms.cell.T, (atoms.positions[1] - atoms.positions[0]).T).T + np.array([0, 0, 3])
                 assert abs(dd) < 1e-10
                 assert not (c2 - c).any()
 

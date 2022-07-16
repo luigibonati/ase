@@ -103,12 +103,14 @@ def test_cube_reading():
 
         # check spacing
         assert result["spacing"].shape == (3, 3)
-        # check that values are on the diagonal (correctness of order in reading)
+        # check that values are on the diagonal (correctness of order in
+        # reading)
         npt.assert_almost_equal(
             result["spacing"].diagonal() / Bohr,
             np.array([1.889726, 1.889726, 0.000000]),
         )
-        # check that sum is only 1.889726 for every column (correctness of value)
+        # check that sum is only 1.889726 for every column (correctness of
+        # value)
         npt.assert_almost_equal(
             result["spacing"].sum(axis=0) / Bohr,
             np.array([1.889726, 1.889726, 0.000000]),

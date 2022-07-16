@@ -20,7 +20,7 @@ def test_h2o_xas_xes():
     # XAS hch
     input_arguments = {'GRID': 'FINE',
                        'MOMODIFY': [[1, 0],
-                                    [1, 0.5]], 
+                                    [1, 0.5]],
                        'CHARGE': 0,
                        'XRAY': 'XAS'}
 
@@ -91,7 +91,7 @@ def test_h2o_xas_xes():
     print('energy')
     energy = atoms.get_potential_energy()
     print(energy)
-    ref = -2079.6635944 
+    ref = -2079.6635944
     error = np.sqrt(np.sum((energy - ref)**2))
     print('diff from reference:')
     print(error)
@@ -127,7 +127,7 @@ def test_h2o_xas_xes():
     # and XPS
     input_arguments = {'GRID': 'FINE',
                        'MOMODIFY': [[1, 0],
-                                    [1, 0.0]], 
+                                    [1, 0.0]],
                        'CHARGE': 0,
                        'XRAY': 'XAS'}
 
@@ -157,7 +157,7 @@ def test_h2o_xas_xes():
     # First excited state
     input_arguments = {'GRID': 'FINE',
                        'MOMODIFY': [[1, 0],
-                                    [1, 0.0]], 
+                                    [1, 0.0]],
                        'CHARGE': -1}
 
     calc = demon.Demon(basis=basis,
