@@ -153,7 +153,7 @@ class OctNamespace:
             pass
 
         if ('*' in value or '/' in value
-            and not any(char in value for char in '()+')):
+                and not any(char in value for char in '()+')):
             floatvalue = 1.0
             op = '*'
             for token in re.split(r'([\*/])', value):
@@ -224,7 +224,7 @@ def kwargs2cell(kwargs):
             if not isinstance(Lsize, list):
                 Lsize = [[Lsize] * 3]
             assert len(Lsize) == 1
-            cell = np.array([2 * float(l) for l in Lsize[0]])
+            cell = np.array([2 * float(x) for x in Lsize[0]])
         elif 'latticeparameters' in kwargs:
             # Eval latparam and latvec
             latparam = np.array(kwargs.pop('latticeparameters'), float).T
@@ -420,7 +420,7 @@ def kwargs2atoms(kwargs, directory=None):
         atoms.pbc = pbc
 
     if (cell is not None and cell.shape == (3,)
-        and adjust_positions_by_half_cell):
+            and adjust_positions_by_half_cell):
         nonpbc = (atoms.pbc == 0)
         atoms.positions[:, nonpbc] += np.array(cell)[None, nonpbc] / 2.0
 
