@@ -43,7 +43,7 @@ def surfaces_with_termination(lattice, indices, layers, vacuum=None, tol=1e-10,
         too_similar = False
         surf = surface(item, indices, layers, vacuum=vacuum, tol=tol)
         surf.wrap(pbc=[True] * 3)  # standardize slabs
-        
+
         positions = surf.get_scaled_positions().flatten()
         for i, value in enumerate(positions):
             if value >= 1 - tol:  # move things closer to zero within tol
@@ -52,8 +52,10 @@ def surfaces_with_termination(lattice, indices, layers, vacuum=None, tol=1e-10,
         #rep = find_z_layers(surf)
         z_layers, hs = get_layers(surf, (0, 0, 1))  # just z layers matter
         # get the indicies of the atoms in the highest layer
-        top_layer = [i for i, val in enumerate(z_layers == max(z_layers)) if val]
-         
+        top_layer = [
+            i for i, val in enumerate(
+                z_layers == max(z_layers)) if val]
+
         if termination is not None:
             comp = [surf.get_chemical_symbols()[a] for a in top_layer]
             term = string2symbols(termination)
@@ -78,7 +80,7 @@ def surfaces_with_termination(lattice, indices, layers, vacuum=None, tol=1e-10,
         return_surfs.append(surf)
     return return_surfs
 
-            
+
 def translate_lattice(lattice, indices, tol=10**-3):
     """translates a bulk unit cell along a normal vector given by the a set of
     miller indices to the next symetric position. This is used to control the
