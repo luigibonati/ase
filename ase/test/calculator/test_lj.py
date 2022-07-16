@@ -57,7 +57,8 @@ def test_finite_difference():
     atoms.calc = calc
     atoms2.calc = calc
 
-    fd_force = (atoms2.get_potential_energy() - atoms.get_potential_energy()) / h
+    fd_force = (atoms2.get_potential_energy() -
+                atoms.get_potential_energy()) / h
     force = atoms.get_forces()[0, 0]
 
     np.testing.assert_allclose(fd_force, force)
