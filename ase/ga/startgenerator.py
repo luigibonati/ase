@@ -178,8 +178,9 @@ class StartGenerator:
             self.blmin = blmin
         else:
             numbers = np.unique([b.get_atomic_numbers() for b in self.blocks])
-            self.blmin = closest_distances_generator(numbers,
-                                                     ratio_of_covalent_radii=blmin)
+            self.blmin = closest_distances_generator(
+                numbers,
+                ratio_of_covalent_radii=blmin)
 
         self.number_of_variable_cell_vectors = number_of_variable_cell_vectors
         assert self.number_of_variable_cell_vectors in range(4)

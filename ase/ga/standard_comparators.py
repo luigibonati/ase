@@ -114,9 +114,9 @@ class SequentialComparator:
                 self.logics.append(l)
 
     def looks_like(self, a1, a2):
-        mdct = dict((l, []) for l in self.logics)
-        for m, l in zip(self.methods, self.logics):
-            mdct[l].append(m)
+        mdct = dict((logic, []) for logic in self.logics)
+        for m, logic in zip(self.methods, self.logics):
+            mdct[logic].append(m)
 
         for methods in mdct.values():
             for m in methods:

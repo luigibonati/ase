@@ -143,8 +143,8 @@ class Population:
         if self.logfile is not None:
             fd = open(self.logfile, 'r')
             gens = {}
-            for l in fd:
-                _, no, popul = l.split(':')
+            for line in fd:
+                _, no, popul = line.split(':')
                 gens[int(no)] = [int(i) for i in popul.split(',')]
             fd.close()
             return [c.copy() for c in self.all_cand[::-1]

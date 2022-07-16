@@ -80,8 +80,8 @@ class PBSQueueRun:
         fout = p.stdout
         lines = fout.readlines()
         n_running = 0
-        for l in lines:
-            if l.find(self.job_prefix) != -1:
+        for line in lines:
+            if line.find(self.job_prefix) != -1:
                 n_running += 1
         return n_running
 
