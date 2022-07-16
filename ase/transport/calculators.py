@@ -349,7 +349,8 @@ class TransportCalculator:
                 self.uptodate = False
                 T_e = self.get_transmission().copy()
         else:
-            assert self.uptodate, 'Energy grid and transmission function not defined.'
+            assert self.uptodate, ('Energy grid and transmission function '
+                                   'not defined.')
             E = self.energies.copy()
             T_e = self.T_e.copy()
 
