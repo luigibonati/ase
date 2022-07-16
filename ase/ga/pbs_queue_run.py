@@ -31,6 +31,7 @@ class PBSQueueRun:
        qsub_command: The name of the qsub command (default qsub).
        qstat_command: The name of the qstat command (default qstat).
     """
+
     def __init__(self, data_connection, tmp_folder, job_prefix,
                  n_simul, job_template_generator,
                  qsub_command='qsub', qstat_command='qstat',

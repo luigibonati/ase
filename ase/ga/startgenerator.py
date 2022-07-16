@@ -136,6 +136,7 @@ class StartGenerator:
     rng: Random number generator
         By default numpy.random.
     """
+
     def __init__(self, slab, blocks, blmin, number_of_variable_cell_vectors=0,
                  box_to_place_in=None, box_volume=None, splits=None,
                  cellbounds=None, test_dist_to_slab=True, test_too_far=True,
@@ -363,7 +364,7 @@ class StartGenerator:
             # By construction, the minimal interatomic distances
             # within the structure should already be respected
             assert not atoms_too_close(cand, blmin, use_tags=True), \
-                   'This is not supposed to happen; please report this bug'
+                'This is not supposed to happen; please report this bug'
 
             if self.test_dist_to_slab and len(self.slab) > 0:
                 if atoms_too_close_two_sets(self.slab, cand, blmin):
