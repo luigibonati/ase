@@ -87,7 +87,8 @@ def point_in_cell_2d(point, cell, eps=1e-8):
 
 
 def _root_cell_normalization(primitive_slab):
-    """Returns the scaling factor for x axis and cell normalized by that factor"""
+    """Returns the scaling factor for x axis and cell normalized by that
+    factor"""
 
     xscale = np.linalg.norm(primitive_slab.cell[0, 0:2])
     cell_vectors = primitive_slab.cell[0:2, 0:2] / xscale
