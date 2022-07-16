@@ -14,10 +14,11 @@ Listed in alphabetical order, for want of a better approach.
    transmission electron microscopy images and diffraction patterns.
 
  * `ACAT <https://asm-dtu.gitlab.io/acat/>`_:
-   ACAT is a Python package for atomistic modelling of metal or alloy catalysts
-   used in heterogeneous catalysis. Synergizing with ASE, ACAT provides useful
-   tools to build atomistic models and perform global optimization tasks for
-   alloy surfaces and nanoparticles with and without adsorbates.
+   ACAT is a Python package for atomistic modelling of metal or alloy 
+   heterogeneoues catalysts. ACAT provides automatic identification of 
+   adsorption sites and adsorbate coverages for a wide range of surfaces 
+   and nanoparticles. ACAT also provides tools for structure generation 
+   and global optimization of catalysts with and without adsorbates.
 
  * `atomicrex <https://atomicrex.org/>`_:
    atomicrex is a versatile tool for the construction of interatomic
@@ -69,7 +70,7 @@ Listed in alphabetical order, for want of a better approach.
    validation techniques, and includes a Monte Carlo module with
    support for many different thermodynamic ensembles.
 
-* `NequIP <https://github.com/mir-group/nequip>`_:
+ * `NequIP <https://github.com/mir-group/nequip>`_:
    Euclidian Equivariant neural network potentials.  Nequip can fit
    neural network potentials to series of DFT calculations (using
    e.g. ASE trajectory files), and then be used to perform
