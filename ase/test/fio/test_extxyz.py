@@ -320,7 +320,9 @@ def test_json_scalars():
     a.write('tmp.xyz')
     with open('tmp.xyz', 'r') as fd:
         comment_line = fd.readlines()[1]
-    assert "val_1=42.0" in comment_line and "val_2=42.0" in comment_line and "val_3=42" in comment_line
+    assert ("val_1=42.0" in comment_line
+            and "val_2=42.0" in comment_line
+            and "val_3=42" in comment_line)
     b = ase.io.read('tmp.xyz')
     assert abs(b.info['val_1'] - 42.0) < 1e-6
     assert abs(b.info['val_2'] - 42.0) < 1e-6

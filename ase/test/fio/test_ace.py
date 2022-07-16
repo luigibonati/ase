@@ -26,9 +26,7 @@ Total energy       = -1.5
     """
     with open('acemolecule_test.log', 'w') as fd:
         fd.write(sample_outfile)
-    #fd = StringIO(sample_outfile)
     results = read_acemolecule_out('acemolecule_test.log')
-    #os.system('rm acemolecule_test.log')
     atoms = results['atoms']
     assert atoms.positions == pytest.approx(
         np.array([[1.0, 2.0, -0.6], [-1.0, 3.0, 0.7]]))

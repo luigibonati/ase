@@ -1,3 +1,4 @@
+# flake8: noqa
 # tests of the dlpoly I/O
 from ase import io as aseIO
 from ase.io.dlp4 import iread_dlp_history
