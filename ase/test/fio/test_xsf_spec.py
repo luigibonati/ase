@@ -30,7 +30,8 @@ def check(name, xsf_text, check_data):
     # Now write the same system back out:
     outfname = 'out.%s' % fname
     if check_data:
-        write(outfname, images, data=array, origin=origin, span_vectors=span_vectors)
+        write(outfname, images, data=array,
+              origin=origin, span_vectors=span_vectors)
     else:
         write(outfname, images)
 
@@ -53,7 +54,8 @@ def check(name, xsf_text, check_data):
     # So do that:
     outfname2 = 'doubleout.%s' % fname
     if check_data:
-        write(outfname2, images2, data=array2, origin=origin2, span_vectors=span_vectors2)
+        write(outfname2, images2, data=array2,
+              origin=origin2, span_vectors=span_vectors2)
     else:
         write(outfname2, images2)
     assert Path(outfname).read_text() == Path(outfname2).read_text()

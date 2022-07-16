@@ -366,7 +366,7 @@ Properties=species:S:1:pos:R:3:move_mask:I:1 pbc="F F F"
 O        0.00000000       0.00000000       0.11926200  1
 H        0.00000000       0.76323900      -0.47704700  0
 H        0.00000000      -0.76323900      -0.47704700  0""")
-        
+
     a = ase.io.read('movemask.xyz')
     assert isinstance(a.constraints[0], FixAtoms)
     assert np.all(a.constraints[0].index == [1, 2])

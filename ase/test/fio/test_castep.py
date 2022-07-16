@@ -18,7 +18,8 @@ def write_read_atoms(atom, tmp_path):
     [
         ("CH4", {2: [1]}, ["C", "H:0", "H", "H", "H"], ["H:0 2.0"]),
         ("CH4", {2: [1, 2, 3, 4]}, ["C", "H", "H", "H", "H"], ["H 2.0"]),
-        ("C2H5", {2: [2, 3]}, ["C", "C", "H:0", "H:0", "H", "H", "H"], ["H:0 2.0"]),
+        ("C2H5", {2: [2, 3]}, ["C", "C", "H:0",
+         "H:0", "H", "H", "H"], ["H:0 2.0"]),
         (
             "C2H5",
             {2: [2], 3: [3]},
@@ -50,7 +51,8 @@ def test_custom_mass_write(
     with open("{0}/{1}".format(tmp_path, "castep_test.cell"), "r") as f:
         data = f.read().replace("\n", "\\n")
 
-    position_block = re.search(r"%BLOCK POSITIONS_ABS.*%ENDBLOCK POSITIONS_ABS", data)
+    position_block = re.search(
+        r"%BLOCK POSITIONS_ABS.*%ENDBLOCK POSITIONS_ABS", data)
     assert position_block
 
     pos = position_block.group().split("\\n")[1:-1]
