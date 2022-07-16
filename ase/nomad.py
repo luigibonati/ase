@@ -90,8 +90,8 @@ class NomadEntry(dict):
     represents a particular section."""
 
     def __init__(self, dct):
-        #assert dct['type'] == 'nomad_calculation_2_0'
-        #assert dct['name'] == 'calculation_context'
+        # assert dct['type'] == 'nomad_calculation_2_0'
+        # assert dct['name'] == 'calculation_context'
         # We could implement NomadEntries that represent sections.
         dict.__init__(self, dct)
 
