@@ -758,7 +758,7 @@ class UlmBundleBackend:
                     for typ in self.integral_dtypes:
                         if (minval >= self.int_minval[typ] and
                             maxval <= self.int_maxval[typ] and
-                            data.itemsize > self.int_itemsize[typ]):
+                                data.itemsize > self.int_itemsize[typ]):
 
                             # Convert to smaller type
                             stored_as = typ

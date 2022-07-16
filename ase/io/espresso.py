@@ -538,7 +538,8 @@ def read_espresso_in(fileobj):
         raise ValueError(ibrav_error_message)
 
     # species_info holds some info for each element
-    species_card = get_atomic_species(card_lines, n_species=data['system']['ntyp'])
+    species_card = get_atomic_species(
+        card_lines, n_species=data['system']['ntyp'])
     species_info = {}
     for ispec, (label, weight, pseudo) in enumerate(species_card):
         symbol = label_to_symbol(label)
@@ -606,7 +607,8 @@ def ibrav_to_cell(system):
             cosab = system.get('celldm(6)', 0.0)
     elif 'a' in system:
         # a, b, c, cosAB, cosAC, cosBC in Angstrom
-        raise NotImplementedError('params_to_cell() does not yet support A/B/C/cosAB/cosAC/cosBC')
+        raise NotImplementedError(
+            'params_to_cell() does not yet support A/B/C/cosAB/cosAC/cosBC')
     else:
         raise KeyError("Missing celldm(1)")
 
@@ -1455,7 +1457,7 @@ def format_atom_position(atom, crystal_coordinates, mask='', tidx=None):
 
     >>> for atom in make_supercell(bulk('Li', 'bcc'), np.ones(3)-np.eye(3)):
     >>>     format_atom_position(atom, True)
-    Li 0.0000000000 0.0000000000 0.0000000000 
+    Li 0.0000000000 0.0000000000 0.0000000000
     Li 0.5000000000 0.5000000000 0.5000000000
 
     Parameters
@@ -1621,7 +1623,8 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
 
     if nspin == 2:
         # Spin on
-        for atom, mask, magmom in zip(atoms, masks, atoms.get_initial_magnetic_moments()):
+        for atom, mask, magmom in zip(
+                atoms, masks, atoms.get_initial_magnetic_moments()):
             if (atom.symbol, magmom) not in atomic_species:
                 # spin as fraction of valence
                 fspin = float(magmom) / species_info[atom.symbol]['valence']
@@ -1641,7 +1644,8 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
             sidx, tidx = atomic_species[(atom.symbol, magmom)]
             # construct line for atomic positions
             atomic_positions_str.append(
-                format_atom_position(atom, crystal_coordinates, mask=mask, tidx=tidx)
+                format_atom_position(
+                    atom, crystal_coordinates, mask=mask, tidx=tidx)
             )
     else:
         # Do nothing about magnetisation
