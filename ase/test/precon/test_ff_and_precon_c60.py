@@ -91,7 +91,7 @@ def atoms(atoms0, calc):
 
 ref_energy = 17.238525
 
-#@pytest.mark.skip('FAILS WITH PYAMG')
+# @pytest.mark.skip('FAILS WITH PYAMG')
 
 
 @pytest.mark.slow

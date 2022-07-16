@@ -7,7 +7,7 @@ from ase.optimize.precon import Exp, PreconLBFGS, PreconFIRE
 from ase.constraints import FixBondLength, FixAtoms
 
 
-#@pytest.mark.skip('FAILS WITH PYAMG')
+# @pytest.mark.skip('FAILS WITH PYAMG')
 @pytest.mark.slow
 def test_preconlbfgs():
     N = 1

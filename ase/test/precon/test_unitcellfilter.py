@@ -7,7 +7,7 @@ from ase.optimize.precon import PreconLBFGS, Exp
 from ase.constraints import UnitCellFilter, ExpCellFilter
 
 
-#@pytest.mark.skip('FAILS WITH PYAMG')
+# @pytest.mark.skip('FAILS WITH PYAMG')
 @pytest.mark.slow
 def test_precon():
     cu0 = bulk("Cu") * (2, 2, 2)
