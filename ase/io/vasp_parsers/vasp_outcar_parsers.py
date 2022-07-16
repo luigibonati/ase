@@ -14,7 +14,8 @@ from ase import Atoms
 from ase.data import atomic_numbers
 from ase.io import ParseError, read
 from ase.io.utils import ImageChunk
-from ase.calculators.singlepoint import SinglePointDFTCalculator, SinglePointKPoint
+from ase.calculators.singlepoint import (SinglePointDFTCalculator,
+                                         SinglePointKPoint)
 
 # Denotes end of Ionic step for OUTCAR reading
 _OUTCAR_SCF_DELIM = 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM'
@@ -104,7 +105,8 @@ class VaspPropertyParser(ABC):
 
     @classmethod
     def get_name(cls):
-        """Name of parser. Override the NAME constant in the class to specify a custom name,
+        """Name of parser. Override the NAME constant in the class to
+        specify a custom name,
         otherwise the class name is used"""
         return cls.NAME or cls.__name__
 
@@ -163,11 +165,13 @@ class VaspHeaderPropertyParser(VaspPropertyParser, ABC):
 
 
 class SimpleVaspChunkParser(VaspChunkPropertyParser, SimpleProperty, ABC):
-    """Class for properties in a chunk can be determined to exist from 1 line"""
+    """Class for properties in a chunk can be
+    determined to exist from 1 line"""
 
 
 class SimpleVaspHeaderParser(VaspHeaderPropertyParser, SimpleProperty, ABC):
-    """Class for properties in the header which can be determined to exist from 1 line"""
+    """Class for properties in the header
+    which can be determined to exist from 1 line"""
 
 
 class Spinpol(SimpleVaspHeaderParser):
@@ -332,8 +336,9 @@ class Stress(SimpleVaspChunkParser):
         try:
             stress = [float(a) for a in line.split()[2:]]
         except ValueError:
-            # Vasp FORTRAN string formatting issues, can happen with some bad geometry steps
-            # Alternatively, we can re-raise as a ParseError?
+            # Vasp FORTRAN string formatting issues, can happen with
+            # some bad geometry steps Alternatively, we can re-raise
+            # as a ParseError?
             warn('Found badly formatted stress line. Setting stress to None.')
         else:
             result = convert_vasp_outcar_stress(stress)
@@ -390,8 +395,8 @@ class Magmom(VaspChunkPropertyParser):
         magmom_lst = parts[idx:]
         if len(magmom_lst) != 1:
             warn(
-                'Non-collinear spin is not yet implemented. Setting magmom to x value.'
-            )
+                'Non-collinear spin is not yet implemented. '
+                'Setting magmom to x value.')
         magmom = float(magmom_lst[0])
         # Use these lines when non-collinear spin is supported!
         # Remember to check that format fits!
@@ -479,8 +484,9 @@ class Kpoints(VaspChunkPropertyParser):
 
         kpts = []
         for spin in range(nspins):
-            # for Vasp 6, they added some extra information after the spin components.
-            # so we might need to seek the spin component line
+            # for Vasp 6, they added some extra information after the
+            # spin components.  so we might need to seek the spin
+            # component line
             cursor = search_lines(f'spin component {spin + 1}', cursor, lines)
 
             cursor += 2  # Skip two lines
@@ -520,7 +526,8 @@ class DefaultParsersContainer:
     """Container for the default OUTCAR parsers.
     Allows for modification of the global default parsers.
 
-    Takes in an arbitrary number of parsers. The parsers should be uninitialized,
+    Takes in an arbitrary number of parsers.
+    The parsers should be uninitialized,
     as they are created on request.
     """
 
@@ -539,7 +546,8 @@ class DefaultParsersContainer:
         return list(parser() for parser in self.parsers_dct.values())
 
     def remove_parser(self, name: str):
-        """Remove a parser based on the name. The name must match the parser name exactly."""
+        """Remove a parser based on the name.
+        The name must match the parser name exactly."""
         self.parsers_dct.pop(name)
 
     def add_parser(self, parser) -> None:
@@ -572,11 +580,13 @@ class TypeParser(ABC):
         properties = {}
         for cursor, _ in enumerate(lines):
             for parser in self.parsers:
-                # Check if any of the parsers can extract a property from this line
-                # Note: This will override any existing properties we found, if we found it
-                # previously. This is usually correct, as some VASP settings can cause certain
-                # pieces of information to be written multiple times during SCF. We are only
-                # interested in the final values within a given chunk.
+                # Check if any of the parsers can extract a property
+                # from this line Note: This will override any existing
+                # properties we found, if we found it previously. This
+                # is usually correct, as some VASP settings can cause
+                # certain pieces of information to be written multiple
+                # times during SCF. We are only interested in the
+                # final values within a given chunk.
                 if parser.has_property(cursor, lines):
                     prop = parser.parse(cursor, lines)
                     properties.update(prop)
