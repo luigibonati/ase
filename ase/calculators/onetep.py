@@ -59,8 +59,8 @@ class Onetep(FileIOCalculator):
     # other than those above (the contents of the parameter is reproduced
     # verbatim within the block)
     _block_parameters = _path_parameters + _group_parameters + [
-                        'species_constraints', 'nbo_species_ngwflabel',
-                        'ddec_rmse_vdw', 'vdw_params', 'sol_ions', 'swri']
+        'species_constraints', 'nbo_species_ngwflabel',
+        'ddec_rmse_vdw', 'vdw_params', 'sol_ions', 'swri']
 
     default_parameters = {'cutoff_energy': '1000 eV',
                           'kernel_cutoff': '1000 bohr',
