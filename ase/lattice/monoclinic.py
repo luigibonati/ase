@@ -15,7 +15,8 @@ class SimpleMonoclinicFactory(TriclinicFactory):
     xtal_name = "monoclinic"
 
     def make_crystal_basis(self):
-        "Make the basis matrix for the crystal unit cell and the system unit cell."
+        """Make the basis matrix for the crystal unit cell and the system
+        unit cell."""
         # First convert the basis specification to a triclinic one
         if isinstance(self.latticeconstant, type({})):
             self.latticeconstant['beta'] = 90

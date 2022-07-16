@@ -43,7 +43,8 @@ class SimpleCubicFactory(Bravais):
         return _refstate[self.atomicnumber]['a']
 
     def make_crystal_basis(self):
-        "Make the basis matrix for the crystal unit cell and the system unit cell."
+        """Make the basis matrix for the crystal unit cell and the
+        system unit cell."""
         self.crystal_basis = (self.latticeconstant * self.basis_factor
                               * self.int_basis)
         self.miller_basis = self.latticeconstant * np.identity(3)

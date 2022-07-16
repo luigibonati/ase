@@ -28,7 +28,8 @@ class TriclinicFactory(Bravais):
     inverse_basis_factor = 1.0
 
     def get_lattice_constant(self):
-        "Get the lattice constant of an element with triclinic crystal structure."
+        """Get the lattice constant of an element with triclinic
+        crystal structure."""
         if _refstate[self.atomicnumber]['symmetry'] != self.xtal_name:
             raise ValueError(('Cannot guess the %s lattice constant of'
                               + ' an element with crystal structure %s.')
@@ -37,7 +38,8 @@ class TriclinicFactory(Bravais):
         return _refstate[self.atomicnumber].copy()
 
     def make_crystal_basis(self):
-        "Make the basis matrix for the crystal unit cell and the system unit cell."
+        """Make the basis matrix for the crystal unit cell and the system
+        unit cell."""
         lattice = self.latticeconstant
         if isinstance(lattice, type({})):
             a = lattice['a']
@@ -65,10 +67,11 @@ class TriclinicFactory(Bravais):
         sinb = np.sin(beta * degree)
         cosg = np.cos(gamma * degree)
         sing = np.sin(gamma * degree)
-        lattice = np.array([[a, 0, 0],
-                            [b * cosg, b * sing, 0],
-                            [c * cosb, c * (cosa - cosb * cosg) / sing,
-                             c * np.sqrt(sinb**2 - ((cosa - cosb * cosg) / sing)**2)]])
+        lattice = np.array(
+            [[a, 0, 0],
+             [b * cosg, b * sing, 0],
+             [c * cosb, c * (cosa - cosb * cosg) / sing,
+              c * np.sqrt(sinb**2 - ((cosa - cosb * cosg) / sing)**2)]])
         self.latticeconstant = lattice
         self.miller_basis = lattice
         self.crystal_basis = (self.basis_factor *
