@@ -546,9 +546,10 @@ data_image0
 loop_
  _hello
  banana
- 
+ \n\
 _potato 42
 """
+# (We do the \n\ to avoid automatic trailing whitespace cleanup)
 
 
 def test_loop_with_space():
