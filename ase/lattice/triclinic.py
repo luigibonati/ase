@@ -56,29 +56,30 @@ class TriclinicFactory(Bravais):
             if len(lattice) == 6:
                 (a, b, c, alpha, beta, gamma) = lattice
             else:
-                raise ValueError("Improper lattice constants for triclinic crystal.")
+                raise ValueError(
+                    "Improper lattice constants for triclinic crystal.")
 
         degree = np.pi / 180.0
-        cosa = np.cos(alpha*degree)
-        cosb = np.cos(beta*degree)
-        sinb = np.sin(beta*degree)
-        cosg = np.cos(gamma*degree)
-        sing = np.sin(gamma*degree)
+        cosa = np.cos(alpha * degree)
+        cosb = np.cos(beta * degree)
+        sinb = np.sin(beta * degree)
+        cosg = np.cos(gamma * degree)
+        sing = np.sin(gamma * degree)
         lattice = np.array([[a, 0, 0],
-                            [b*cosg, b*sing, 0],
-                            [c*cosb, c*(cosa-cosb*cosg)/sing,
-                             c*np.sqrt(sinb**2 - ((cosa-cosb*cosg)/sing)**2)]])
+                            [b * cosg, b * sing, 0],
+                            [c * cosb, c * (cosa - cosb * cosg) / sing,
+                             c * np.sqrt(sinb**2 - ((cosa - cosb * cosg) / sing)**2)]])
         self.latticeconstant = lattice
         self.miller_basis = lattice
         self.crystal_basis = (self.basis_factor *
                               np.dot(self.int_basis, lattice))
         self.basis = np.dot(self.directions, self.crystal_basis)
-        assert abs(np.dot(lattice[0], lattice[1]) - a*b*cosg) < 1e-5
-        assert abs(np.dot(lattice[0], lattice[2]) - a*c*cosb) < 1e-5
-        assert abs(np.dot(lattice[1], lattice[2]) - b*c*cosa) < 1e-5
-        assert abs(np.dot(lattice[0], lattice[0]) - a*a) < 1e-5
-        assert abs(np.dot(lattice[1], lattice[1]) - b*b) < 1e-5
-        assert abs(np.dot(lattice[2], lattice[2]) - c*c) < 1e-5
+        assert abs(np.dot(lattice[0], lattice[1]) - a * b * cosg) < 1e-5
+        assert abs(np.dot(lattice[0], lattice[2]) - a * c * cosb) < 1e-5
+        assert abs(np.dot(lattice[1], lattice[2]) - b * c * cosa) < 1e-5
+        assert abs(np.dot(lattice[0], lattice[0]) - a * a) < 1e-5
+        assert abs(np.dot(lattice[1], lattice[1]) - b * b) < 1e-5
+        assert abs(np.dot(lattice[2], lattice[2]) - c * c) < 1e-5
 
 
 Triclinic = TriclinicFactory()

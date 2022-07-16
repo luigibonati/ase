@@ -24,10 +24,11 @@ class SimpleMonoclinicFactory(TriclinicFactory):
             if len(self.latticeconstant) == 4:
                 self.latticeconstant = self.latticeconstant + (90, 90)
             else:
-                raise ValueError("Improper lattice constants for monoclinic crystal.")
+                raise ValueError(
+                    "Improper lattice constants for monoclinic crystal.")
 
         TriclinicFactory.make_crystal_basis(self)
-        
+
 
 SimpleMonoclinic = SimpleMonoclinicFactory()
 
