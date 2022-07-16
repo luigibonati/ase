@@ -60,7 +60,8 @@ def test_basic_example_main_run(seed, testdir):
 
     # generate the starting population
     population_size = 5
-    starting_population = [sg.get_new_candidate() for i in range(population_size)]
+    starting_population = [sg.get_new_candidate()
+                           for i in range(population_size)]
 
     # from ase.visualize import view   # uncomment these lines
     # view(starting_population)        # to see the starting population
@@ -100,7 +101,8 @@ def test_basic_example_main_run(seed, testdir):
     pairing = CutAndSplicePairing(slab, n_to_optimize, blmin, rng=rng)
     mutations = OperationSelector([1., 1., 1.],
                                   [MirrorMutation(blmin, n_to_optimize, rng=rng),
-                                   RattleMutation(blmin, n_to_optimize, rng=rng),
+                                   RattleMutation(
+                                       blmin, n_to_optimize, rng=rng),
                                    PermutationMutation(n_to_optimize, rng=rng)],
                                   rng=rng)
 

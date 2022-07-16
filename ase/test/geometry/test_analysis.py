@@ -49,7 +49,7 @@ def test_analysis_rdf(images_without_cell):
 
 @pytest.mark.filterwarnings('ignore:the matrix subclass')
 def test_analysis():
-    #test the geometry.analysis module
+    # test the geometry.analysis module
 
     mol = molecule('CH3CH2OH')
     ana = Analysis(mol)
