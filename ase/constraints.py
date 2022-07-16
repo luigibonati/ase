@@ -1223,36 +1223,47 @@ class FixParametricRelations(FixConstraint):
         eps=1e-12,
         use_cell=False,
     ):
-        """Constrains the degrees of freedom to act in a reduced parameter space defined by the Jacobian
+        """Constrains the degrees of freedom to act in a reduced parameter
+        space defined by the Jacobian
 
-        These constraints are based off the work in: https://arxiv.org/abs/1908.01610
+        These constraints are based off the work in:
+        https://arxiv.org/abs/1908.01610
 
-        The constraints linearly maps the full 3N degrees of freedom, where N is number of active
-        lattice vectors/atoms onto a reduced subset of M free parameters, where M <= 3*N. The
-        Jacobian matrix and constant shift vector map the full set of degrees of freedom onto the
-        reduced parameter space.
+        The constraints linearly maps the full 3N degrees of freedom,
+        where N is number of active lattice vectors/atoms onto a
+        reduced subset of M free parameters, where M <= 3*N. The
+        Jacobian matrix and constant shift vector map the full set of
+        degrees of freedom onto the reduced parameter space.
 
-        Currently the constraint is set up to handle either atomic positions or lattice vectors
-        at one time, but not both. To do both simply add a two constraints for each set. This is
-        done to keep the mathematics behind the operations separate.
+        Currently the constraint is set up to handle either atomic
+        positions or lattice vectors at one time, but not both. To do
+        both simply add a two constraints for each set. This is done
+        to keep the mathematics behind the operations separate.
 
-        It would be possible to extend these constraints to allow non-linear transformations
-        if functionality to update the Jacobian at each position update was included. This would
-        require passing an update function evaluate it every time adjust_positions is callled.
-        This is currently NOT supported, and there are no plans to implement it in the future.
+        It would be possible to extend these constraints to allow
+        non-linear transformations if functionality to update the
+        Jacobian at each position update was included. This would
+        require passing an update function evaluate it every time
+        adjust_positions is callled.  This is currently NOT supported,
+        and there are no plans to implement it in the future.
 
         Args:
             indices (list of int): indices of the constrained atoms
                 (if not None or empty then cell_indices must be None or Empty)
-            Jacobian (np.ndarray(shape=(3*len(indices), len(params)))): The Jacobian describing
+            Jacobian (np.ndarray(shape=(3*len(indices), len(params)))):
+                The Jacobian describing
                 the parameter space transformation
-            const_shift (np.ndarray(shape=(3*len(indices)))): A vector describing the constant term
+            const_shift (np.ndarray(shape=(3*len(indices)))):
+                A vector describing the constant term
                 in the transformation not accounted for in the Jacobian
-            params (list of str): parameters used in the parametric representation
+            params (list of str):
+                parameters used in the parametric representation
                 if None a list is generated based on the shape of the Jacobian
-            eps (float): a small number to compare the similarity of numbers and set the precision used
+            eps (float): a small number to compare the similarity of
+                numbers and set the precision used
                 to generate the constraint expressions
             use_cell (bool): if True then act on the cell object
+
         """
         self.indices = np.array(indices)
         self.Jacobian = np.array(Jacobian)
@@ -1282,20 +1293,25 @@ class FixParametricRelations(FixConstraint):
     @classmethod
     def from_expressions(cls, indices, params, expressions,
                          eps=1e-12, use_cell=False):
-        """Converts the expressions into a Jacobian Matrix/const_shift vector and constructs a FixParametricRelations constraint
+        """Converts the expressions into a Jacobian Matrix/const_shift
+        vector and constructs a FixParametricRelations constraint
 
-        The expressions must be a list like object of size 3*N and elements must be ordered as:
+        The expressions must be a list like object of size 3*N and
+        elements must be ordered as:
         [n_0,i; n_0,j; n_0,k; n_1,i; n_1,j; .... ; n_N-1,i; n_N-1,j; n_N-1,k],
-        where i, j, and k are the first, second and third component of the atomic position/lattice
-        vector. Currently only linear operations are allowed to be included in the expressions so
+        where i, j, and k are the first, second and third
+        component of the atomic position/lattice
+        vector. Currently only linear operations are allowed to be
+        included in the expressions so
         only terms like:
             - const * param_0
             - sqrt[const] * param_1
             - const * param_0 +/- const * param_1 +/- ... +/- const * param_M
-        where const is any real number and param_0, param_1, ..., param_M are the parameters passed in
+        where const is any real number and param_0, param_1, ..., param_M are
+        the parameters passed in
         params, are allowed.
 
-        For example, the fractional atomic position constraints for wurtzite are:
+        For example, fractional atomic position constraints for wurtzite are:
         params = ["z1", "z2"]
         expressions = [
             "1.0/3.0", "2.0/3.0", "z1",
@@ -1327,10 +1343,12 @@ class FixParametricRelations(FixConstraint):
         Args:
             indices (list of int): indices of the constrained atoms
                 (if not None or empty then cell_indices must be None or Empty)
-            params (list of str): parameters used in the parametric representation
-            expressions (list of str): expressions used to convert from the parametric to the real space
-                representation
-            eps (float): a small number to compare the similarity of numbers and set the precision used
+            params (list of str): parameters used in the
+            parametric representation
+            expressions (list of str): expressions used to convert from the
+            parametric to the real space representation
+            eps (float): a small number to compare the similarity of
+                numbers and set the precision used
                 to generate the constraint expressions
             use_cell (bool): if True then act on the cell object
 
@@ -1383,7 +1401,7 @@ class FixParametricRelations(FixConstraint):
                 n_params_in_sec = len(np.where(np.array(in_sec))[0])
                 if n_params_in_sec > 1:
                     raise ValueError(
-                        "The FixParametricRelations expressions must be linear.")
+                        "FixParametricRelations expressions must be linear.")
 
             const_shift[expr_ind] = float(
                 eval_expression(expression, param_dct))
@@ -1403,7 +1421,7 @@ class FixParametricRelations(FixConstraint):
                 test_2 -= const_shift[expr_ind]
                 if abs(test_2 / test_1 - 2.0) > eps:
                     raise ValueError(
-                        "The FixParametricRelations expressions must be linear.")
+                        "FixParametricRelations expressions must be linear.")
                 param_dct[param_str] = 0.0
 
         args = [
@@ -1420,7 +1438,8 @@ class FixParametricRelations(FixConstraint):
 
     @property
     def expressions(self):
-        """Generate the expressions represented by the current self.Jacobian and self.const_shift objects"""
+        """Generate the expressions represented by the current self.Jacobian
+        and self.const_shift objects"""
         expressions = []
         per = int(round(-1 * np.log10(self.eps)))
         fmt_str = "{:." + str(per + 1) + "g}"
@@ -1442,7 +1461,8 @@ class FixParametricRelations(FixConstraint):
                         param_exp += " + "
                     else:
                         param_exp += " - "
-                elif (not exp) and (not param_exp) and (jacob_val < -1.0 * self.eps):
+                elif (not exp) and (not param_exp) and (
+                        jacob_val < -1.0 * self.eps):
                     param_exp += "-"
 
                 if np.abs(abs_jacob_val - 1.0) <= self.eps:
@@ -1506,8 +1526,8 @@ class FixScaledParametricRelations(FixParametricRelations):
     ):
         """The fractional coordinate version of FixParametricRelations
 
-        All arguments are the same, but since this is for fractional coordinates use_cell is false
-        """
+        All arguments are the same, but since this is for fractional
+        coordinates use_cell is false"""
         super(FixScaledParametricRelations, self).__init__(
             indices,
             Jacobian,
@@ -1518,7 +1538,8 @@ class FixScaledParametricRelations(FixParametricRelations):
         )
 
     def adjust_contravariant(self, cell, vecs, B):
-        """Adjust the values of a set of vectors that are contravariant with the unit transformation"""
+        """Adjust the values of a set of vectors that are contravariant
+        with the unit transformation"""
         scaled = cell.scaled_positions(vecs).flatten()
         scaled = self.Jacobian_inv @ (scaled - B)
         scaled = ((self.Jacobian @ scaled) + B).reshape((-1, 3))
@@ -1536,7 +1557,8 @@ class FixScaledParametricRelations(FixParametricRelations):
             atoms.cell, positions[self.indices])
 
     def adjust_B(self, cell, positions):
-        """Wraps the positions back to the unit cell and adjust B to keep track of this change"""
+        """Wraps the positions back to the unit cell and adjust B to
+        keep track of this change"""
         fractional = cell.scaled_positions(positions)
         wrapped_fractional = (fractional % 1.0) % 1.0
         self.const_shift += np.round(wrapped_fractional - fractional).flatten()
@@ -1594,7 +1616,8 @@ class FixCartesianParametricRelations(FixParametricRelations):
         )
 
     def adjust_contravariant(self, vecs, B):
-        """Adjust the values of a set of vectors that are contravariant with the unit transformation"""
+        """Adjust the values of a set of vectors that are contravariant with
+        the unit transformation"""
         vecs = self.Jacobian_inv @ (vecs.flatten() - B)
         vecs = ((self.Jacobian @ vecs) + B).reshape((-1, 3))
         return vecs
