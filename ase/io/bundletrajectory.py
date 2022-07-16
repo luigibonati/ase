@@ -828,7 +828,8 @@ class UlmBundleBackend:
                     else:
                         info['shape'][0] += fd.shape[0]
                         assert info['type'] == fd.dtype
-                        info['identical'] = info['identical'] and fd.all_identical
+                        info['identical'] = (info['identical']
+                                             and fd.all_identical)
             info['shape'] = tuple(info['shape'])
             return info
 

@@ -53,10 +53,11 @@ _PW_BANDS = _PW_END
 _PW_BANDSTRUCTURE = 'End of band structure calculation'
 
 # ibrav error message
-ibrav_error_message = 'ASE does not support ibrav != 0. Note that with ibrav ' \
-                      '== 0, Quantum ESPRESSO will still detect the symmetries ' \
-                      'of your system because the CELL_PARAMETERS are defined ' \
-                      'to a high level of precision.'
+ibrav_error_message = (
+    'ASE does not support ibrav != 0. Note that with ibrav '
+    '== 0, Quantum ESPRESSO will still detect the symmetries '
+    'of your system because the CELL_PARAMETERS are defined '
+    'to a high level of precision.')
 
 
 class Namelist(OrderedDict):
