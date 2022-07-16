@@ -1,6 +1,6 @@
 def test_getindices():
     from ase.build import fcc111
-    from ase.constraints import (FixAtoms, FixBondLengths, 
+    from ase.constraints import (FixAtoms, FixBondLengths,
                                  FixLinearTriatomic,
                                  FixInternals, Hookean,
                                  constrained_indices)
