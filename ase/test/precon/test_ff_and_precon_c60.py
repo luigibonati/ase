@@ -61,9 +61,9 @@ def forcefield_params(atoms0):
                                     a0=angle_a0, cos=True))
                 vdw_list[j, k] = vdw_list[k, j] = False
                 for ll in range(kk + 1, len(neighbor_list[i])):
-                    l = neighbor_list[i][ll]
+                    L = neighbor_list[i][ll]
                     dihedrals.append(Dihedral(atomi=j, atomj=i, atomk=k,
-                                              atoml=l,
+                                              atoml=L,
                                               k=dihedral_k))
 
     # create list of van der Waals interactions

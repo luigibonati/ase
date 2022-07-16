@@ -14,7 +14,8 @@ def test_neighbor_kernel():
     tol = 1e-7
 
     # two atoms
-    a = ase.Atoms('CC', positions=[[0.5, 0.5, 0.5], [1, 1, 1]], cell=[10, 10, 10],
+    a = ase.Atoms('CC', positions=[[0.5, 0.5, 0.5], [1, 1, 1]],
+                  cell=[10, 10, 10],
                   pbc=True)
     i, j, d = neighbor_list("ijd", a, 1.1)
     assert (i == np.array([0, 1])).all()
@@ -181,8 +182,9 @@ def test_neighbor_kernel():
                 c2 = np.bincount(i2, minlength=len(atoms))
                 c2.shape = (-1, nat)
                 dd = d.sum() * (p1 + 1) * (p2 + 1) * (p3 + 1) - d2.sum()
+                pos = atoms.positions
                 dr = np.linalg.solve(
-                    atoms.cell.T, (atoms.positions[1] - atoms.positions[0]).T).T + np.array([0, 0, 3])
+                    atoms.cell.T, (pos[1] - pos[0]).T).T + np.array([0, 0, 3])
                 assert abs(dd) < 1e-10
                 assert not (c2 - c).any()
 

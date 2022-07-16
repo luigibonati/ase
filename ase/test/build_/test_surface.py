@@ -16,9 +16,10 @@ def test_surface():
     add_adsorbate(atoms, Atom('O'), 1, 'fcc')
     add_adsorbate(atoms, Atoms('F'), 1, 'hcp')
 
-    # The next test ensures that a simple string of multiple atoms cannot be used,
-    # which should fail with a KeyError that reports the name of the molecule due
-    # to the string failing to work with Atom().
+    # The next test ensures that a simple string of multiple atoms
+    # cannot be used, which should fail with a KeyError that reports
+    # the name of the molecule due to the string failing to work with
+    # Atom().
     failed = False
     try:
         add_adsorbate(atoms, 'CN', 1, 'ontop')

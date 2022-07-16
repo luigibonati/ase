@@ -154,8 +154,9 @@ def test_sql_db_ext_tables(psycopg2, testdir):
         atoms = Atoms()
         db = connect(db_name)
         uid = db.write(
-            atoms, external_tables={"insert_tab": {"rate": 12.0, "rate1": -10.0},
-                                    "another_tab": {"somevalue": 1.0}})
+            atoms, external_tables={
+                "insert_tab": {"rate": 12.0, "rate1": -10.0},
+                "another_tab": {"somevalue": 1.0}})
         row = db.get(id=uid)
 
         # Hack: Just change the unique ID

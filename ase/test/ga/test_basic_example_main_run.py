@@ -101,10 +101,12 @@ def test_basic_example_main_run(seed, testdir):
 
     pairing = CutAndSplicePairing(slab, n_to_optimize, blmin, rng=rng)
     mutations = OperationSelector([1., 1., 1.],
-                                  [MirrorMutation(blmin, n_to_optimize, rng=rng),
+                                  [MirrorMutation(blmin, n_to_optimize,
+                                                  rng=rng),
                                    RattleMutation(
                                        blmin, n_to_optimize, rng=rng),
-                                   PermutationMutation(n_to_optimize, rng=rng)],
+                                   PermutationMutation(n_to_optimize,
+                                                       rng=rng)],
                                   rng=rng)
 
     # Relax all unrelaxed structures (e.g. the starting population)
