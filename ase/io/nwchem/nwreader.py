@@ -299,11 +299,11 @@ def _get_multipole(chunk):
 
 # MO eigenvalue and occupancy parser for GTO calculations
 _eval_block = _define_pattern(
-        r'^[ \t]+[\S]+ Final (?:Alpha |Beta )?Molecular Orbital Analysis[ \t]*'
-        r'\n^[ \t-]+\n\n'
-        r'(?:^[ \t]+Vector [ \t\S]+\n(?:^[ \t\S]+\n){3}'
-        r'(?:^(?:(?:[ \t]+[\S]+){5}){1,2}[ \t]*\n)+\n)+',
-        """\
+    r'^[ \t]+[\S]+ Final (?:Alpha |Beta )?Molecular Orbital Analysis[ \t]*'
+    r'\n^[ \t-]+\n\n'
+    r'(?:^[ \t]+Vector [ \t\S]+\n(?:^[ \t\S]+\n){3}'
+    r'(?:^(?:(?:[ \t]+[\S]+){5}){1,2}[ \t]*\n)+\n)+',
+    """\
                        ROHF Final Molecular Orbital Analysis
                        -------------------------------------
 
@@ -490,11 +490,11 @@ def _get_stress(chunk, cell):
 
 # MO/band eigenvalue and occupancy parser for plane wave calculations
 _nwpw_eval_block = _define_pattern(
-        r'(?:(?:^[ \t]+Brillouin zone point:[ \t]+[\S]+[ \t]*\n'
-        r'(?:[ \t\S]*\n){3,4})?'
-        r'^[ \t]+(?:virtual )?orbital energies:\n'
-        r'(?:^(?:(?:[ \t]+[\S]+){3,4}){1,2}[ \t]*\n)+\n{,3})+',
-        """\
+    r'(?:(?:^[ \t]+Brillouin zone point:[ \t]+[\S]+[ \t]*\n'
+    r'(?:[ \t\S]*\n){3,4})?'
+    r'^[ \t]+(?:virtual )?orbital energies:\n'
+    r'(?:^(?:(?:[ \t]+[\S]+){3,4}){1,2}[ \t]*\n)+\n{,3})+',
+    """\
  Brillouin zone point:      1
     weight=  0.074074
     k     =<   0.333   0.333   0.333> . <b1,b2,b3> 
