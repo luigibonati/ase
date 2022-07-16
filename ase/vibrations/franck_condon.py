@@ -335,8 +335,8 @@ class FranckCondon:
 
         # occupation probability
         w_n = [[] * k for k in range(n)]
-        for l in range(n):
-            w_n[l] = f_n[l] / Z
+        for lval in range(n):
+            w_n[lval] = f_n[lval] / Z
 
         # overlap wavefunctions
         O_n = [[] * m for m in range(n)]

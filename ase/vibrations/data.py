@@ -226,8 +226,8 @@ class VibrationsData:
 
             - the first and third indices identify atoms in self.get_atoms()
 
-            - the second and fourth indices cover the corresponding Cartesian movements in x, y, z
-
+            - the second and fourth indices cover the corresponding
+              Cartesian movements in x, y, z
 
             e.g. the element h[0, 2, 1, 0] gives a harmonic force exerted on
             atoms[1] in the x-direction in response to a movement in the
