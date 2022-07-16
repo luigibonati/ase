@@ -109,7 +109,7 @@ def test_external_ioformat_wrong_type():
         group='ase.ioformats')
 
     with pytest.raises(TypeError,
-                      match='Wrong type for registering external IO formats'):
+                       match='Wrong type for registering external IO formats'):
         define_external_io_format(test_entry_point)
 
     assert 'dummy' not in formats.ioformats
