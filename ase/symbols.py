@@ -58,6 +58,7 @@ class Symbols(collections.abc.Sequence):
     formatting options and analysis.
 
     """
+
     def __init__(self, numbers) -> None:
         self.numbers = np.asarray(numbers, int)
 
@@ -183,7 +184,7 @@ class Symbols(collections.abc.Sequence):
 
     def species_indices(self) -> Sequence[int]:
         """Return the indices of each atom within their individual species.
-    
+
         >>> from ase import Atoms
         >>> atoms = Atoms('CH3CH2OH')
         >>> atoms.symbols.species_indices()
@@ -192,11 +193,11 @@ class Symbols(collections.abc.Sequence):
          ^  ^  ^  ^  ^  ^  ^  ^  ^
          C  H  H  H  C  H  H  O  H
 
-        """ 
+        """
 
         counts: Dict[str, int] = {}
         result = []
-        for i, n in enumerate(self.numbers): 
+        for i, n in enumerate(self.numbers):
             counts[n] = counts.get(n, -1) + 1
             result.append(counts[n])
 
