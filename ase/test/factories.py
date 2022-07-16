@@ -545,7 +545,7 @@ class PlumedFactory:
     def __init__(self):
         import plumed
         self.path = plumed.__spec__.origin
-        
+
     def calc(self, **kwargs):
         from ase.calculators.plumed import Plumed
         return Plumed(**kwargs)
