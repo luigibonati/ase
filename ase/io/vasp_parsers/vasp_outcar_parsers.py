@@ -32,6 +32,7 @@ class NoNonEmptyLines(Exception):
 
 class UnableToLocateDelimiter(Exception):
     """Did not find the provided delimiter"""
+
     def __init__(self, delimiter, msg):
         self.delimiter = delimiter
         super().__init__(msg)
@@ -140,6 +141,7 @@ class SimpleProperty(VaspPropertyParser, ABC):
 class VaspChunkPropertyParser(VaspPropertyParser, ABC):
     """Base class for parsing a chunk of the OUTCAR.
     The base assumption is that only a chunk of lines is passed"""
+
     def __init__(self, header: _HEADER = None):
         super().__init__()
         header = header or {}
@@ -170,7 +172,7 @@ class SimpleVaspHeaderParser(VaspHeaderPropertyParser, SimpleProperty, ABC):
 
 class Spinpol(SimpleVaspHeaderParser):
     """Parse if the calculation is spin-polarized.
-    
+
     Example line:
     "   ISPIN  =      2    spin polarized calculation?"
 
@@ -221,7 +223,8 @@ class SpeciesTypes(SimpleVaspHeaderParser):
         # In case we have an odd number, we round up (for testing purposes)
         # Tests like to just add species 1-by-1
         # Having an odd number should never happen in a real OUTCAR
-        # For even length lists, this is just equivalent to idx = len(self.species) // 2
+        # For even length lists, this is just equivalent to idx =
+        # len(self.species) // 2
         idx = sum(divmod(len(self.species), 2))
         # Make a copy
         return list(self.species[:idx])
@@ -281,6 +284,7 @@ class IonsPerSpecies(SimpleVaspHeaderParser):
 class KpointHeader(VaspHeaderPropertyParser):
     """Reads nkpts and nbands from the line delimiter.
     Then it also searches for the ibzkpts and kpt_weights"""
+
     def has_property(self, cursor: _CURSOR, lines: _CHUNK) -> bool:
         line = lines[cursor]
         return "NKPTS" in line and "NBANDS" in line
@@ -401,7 +405,7 @@ class Magmom(VaspChunkPropertyParser):
 class Magmoms(SimpleVaspChunkParser):
     """Get the x-component of the magnitization.
     This is just the magmoms in the collinear case.
-    
+
     non-collinear spin is (currently) not supported"""
     LINE_DELIMITER = 'magnetization (x)'
 
@@ -450,7 +454,8 @@ class Kpoints(VaspChunkPropertyParser):
         line = lines[cursor]
         # Example line:
         # " spin component 1" or " spin component 2"
-        # We only check spin up, as if we are spin-polarized, we'll parse that as well
+        # We only check spin up, as if we are spin-polarized, we'll parse that
+        # as well
         if 'spin component 1' in line:
             parts = line.strip().split()
             # This string is repeated elsewhere, but not with this exact shape
@@ -514,10 +519,11 @@ class Kpoints(VaspChunkPropertyParser):
 class DefaultParsersContainer:
     """Container for the default OUTCAR parsers.
     Allows for modification of the global default parsers.
-    
+
     Takes in an arbitrary number of parsers. The parsers should be uninitialized,
     as they are created on request.
     """
+
     def __init__(self, *parsers_cls):
         self._parsers_dct = {}
         for parser in parsers_cls:
@@ -542,8 +548,9 @@ class DefaultParsersContainer:
 
 
 class TypeParser(ABC):
-    """Base class for parsing a type, e.g. header or chunk, 
+    """Base class for parsing a type, e.g. header or chunk,
     by applying the internal attached parsers"""
+
     def __init__(self, parsers):
         self.parsers = parsers
 
@@ -626,6 +633,7 @@ class HeaderParser(TypeParser, ABC):
 
 class OutcarChunkParser(ChunkParser):
     """Class for parsing a chunk of an OUTCAR."""
+
     def __init__(self,
                  header: _HEADER = None,
                  parsers: Sequence[VaspChunkPropertyParser] = None):
@@ -665,6 +673,7 @@ class OutcarChunkParser(ChunkParser):
 
 class OutcarHeaderParser(HeaderParser):
     """Class for parsing a chunk of an OUTCAR."""
+
     def __init__(self,
                  parsers: Sequence[VaspHeaderPropertyParser] = None,
                  workdir: Union[str, PurePath] = None):
@@ -743,6 +752,7 @@ class OUTCARChunk(ImageChunk):
     """Container class for a chunk of the OUTCAR which consists of a
     self-contained SCF step, i.e. and image. Also contains the header_data
     """
+
     def __init__(self,
                  lines: _CHUNK,
                  header: _HEADER,
