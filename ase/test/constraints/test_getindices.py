@@ -1,10 +1,11 @@
-def test_getindices():
-    from ase.build import fcc111
-    from ase.constraints import (FixAtoms, FixBondLengths,
-                                 FixLinearTriatomic,
-                                 FixInternals, Hookean,
-                                 constrained_indices)
+from ase.build import fcc111
+from ase.constraints import (FixAtoms, FixBondLengths,
+                             FixLinearTriatomic,
+                             FixInternals, Hookean,
+                             constrained_indices)
 
+
+def test_getindices():
     slab = fcc111('Pt', (4, 4, 4))
 
     C1 = FixAtoms([0, 2, 4])
@@ -17,6 +18,5 @@ def test_getindices():
     assert all(constrained_indices(slab, (FixAtoms, FixBondLengths)) ==
                [0, 1, 2, 4])
     assert all(constrained_indices(
-        slab, (FixBondLengths, FixLinearTriatomic)) ==
-               [0, 1, 2, 3, 4, 5])
+        slab, (FixBondLengths, FixLinearTriatomic)) == [0, 1, 2, 3, 4, 5])
     assert all(constrained_indices(slab) == [0, 1, 2, 3, 4, 5, 7, 8, 9, 30, 40])
