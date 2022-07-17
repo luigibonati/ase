@@ -93,8 +93,8 @@ def test_analysis():
 
     angles1 = ana2.get_angles('C', 'C', 'H', unique=False)[0]
     angles2 = ana2.get_angles('C', 'C', 'H', unique=True)[0]
+    assert len(angles1) == len(angles2) * 2
 
     dihedrals1 = ana2.get_dihedrals('H', 'C', 'C', 'H', unique=False)[0]
     dihedrals2 = ana2.get_dihedrals('H', 'C', 'C', 'H', unique=True)[0]
-    assert len(angles2) == len(angles2) * 2
     assert len(dihedrals1) == len(dihedrals2) * 2
