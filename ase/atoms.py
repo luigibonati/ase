@@ -1316,7 +1316,7 @@ class Atoms:
         Constraints are considered for scaled=False.
         """
         old_com = self.get_center_of_mass(scaled=scaled)
-        difference = old_com - com
+        difference = com - old_com
         if scaled:
             self.set_scaled_positions(self.get_scaled_positions() + difference)
         else:
