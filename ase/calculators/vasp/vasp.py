@@ -1157,7 +1157,8 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         """Read vibrational frequencies.
 
         Returns:
-            List of real and list of imaginary frequencies (imaginary number as real number).
+            List of real and list of imaginary frequencies
+            (imaginary number as real number).
         """
         freq = []
         i_freq = []
@@ -1217,8 +1218,10 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
                             break
                         else:  # Catch changes in VASP
                             vasp_version_error_msg = (
-                                f'The file "{file}" is from a non-supported VASP version. '
-                                'Not sure what unit the Hessian is in, aborting.')
+                                f'The file "{file}" is from a '
+                                'non-supported VASP version. '
+                                'Not sure what unit the Hessian '
+                                'is in, aborting.')
                             raise calculator.ReadError(vasp_version_error_msg)
 
                     else:
@@ -1230,7 +1233,8 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
 
         except ElementTree.ParseError as exc:
             incomplete_msg = (
-                f'The file "{file}" is incomplete, and no DFT data was available. '
+                f'The file "{file}" is incomplete, '
+                'and no DFT data was available. '
                 'This is likely due to an incomplete calculation.')
             raise calculator.ReadError(incomplete_msg) from exc
         # VASP uses the negative definition of the hessian compared to ASE
@@ -1259,8 +1263,9 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         # mass weights = 1/sqrt(mass)
         mass_weights = np.repeat(self.atoms.get_masses()[sort_indices]**-0.5, 3)
         # get the unweighted hessian = H_w / m_w / m_w^T
-        # ugly and twice the work, but needed since vasprun.xml does not have the unweighted
-        # ase.vibrations.vibration will do the opposite in Vibrations.read
+        # ugly and twice the work, but needed since vasprun.xml does
+        # not have the unweighted ase.vibrations.vibration will do the
+        # opposite in Vibrations.read
         hessian = mass_weighted_hessian / \
             mass_weights / mass_weights[:, np.newaxis]
 
