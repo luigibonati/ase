@@ -124,7 +124,7 @@ def get_recommended_r_max(cell: Cell, pbc: List[bool]) -> float:
     vol = cell.volume
     for i in range(3):
         if pbc[i]:
-            axb = np.cross(cell[(i + 1) % 3, :],
+            axb = np.cross(cell[(i + 1) % 3, :],  # type: ignore
                            cell[(i + 2) % 3, :])  # type: ignore
             h = vol / np.linalg.norm(axb)
             recommended_r_max = min(h / 2 * 0.99, recommended_r_max)
