@@ -203,8 +203,10 @@ class TestVibrationsDataStaticMethods:
     def test_indices_from_constraint(self, fixed_indices, expected_indices):
         atoms = Atoms('CH4', constraint=FixAtoms(fixed_indices))
         cartesian = Atoms('CH4', constraint=FixCartesian(fixed_indices))
-        assert VibrationsData.indices_from_constraints(atoms) == expected_indices
-        assert VibrationsData.indices_from_constraints(cartesian) == expected_indices
+        assert VibrationsData.indices_from_constraints(
+            atoms) == expected_indices
+        assert VibrationsData.indices_from_constraints(
+            cartesian) == expected_indices
 
     def test_tabulate_energies(self):
         # Test the private classmethod _tabulate_from_energies

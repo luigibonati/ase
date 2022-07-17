@@ -6,7 +6,8 @@ import ase.build
 from ase.io import write, read
 
 
-# create mol with custom mass - from a list of positions or using ase.build.molecule
+# create mol with custom mass - from a list of positions or using
+# ase.build.molecule
 def write_read_atoms(atom, tmp_path):
     write("{0}/{1}".format(tmp_path, "castep_test.cell"), atom)
     return read("{0}/{1}".format(tmp_path, "castep_test.cell"))
@@ -18,7 +19,8 @@ def write_read_atoms(atom, tmp_path):
     [
         ("CH4", {2: [1]}, ["C", "H:0", "H", "H", "H"], ["H:0 2.0"]),
         ("CH4", {2: [1, 2, 3, 4]}, ["C", "H", "H", "H", "H"], ["H 2.0"]),
-        ("C2H5", {2: [2, 3]}, ["C", "C", "H:0", "H:0", "H", "H", "H"], ["H:0 2.0"]),
+        ("C2H5", {2: [2, 3]}, ["C", "C", "H:0",
+         "H:0", "H", "H", "H"], ["H:0 2.0"]),
         (
             "C2H5",
             {2: [2], 3: [3]},
@@ -39,7 +41,8 @@ def test_custom_mass_write(
             custom_atoms[i].mass = mass
 
     atom_masses = custom_atoms.get_masses()
-    with pytest.warns(UserWarning):  # CASTEP IO is noisy while handling keywords JSON
+    with pytest.warns(UserWarning):
+        # CASTEP IO is noisy while handling keywords JSON
         new_atoms = write_read_atoms(custom_atoms, tmp_path)
 
     # check atoms have been written and read correctly
@@ -50,7 +53,8 @@ def test_custom_mass_write(
     with open("{0}/{1}".format(tmp_path, "castep_test.cell"), "r") as f:
         data = f.read().replace("\n", "\\n")
 
-    position_block = re.search(r"%BLOCK POSITIONS_ABS.*%ENDBLOCK POSITIONS_ABS", data)
+    position_block = re.search(
+        r"%BLOCK POSITIONS_ABS.*%ENDBLOCK POSITIONS_ABS", data)
     assert position_block
 
     pos = position_block.group().split("\\n")[1:-1]
@@ -72,10 +76,12 @@ def test_custom_mass_write(
 def test_custom_mass_overwrite(tmp_path):
     custom_atoms = ase.build.molecule("CH4")
     custom_atoms[1].mass = 2
-    with pytest.warns(UserWarning):  # CASTEP IO is noisy while handling keywords JSON
+    with pytest.warns(UserWarning):
+        # CASTEP IO is noisy while handling keywords JSON
         atoms = write_read_atoms(custom_atoms, tmp_path)
 
     # test that changing masses when custom masses defined causes errors
     atoms[3].mass = 3
-    with pytest.raises(ValueError, match="Could not write custom mass block for H."):
+    with pytest.raises(ValueError,
+                       match="Could not write custom mass block for H."):
         atoms.write("{0}/{1}".format(tmp_path, "castep_test2.cell"))
