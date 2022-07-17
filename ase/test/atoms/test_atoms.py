@@ -58,7 +58,8 @@ def test_get_com(zlength):
 @pytest.mark.parametrize('symbols', ['CO', 'H2'])
 def test_set_com(scaled, symbols):
     """Test that atoms.set_center_of_mass() works. """
-    a = Atoms(symbols, positions=[(0, 0, 0), (0, 0, 1)], cell=[2, 2, 2], pbc=True)
+    a = Atoms(symbols, positions=[(0, 0, 0), (0, 0, 1)],
+              cell=[2, 2, 2], pbc=True)
 
     desired_com = [0.1, 0.5, 0.6]
     a.set_center_of_mass(desired_com, scaled=scaled)
