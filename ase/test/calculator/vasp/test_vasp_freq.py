@@ -37,14 +37,14 @@ def test_vasp_freq(factory, atoms_nh3, calc_settings):
     """
     calc = factory.calc(**calc_settings)
     mol = atoms_nh3
-    #one constraint
+    # one constraint
     c = FixAtoms(indices=[atom.index for atom in mol if atom.symbol == 'N'])
     mol.set_constraint(c)
     mol.calc = calc
     en = mol.get_potential_energy()
     assert isinstance(en, float)
 
-    n_free = 3*(len(mol) - 1)  # one constraint
+    n_free = 3 * (len(mol) - 1)  # one constraint
 
     e, i_e = calc.read_vib_freq()
     i_e = [complex(0, x) for x in i_e]
@@ -53,7 +53,7 @@ def test_vasp_freq(factory, atoms_nh3, calc_settings):
     outcar_data = i_e[-1::-1] + e[-1::-1]
 
     vib_obj = calc.get_vibrations()
-    vib_data = vib_obj.get_energies()*1000  # to meV
+    vib_data = vib_obj.get_energies() * 1000  # to meV
     np.testing.assert_allclose(vib_data, outcar_data, rtol=1e-6)
     # Cleanup
     calc.clean()

@@ -35,7 +35,7 @@ VALID_IO_FORMAT = ExternalIOFormat(
 )
 
 
-#These are dummy functions for reading and writing the dummy io format
+# These are dummy functions for reading and writing the dummy io format
 def read_dummy(file):
     return "Atoms dummy"
 
@@ -88,7 +88,7 @@ def test_external_ioformat_already_existing():
     assert formats.ioformats['xyz'].description != 'Test IO format'
 
 
-#Io format not specified with the required namedtuple
+# Io format not specified with the required namedtuple
 INVALID_IO_FORMAT = {
     'desc': 'Test IO format',
     'code': '1F',
