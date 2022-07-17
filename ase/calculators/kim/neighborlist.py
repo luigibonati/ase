@@ -150,7 +150,8 @@ class ASENeighborList(NeighborList):
 
         self.neigh = {}
         compute_args.set_callback(
-            kimpy.compute_callback_name.GetNeighborList, self.get_neigh, self.neigh
+            kimpy.compute_callback_name.GetNeighborList, self.get_neigh,
+            self.neigh
         )
 
     @staticmethod
@@ -206,7 +207,8 @@ class ASENeighborList(NeighborList):
         # which atoms/images we've accounted for in the `used` dictionary.
         used = dict()
         for neigh_i, neigh_j, rel_pos, offset, dist in zip(
-            neigh_indices_i, neigh_indices_j, relative_pos, neigh_cell_offsets, dists
+                neigh_indices_i, neigh_indices_j,
+                relative_pos, neigh_cell_offsets, dists
         ):
             # Get neighbor position of neighbor
             # (mapped back into unit cell, so this may overlap with other atoms)
@@ -401,7 +403,8 @@ class KimpyNeighborList(NeighborList):
         # Species support and code
         try:
             contributing_species_code = np.array(
-                [species_map[s] for s in atoms.get_chemical_symbols()], dtype=c_int
+                [species_map[s] for s in atoms.get_chemical_symbols()],
+                dtype=c_int
             )
         except KeyError as e:
             raise RuntimeError(

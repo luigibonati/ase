@@ -59,8 +59,8 @@ class KIMModelData:
 
         kim_model = kimpy_wrappers.PortableModel(self.model_name, self.debug)
 
-        # KIM API model object is what actually creates/destroys the ComputeArguments
-        # object, so we must pass it as a parameter
+        # KIM API model object is what actually creates/destroys the
+        # ComputeArguments object, so we must pass it as a parameter
         compute_args = kim_model.compute_arguments_create()
 
         return kim_model, compute_args
@@ -226,9 +226,10 @@ class KIMModelCalculator(Calculator):
         self.energy = None
         self.forces = None
 
-        # Create KIMModelData object. This will take care of creating and storing the KIM
-        # API Portable Model object, KIM API ComputeArguments object, and the neighbor
-        # list object that our calculator needs
+        # Create KIMModelData object. This will take care of creating
+        # and storing the KIM API Portable Model object, KIM API
+        # ComputeArguments object, and the neighbor list object that
+        # our calculator needs
         self._kimmodeldata = KIMModelData(
             self.model_name, ase_neigh, self.neigh_skin_ratio, self.debug
         )
