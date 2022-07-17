@@ -1191,23 +1191,29 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
             hessian = None
             for event, elem in tree:
                 if elem.tag == 'dynmat':
-                    for i, entry in enumerate(elem.findall('varray[@name="hessian"]/v')):
+                    for i, entry in enumerate(
+                            elem.findall('varray[@name="hessian"]/v')):
                         text_split = entry.text.split()
                         if not text_split:
-                            raise ElementTree.ParseError("Could not find varray hessian!")
+                            raise ElementTree.ParseError(
+                                "Could not find varray hessian!")
                         if i == 0:
                             n_items = len(text_split)
                             hessian = np.zeros((n_items, n_items))
                         assert isinstance(hessian, np.ndarray)
-                        hessian[i, :] = np.array([float(val) for val in text_split])
+                        hessian[i, :] = np.array(
+                            [float(val) for val in text_split])
                     if i != n_items - 1:
-                        raise ElementTree.ParseError("Hessian is not quadratic!")
-                    #VASP6+ uses THz**2 as unit, not mEV**2 as before
+                        raise ElementTree.ParseError(
+                            "Hessian is not quadratic!")
+                    # VASP6+ uses THz**2 as unit, not mEV**2 as before
                     for entry in elem.findall('i[@name="unit"]'):
                         if entry.text.strip() == 'THz^2':
-                            conv = ase.units._amu / ase.units._e / 1e-4 * (2 * np.pi)**2  # THz**2 to eV**2
+                            conv = ase.units._amu / ase.units._e / \
+                                1e-4 * (2 * np.pi)**2  # THz**2 to eV**2
                             # VASP6 uses factor 2pi
-                            # 1e-4 = (angstrom to meter times Hz to THz) squared = (1e10 times 1e-12)**2
+                            # 1e-4 = (angstrom to meter times Hz to THz) squared
+                            # = (1e10 times 1e-12)**2
                             break
                         else:  # Catch changes in VASP
                             vasp_version_error_msg = (
@@ -1246,16 +1252,17 @@ class Vasp(GenerateVaspInput, Calculator):  # type: ignore
         """
 
         mass_weighted_hessian = self._read_massweighted_hessian_xml()
-        #get indices of freely moving atoms, i.e. respect constraints.
+        # get indices of freely moving atoms, i.e. respect constraints.
         indices = VibrationsData.indices_from_constraints(self.atoms)
-        #save the corresponding sorted atom numbers
+        # save the corresponding sorted atom numbers
         sort_indices = np.array(self.sort)[indices]
-        #mass weights = 1/sqrt(mass)
+        # mass weights = 1/sqrt(mass)
         mass_weights = np.repeat(self.atoms.get_masses()[sort_indices]**-0.5, 3)
-        #get the unweighted hessian = H_w / m_w / m_w^T
-        #ugly and twice the work, but needed since vasprun.xml does not have the unweighted
-        #ase.vibrations.vibration will do the opposite in Vibrations.read
-        hessian = mass_weighted_hessian / mass_weights / mass_weights[:, np.newaxis]
+        # get the unweighted hessian = H_w / m_w / m_w^T
+        # ugly and twice the work, but needed since vasprun.xml does not have the unweighted
+        # ase.vibrations.vibration will do the opposite in Vibrations.read
+        hessian = mass_weighted_hessian / \
+            mass_weights / mass_weights[:, np.newaxis]
 
         return VibrationsData.from_2d(self.atoms[self.sort], hessian, indices)
 
