@@ -126,7 +126,7 @@ class Demon(FileIOCalculator):
             and the value is either a str, a list of str (will be written
             on the same line as the keyword),
             or a list of lists of str (first list is written on the first
-             line, the others on following lines.)
+            line, the others on following lines.)
 
         For example usage, see the tests h2o.py and h2o_xas_xes.py in
         the directory ase/test/demon
