@@ -61,8 +61,6 @@ class GULP(FileIOCalculator):
         opt = GULPOptimizer(atoms, self)
         return opt
 
-#conditions=[['O', 'default', 'O1'], ['O', 'O2', 'H', '<', '1.6']]
-
     def __init__(self, restart=None,
                  ignore_bad_restart_file=FileIOCalculator._deprecated,
                  label='gulp', atoms=None, optimized=None,
@@ -76,7 +74,12 @@ class GULP(FileIOCalculator):
         self.conditions = conditions
         self.library_check()
         self.atom_types = []
-        self.fractional_coordinates = None  # GULP prints the fractional coordinates before the Final lattice vectors so they need to be stored and then atoms positions need to be set after we get the Final lattice vectors
+
+        # GULP prints the fractional coordinates before the Final
+        # lattice vectors so they need to be stored and then atoms
+        # positions need to be set after we get the Final lattice
+        # vectors
+        self.fractional_coordinates = None
 
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
@@ -176,7 +179,8 @@ class GULP(FileIOCalculator):
                     '''for t in range(3-len(g)):
                         g.append(' ')
                     for j in range(2):
-                        min_index=[i+1 for i,e in enumerate(g[j][1:]) if e == '-']
+                        min_index=[i+1 for i,e in enumerate(g[j][1:])
+                                   if e == '-']
                         if j==0 and len(min_index) != 0:
                             if len(min_index)==1:
                                 g[2]=g[1]

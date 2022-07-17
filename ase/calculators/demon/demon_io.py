@@ -5,7 +5,7 @@ from ase.units import Hartree
 
 
 def parse_xray(filename):
-    #filename = self.label + '/deMon.xry'
+    # filename = self.label + '/deMon.xry'
     if op.isfile(filename):
         with open(filename, 'r') as fd:
             lines = fd.readlines()

@@ -58,8 +58,8 @@ class LennardJones(Calculator):
 
     ``u = sum_i u_i = 1/2 sum_(i, j != i) u_ij``
 
-    Differentiating `u` with respect to `r_i` yields the force, indepedent of the
-    choice of partitioning.
+    Differentiating `u` with respect to `r_i` yields the force,
+    independent of the choice of partitioning.
 
     ::
 
@@ -110,8 +110,9 @@ class LennardJones(Calculator):
 
     Where `fc' = d fc / d d_ij`.
 
-    This approach is taken from Jax-MD (https://github.com/google/jax-md), which in
-    turn is inspired by HOOMD Blue (https://glotzerlab.engin.umich.edu/hoomd-blue/).
+    This approach is taken from Jax-MD (https://github.com/google/jax-md),
+    which in turn is inspired by HOOMD Blue
+    (https://glotzerlab.engin.umich.edu/hoomd-blue/).
 
     """
 
@@ -147,8 +148,9 @@ class LennardJones(Calculator):
           True means that a smooth cutoff function is multiplied to the pairwise
           energy that smoothly goes to 0 between ro and rc. Both energy and
           forces are continuous in that case.
-          If smooth=True, make sure to check the tail of the forces for kinks, ro
-          might have to be adjusted to avoid distorting the potential too much.
+          If smooth=True, make sure to check the tail of the
+          forces for kinks, ro might have to be adjusted to avoid distorting
+          the potential too much.
 
         """
 
@@ -221,7 +223,8 @@ class LennardJones(Calculator):
                 # order matters, otherwise the pairwise energy is already
                 # modified
                 pairwise_forces = (
-                    cutoff_fn * pairwise_forces + 2 * d_cutoff_fn * pairwise_energies
+                    cutoff_fn * pairwise_forces + 2 * d_cutoff_fn
+                    * pairwise_energies
                 )
                 pairwise_energies *= cutoff_fn
             else:

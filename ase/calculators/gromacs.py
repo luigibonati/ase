@@ -154,9 +154,6 @@ class Gromacs(FileIOCalculator):
 
         self.positions = None
         self.atoms = None
-        # storage for energy and forces
-        #self.energy = None
-        #self.forces = None
 
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
@@ -406,7 +403,6 @@ class Gromacs(FileIOCalculator):
             lastline = fd.readlines()[-1]
             energy = float(lastline.split()[1])
         # We go for ASE units !
-        #self.energy = energy * units.kJ / units.mol
         self.results['energy'] = energy * units.kJ / units.mol
         # energies are about 100 times bigger in Gromacs units
         # when compared to ase units
@@ -424,9 +420,6 @@ class Gromacs(FileIOCalculator):
             lastline = fd.readlines()[-1]
             forces = np.array([float(f) for f in lastline.split()[1:]])
         # We go for ASE units !gromacsForce.xvg
-        #self.forces = np.array(forces)/ units.nm * units.kJ / units.mol
-        #self.forces = np.reshape(self.forces, (-1, 3))
         tmp_forces = forces / units.nm * units.kJ / units.mol
         tmp_forces = np.reshape(tmp_forces, (-1, 3))
         self.results['forces'] = tmp_forces
-        #self.forces = np.array(forces)

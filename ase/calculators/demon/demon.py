@@ -72,7 +72,8 @@ class Demon(FileIOCalculator):
 
         The deMon2k code can be obtained from http://www.demon-software.com
 
-        The DEMON_COMMAND environment variable must be set to run the executable, in bash it would be set along the lines of
+        The DEMON_COMMAND environment variable must be set to run the
+        executable, in bash it would be set along the lines of
         export DEMON_COMMAND="deMon.4.3.6.std > deMon_ase.out 2>&1"
 
         Parameters:
@@ -82,11 +83,14 @@ class Demon(FileIOCalculator):
         atoms : Atoms object
             the atoms object
         command  : str
-            Command to run deMon. If not present the environment varable DEMON_COMMAND will be used
+            Command to run deMon. If not present the environment
+            variable DEMON_COMMAND will be used
         restart  : str
-            Relative path to ASE restart directory for parameters and atoms object and results
+            Relative path to ASE restart directory for parameters and
+            atoms object and results
         basis_path  : str
-            Relative path to the directory containing BASIS, AUXIS, ECPS, MCPS and AUGMENT
+            Relative path to the directory containing
+            BASIS, AUXIS, ECPS, MCPS and AUGMENT
         ignore_bad_restart_file : bool
             Ignore broken or missing ASE restart files
             By default, it is an error if the restart
@@ -119,10 +123,13 @@ class Demon(FileIOCalculator):
             Definition of AUGMENT
         input_arguments : dict
             Explicitly given input arguments. The key is the input keyword
-            and the value is either a str, a list of str (will be written on the same line as the keyword),
-            or a list of lists of str (first list is written on the first line, the others on following lines.)
+            and the value is either a str, a list of str (will be written
+            on the same line as the keyword),
+            or a list of lists of str (first list is written on the first
+             line, the others on following lines.)
 
-        For example usage, see the tests h2o.py and h2o_xas_xes.py in the directory ase/test/demon
+        For example usage, see the tests h2o.py and h2o_xas_xes.py in
+        the directory ase/test/demon
 
         """
 

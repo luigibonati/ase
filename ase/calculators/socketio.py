@@ -613,7 +613,6 @@ class SocketIOCalculator(Calculator, IOContext):
                 raise ValueError('Cannot pass both calc and launch_client')
             launch_client = FileIOSocketClientLauncher(calc)
         self.launch_client = launch_client
-        #self.calc = calc
         self.timeout = timeout
         self.server = None
 
