@@ -30,7 +30,8 @@ def test_minimum_energy():
 
     for atoms in systems_minimum():
         assert atoms.get_potential_energy() == reference_potential_energy
-        assert atoms.get_potential_energies().sum() == reference_potential_energy
+        assert atoms.get_potential_energies().sum() == \
+            reference_potential_energy
 
 
 def test_minimum_forces():

@@ -1,7 +1,6 @@
 def test_h2o_xas_xes():
     import ase.calculators.demon as demon
     from ase import Atoms
-    #from ase.optimize import BFGS
     import numpy as np
 
     # d = 0.9575
