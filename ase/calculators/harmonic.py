@@ -37,23 +37,25 @@ class HarmonicForceField:
                  get_jacobian=None, cartesian=True, variable_orientation=False,
                  hessian_limit=0.0, constrained_q=None, rcond=1e-7,
                  zero_thresh=0.0):
-        """
-        Class that represents a Hessian-based harmonic force field.
+        """Class that represents a Hessian-based harmonic force field.
 
-        Energy and forces of this force field are based on the Cartesian Hessian
-        for a local reference configuration, i.e. if desired, on the Hessian
-        matrix transformed to a user-defined coordinate system.
-        The required Hessian has to be passed as an argument, e.g. predetermined
-        numerically via central finite differences in Cartesian coordinates.
-        Note that a potential being harmonic in Cartesian coordinates **x** is not
-        necessarily equivalently harmonic in another coordinate system **q**,
-        e.g. when the transformation between the coordinate systems is non-linear.
-        By default, the force field is evaluated in Cartesian coordinates in which
-        energy and forces are not rotationally and translationally invariant.
-        Systems with variable orientation, require rotationally and translationally
-        invariant calculations for which a set of appropriate coordinates has to
-        be defined. This can be a set of (redundant) internal coordinates (bonds,
-        angles, dihedrals, coordination numbers, ...) or any other user-defined
+        Energy and forces of this force field are based on the
+        Cartesian Hessian for a local reference configuration, i.e. if
+        desired, on the Hessian matrix transformed to a user-defined
+        coordinate system.  The required Hessian has to be passed as
+        an argument, e.g. predetermined numerically via central finite
+        differences in Cartesian coordinates.  Note that a potential
+        being harmonic in Cartesian coordinates **x** is not
+        necessarily equivalently harmonic in another coordinate system
+        **q**, e.g. when the transformation between the coordinate
+        systems is non-linear.  By default, the force field is
+        evaluated in Cartesian coordinates in which energy and forces
+        are not rotationally and translationally invariant.  Systems
+        with variable orientation, require rotationally and
+        translationally invariant calculations for which a set of
+        appropriate coordinates has to be defined. This can be a set
+        of (redundant) internal coordinates (bonds, angles, dihedrals,
+        coordination numbers, ...) or any other user-defined
         coordinate system.
 
         Together with the :class:`HarmonicCalculator` this
@@ -125,6 +127,7 @@ class HarmonicForceField:
         zero_thresh: float
             Reconstruct the reference Hessian matrix with absolute eigenvalues
             below this threshold set to zero.
+
         """
         self.check_input([get_q_from_x, get_jacobian],
                          variable_orientation, cartesian)
@@ -145,7 +148,8 @@ class HarmonicForceField:
         self.get_q_from_x = (self.parameters['get_q_from_x'] or
                              (lambda atoms: atoms.get_positions()))
         self.get_jacobian = (self.parameters['get_jacobian'] or
-                             (lambda atoms: np.diagflat(np.ones(3 * len(atoms)))))
+                             (lambda atoms: np.diagflat(
+                                 np.ones(3 * len(atoms)))))
 
         # reference Cartesian coords. x0; reference user-defined coords. q0
         self.x0 = self.parameters['ref_atoms'].get_positions().ravel()
@@ -215,7 +219,8 @@ class HarmonicForceField:
         w, v = eigh(hessian_x)  # rot. and trans. degrees of freedom are removed
         w[np.abs(w) < self.parameters['zero_thresh']] = 0.0  # noise-cancelling
         w[(0.0 < w) &  # substitute small eigenvalues by lower limit
-          (w < self.parameters['hessian_limit'])] = self.parameters['hessian_limit']
+          (w < self.parameters['hessian_limit'])] = \
+            self.parameters['hessian_limit']
         # reconstruct Hessian from new eigenvalues and preserved eigenvectors
         hessian_x = v @ np.diagflat(w) @ v.T  # v.T == inv(v) due to symmetry
         self._hessian_x = 0.5 * (hessian_x + hessian_x.T)  # guarantee symmetry

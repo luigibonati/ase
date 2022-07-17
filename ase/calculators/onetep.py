@@ -171,7 +171,8 @@ class Onetep(FileIOCalculator):
                 self._read_geom_output(out)
             elif ('Integrated spin density' in line):
                 self.results['magmom'] = self._read_magmom(line)
-            elif '|Excitation|    Energy (in Ha)   |     Oscillator Str' in line:
+            elif ('|Excitation|    Energy (in Ha)   |     Oscillator Str'
+                  in line):
                 self._read_excitations(out)
             elif ('Dipole Moment Calculation' in line):
                 self.results['dipole'] = self._read_dipole(out)
@@ -405,7 +406,8 @@ class Onetep(FileIOCalculator):
             species_ngwf_num_var = 'species_ngwf_number_cond'
         for sp in set(zip(atoms.get_atomic_numbers(),
                           atoms.get_chemical_symbols(),
-                          ["" if i == 0 else str(i) for i in atoms.get_tags()])):
+                          ["" if i == 0 else str(i) for i in
+                           atoms.get_tags()])):
             try:
                 ngrad = parameters[species_ngwf_rad_var][sp[1]]
             except KeyError:
@@ -639,8 +641,8 @@ class Onetep(FileIOCalculator):
 
         if 'bsunfld_calculate' in self.parameters:
             if 'species_bsunfld_groups' not in self.parameters:
-                self.parameters['species_bsunfld_groups'] = self.atoms.get_chemical_symbols(
-                )
+                self.parameters['species_bsunfld_groups'] = \
+                    self.atoms.get_chemical_symbols()
 
         # Loop over parameters entries in alphabetal order, outputting
         # them as keywords or blocks as appropriate

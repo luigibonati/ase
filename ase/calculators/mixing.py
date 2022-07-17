@@ -1,5 +1,6 @@
 from ase.calculators.calculator import BaseCalculator, all_changes
-from ase.calculators.calculator import PropertyNotImplementedError, CalculatorSetupError
+from ase.calculators.calculator import (PropertyNotImplementedError,
+                                        CalculatorSetupError)
 
 
 class Mixer:
@@ -60,7 +61,9 @@ class LinearCombinationCalculator(BaseCalculator):
         self.implemented_properties = self.mixer.implemented_properties
 
     def calculate(self, atoms, properties, system_changes):
-        """ Calculates all the specific property for each calculator and returns with the summed value.
+        """Calculates all the specific property for each calculator and
+        returns with the summed value.
+
         """
         self.atoms = atoms.copy()  # for caching of results
         self.results = self.mixer.get_properties(properties, atoms)
@@ -108,10 +111,13 @@ class MixedCalculator(LinearCombinationCalculator):
 class SumCalculator(LinearCombinationCalculator):
     """SumCalculator for combining multiple calculators.
 
-    This calculator can be used when there are different calculators for the different chemical environment or
-    for example during delta leaning. It works with a list of arbitrary calculators and evaluates them in sequence
-    when it is required.
-    The supported properties are the intersection of the implemented properties in each calculator.
+    This calculator can be used when there are different calculators
+    for the different chemical environment or for example during delta
+    leaning. It works with a list of arbitrary calculators and
+    evaluates them in sequence when it is required.  The supported
+    properties are the intersection of the implemented properties in
+    each calculator.
+
     """
 
     def __init__(self, calcs):
@@ -126,8 +132,8 @@ class SumCalculator(LinearCombinationCalculator):
 
 
 class AverageCalculator(LinearCombinationCalculator):
-    """AverageCalculator for equal summation of multiple calculators (for thermodynamic purposes)..
-    """
+    """AverageCalculator for equal summation of multiple calculators (for
+    thermodynamic purposes)."""
 
     def __init__(self, calcs):
         """Implementation of average of calculators.
