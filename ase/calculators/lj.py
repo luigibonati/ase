@@ -218,7 +218,8 @@ class LennardJones(Calculator):
             pairwise_forces = -24 * epsilon * (2 * c12 - c6) / r2  # du_ij
 
             if smooth:
-                # order matters, otherwise the pairwise energy is already modified
+                # order matters, otherwise the pairwise energy is already
+                # modified
                 pairwise_forces = (
                     cutoff_fn * pairwise_forces + 2 * d_cutoff_fn * pairwise_energies
                 )
@@ -238,7 +239,8 @@ class LennardJones(Calculator):
         # no lattice, no stress
         if self.atoms.cell.rank == 3:
             stresses = full_3x3_to_voigt_6_stress(stresses)
-            self.results['stress'] = stresses.sum(axis=0) / self.atoms.get_volume()
+            self.results['stress'] = stresses.sum(
+                axis=0) / self.atoms.get_volume()
             self.results['stresses'] = stresses / self.atoms.get_volume()
 
         energy = energies.sum()
@@ -268,7 +270,8 @@ def cutoff_function(r, rc, ro):
     return np.where(
         r < ro,
         1.0,
-        np.where(r < rc, (rc - r) ** 2 * (rc + 2 * r - 3 * ro) / (rc - ro) ** 3, 0.0),
+        np.where(r < rc, (rc - r) ** 2 * (rc + 2 *
+                 r - 3 * ro) / (rc - ro) ** 3, 0.0),
     )
 
 

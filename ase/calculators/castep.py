@@ -227,7 +227,7 @@ Keyword                    Description
                            3 = no attempt is made to look for
                            castep_keywords.json at all
 ``castep_keywords``        Can be used to pass a CastepKeywords object that is
-                           then used with no attempt to actually load a 
+                           then used with no attempt to actually load a
                            castep_keywords.json file. Most useful for debugging
                            and testing purposes.
 
@@ -782,7 +782,7 @@ End CASTEP Interface Documentation
             kpts = kpts.copy()
 
             if (kpts.get('spacing') is not None
-                and kpts.get('density') is not None):
+                    and kpts.get('density') is not None):
                 raise ValueError(
                     'Cannot set kpts spacing and density simultaneously.')
             else:
@@ -1492,7 +1492,7 @@ End CASTEP Interface Documentation
         # Read in eigenvalues from bands file
         bands_file = castep_file[:-7] + '.bands'
         if (self.param.task.value is not None
-            and self.param.task.value.lower() == 'bandstructure'):
+                and self.param.task.value.lower() == 'bandstructure'):
             self._band_structure = self.band_structure(bandfile=bands_file)
         else:
             try:

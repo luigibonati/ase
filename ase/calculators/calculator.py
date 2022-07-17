@@ -621,7 +621,8 @@ class Calculator(BaseCalculator):
         self.prefix = None
         if label is not None:
             if self.directory == '.' and '/' in label:
-                # We specified directory in label, and nothing in the diretory key
+                # We specified directory in label, and nothing in the diretory
+                # key
                 self.label = label
             elif '/' not in label:
                 # We specified our directory in the directory keyword

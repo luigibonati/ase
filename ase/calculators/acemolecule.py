@@ -59,7 +59,8 @@ class ACE(FileIOCalculator):
         changed_parameters = FileIOCalculator.set(self, **kwargs)
 
         # Add default values for repeated parameter sections with self.default_parameters using order.
-        # Also add empty dictionary as an indicator for section existence if no relevant default_parameters exist.
+        # Also add empty dictionary as an indicator for section existence if no
+        # relevant default_parameters exist.
         if 'order' in kwargs:
             new_parameters['order'] = kwargs['order']
             section_sets = set(kwargs['order'])
@@ -67,7 +68,8 @@ class ACE(FileIOCalculator):
                 repeat = kwargs['order'].count(section_name)
                 if section_name in self.default_parameters.keys():
                     for i in range(repeat-1):
-                        new_parameters[section_name] += deepcopy(self.default_parameters[section_name])
+                        new_parameters[section_name] += deepcopy(
+                            self.default_parameters[section_name])
                 else:
                     new_parameters[section_name] = []
                     for i in range(repeat):
@@ -81,7 +83,8 @@ class ACE(FileIOCalculator):
 
                 i = 0
                 for section_param in kwargs[section]:
-                    new_parameters[section][i] = update_parameter(new_parameters[section][i], section_param)
+                    new_parameters[section][i] = update_parameter(
+                        new_parameters[section][i], section_param)
                     i += 1
         self.parameters = new_parameters
         return changed_parameters
@@ -93,12 +96,14 @@ class ACE(FileIOCalculator):
         with open(filename, 'r') as fd:
             lines = fd.readlines()
         if 'WARNING' in lines:
-            raise ReadError("Not convergy energy in log file {}.".format(filename))
+            raise ReadError(
+                "Not convergy energy in log file {}.".format(filename))
         if '! total energy' not in lines:
             raise ReadError("Wrong ACE-Molecule log file {}.".format(filename))
 
         if not os.path.isfile(filename):
-            raise ReadError("Wrong ACE-Molecule input file {}.".format(filename))
+            raise ReadError(
+                "Wrong ACE-Molecule input file {}.".format(filename))
 
         self.read_results()
 
@@ -133,9 +138,11 @@ class ACE(FileIOCalculator):
         Updated version of self.parameters; geometry file and optionally Force section are updated.
         '''
         copied_parameters = deepcopy(self.parameters)
-        if properties is not None and "forces" in properties and 'Force' not in copied_parameters['order']:
+        if properties is not None and "forces" in properties and 'Force' not in copied_parameters[
+                'order']:
             copied_parameters['order'].append('Force')
-        copied_parameters["BasicInformation"][0]["GeometryFilename"] = "{}.xyz".format(self.label)
+        copied_parameters["BasicInformation"][0]["GeometryFilename"] = "{}.xyz".format(
+            self.label)
         copied_parameters["BasicInformation"][0]["GeometryFormat"] = "xyz"
         return copied_parameters
 
@@ -150,7 +157,7 @@ class ACE(FileIOCalculator):
         '''
         filename = self.label + '.log'
         #quantities = ['energy', 'forces', 'atoms', 'excitation-energy']
-        #for section_name in quantities:
+        # for section_name in quantities:
         #self.results = read_acemolecule_out(filename)
         self.results = read(filename, format='acemolecule-out')
 
@@ -164,16 +171,30 @@ class ACE(FileIOCalculator):
         depth: Nested input depth.
         '''
         for section, section_param in section.items():
-            if isinstance(section_param, str) or isinstance(section_param, int) or isinstance(section_param, float):
-                fpt.write('    ' * depth + str(section) + " " + str(section_param) + "\n")
+            if isinstance(section_param, str) or isinstance(
+                    section_param, int) or isinstance(section_param, float):
+                fpt.write(
+                    '    ' *
+                    depth +
+                    str(section) +
+                    " " +
+                    str(section_param) +
+                    "\n")
             else:
                 if isinstance(section_param, dict):
                     fpt.write('    ' * depth + "%% " + str(section) + "\n")
-                    self.write_acemolecule_section(fpt, section_param, depth + 1)
+                    self.write_acemolecule_section(
+                        fpt, section_param, depth + 1)
                     fpt.write('    ' * depth + "%% End\n")
                 if isinstance(section_param, list):
                     for val in section_param:
-                        fpt.write('    ' * depth + str(section) + " " + str(val) + "\n")
+                        fpt.write(
+                            '    ' *
+                            depth +
+                            str(section) +
+                            " " +
+                            str(val) +
+                            "\n")
 
     def write_acemolecule_input(self, fpt, param, depth=0):
         '''Write ACE-Molecule input
@@ -270,7 +291,8 @@ def update_parameter(oldpar, newpar):
     for section, section_param in newpar.items():
         if section in oldpar:
             if isinstance(section_param, dict):
-                oldpar[section] = update_parameter(oldpar[section], section_param)
+                oldpar[section] = update_parameter(
+                    oldpar[section], section_param)
             else:
                 oldpar[section] = section_param
         else:

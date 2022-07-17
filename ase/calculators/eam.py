@@ -948,7 +948,8 @@ End EAM Interface Documentation
             plt.plot(curvex, curvey[i](curvex), label=label)
         plt.legend()
 
-    def multielem_subplot(self, curvex, curvey, xlabel, ylabel, name, plt, half=True):
+    def multielem_subplot(self, curvex, curvey, xlabel,
+                          ylabel, name, plt, half=True):
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         for i in np.arange(self.Nelements):

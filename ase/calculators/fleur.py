@@ -49,6 +49,7 @@ class FLEUR:
         (atoms to optimize etc.) are specified by hand in *inp*
 
     """
+
     def __init__(self, xc='LDA', kpts=None, nbands=None, convergence=None,
                  width=None, kmax=None, mixer=None, maxiter=None,
                  maxrelax=20, workdir=None, equivatoms=True, rmt=None,
@@ -150,22 +151,29 @@ class FLEUR:
         out = p.stdout.read()
         err = p.stderr.read()
         print(mode, ': stat= ', stat, ' out= ', out, ' err=', err)
-        # special handling of exit status from density generation and regular fleur.x
+        # special handling of exit status from density generation and regular
+        # fleur.x
         if mode in ['density']:
             if '!' in err:
                 os.chdir(self.start_dir)
-                raise RuntimeError(executable_use + ' exited with a code %s' % err)
+                raise RuntimeError(
+                    executable_use +
+                    ' exited with a code %s' %
+                    err)
         else:
             if stat != 0:
                 os.chdir(self.start_dir)
-                raise RuntimeError(executable_use + ' exited with a code %d' % stat)
+                raise RuntimeError(
+                    executable_use +
+                    ' exited with a code %d' %
+                    stat)
 
     def update(self, atoms):
         """Update a FLEUR calculation."""
 
         if (not self.converged or
             len(self.numbers) != len(atoms) or
-            (self.numbers != atoms.get_atomic_numbers()).any()):
+                (self.numbers != atoms.get_atomic_numbers()).any()):
             self.initialize(atoms)
             self.calculate(atoms)
         elif ((self.positions != atoms.get_positions()).any() or
@@ -277,7 +285,9 @@ class FLEUR:
         while not self.converged:
             if self.niter > self.itmax:
                 os.chdir(self.start_dir)
-                raise RuntimeError('FLEUR failed to convergence in %d iterations' % self.itmax)
+                raise RuntimeError(
+                    'FLEUR failed to convergence in %d iterations' %
+                    self.itmax)
 
             self.run_executable(mode='fleur', executable='FLEUR')
 
@@ -322,7 +332,9 @@ class FLEUR:
             os.system('cp cdn1 cdn1_%d' % nrelax)
             if nrelax > self.maxrelax:
                 os.chdir(self.start_dir)
-                raise RuntimeError('Failed to relax in %d iterations' % self.maxrelax)
+                raise RuntimeError(
+                    'Failed to relax in %d iterations' %
+                    self.maxrelax)
             self.converged = False
 
     def write_inp(self, atoms):
@@ -376,8 +388,10 @@ class FLEUR:
             else:
                 # generate inequivalent atoms, by using non-integer Z
                 # (only the integer part will be used as Z of the atom)
-                # see http://www.flapw.de/pm/index.php?n=User-Documentation.InputFileForTheInputGenerator
-                fh.write('%3d.%04d' % (Z, n))  # MDTMP don't think one can calculate more that 10**4 atoms
+                # see
+                # http://www.flapw.de/pm/index.php?n=User-Documentation.InputFileForTheInputGenerator
+                # MDTMP don't think one can calculate more that 10**4 atoms
+                fh.write('%3d.%04d' % (Z, n))
             for el in pos:
                 fh.write(' %21.16f' % el)
             fh.write('\n')
@@ -411,7 +425,9 @@ class FLEUR:
                     lines[ln] = 'mjw    non-relativic\n'
                     del lines[ln+1]
                 else:
-                    raise RuntimeError('XC-functional %s is not supported' % self.xc)
+                    raise RuntimeError(
+                        'XC-functional %s is not supported' %
+                        self.xc)
             if line.startswith('Window'):
                 # few things are set around this line
                 window_ln = ln
@@ -428,7 +444,8 @@ class FLEUR:
             # gmaxxc cutoff for PW-expansion of XC-potential ( > 2*kmax, < gmax)
             if self.kmax and line.startswith('vchk'):
                 gmax = 3. * self.kmax
-                line = ' %10.6f %10.6f\n' % (gmax, int(2.5 * self.kmax * 10)/10.)
+                line = ' %10.6f %10.6f\n' % (
+                    gmax, int(2.5 * self.kmax * 10)/10.)
                 lines[ln-1] = line
             # Fermi width
             if self.width and line.startswith('gauss'):
@@ -441,8 +458,10 @@ class FLEUR:
                                                               self.kpts[2])
                 lines[ln] = line
             # itmax
-            if self.itmax < self.itmax_step_default and line.startswith('itmax'):
-                # decrease number of SCF steps; increasing is done by 'while not self.converged:'
+            if self.itmax < self.itmax_step_default and line.startswith(
+                    'itmax'):
+                # decrease number of SCF steps; increasing is done by 'while not
+                # self.converged:'
                 lsplit = line.split(',')
                 if lsplit[0].find('itmax') != -1:
                     lsplit[0] = 'itmax=' + ('%2d' % self.itmax)

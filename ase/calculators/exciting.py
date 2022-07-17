@@ -53,7 +53,7 @@ class Exciting:
     def update(self, atoms):
         if (not self.converged or
             len(self.numbers) != len(atoms) or
-            (self.numbers != atoms.get_atomic_numbers()).any()):
+                (self.numbers != atoms.get_atomic_numbers()).any()):
             self.initialize(atoms)
             self.calculate(atoms)
         elif ((self.positions != atoms.get_positions()).any() or
@@ -96,9 +96,9 @@ class Exciting:
         assert (Path(self.dir) / 'INFO.OUT').is_file()
         assert (Path(self.dir) / 'info.xml').exists()
 
-        #syscall = ('cd %(dir)s; %(bin)s;' %
+        # syscall = ('cd %(dir)s; %(bin)s;' %
         #           {'dir': self.dir, 'bin': self.excitingbinary})
-        #print(syscall)
+        # print(syscall)
         #assert os.system(syscall) == 0
         self.read()
 
