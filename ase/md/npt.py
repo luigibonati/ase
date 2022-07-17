@@ -81,7 +81,7 @@ class NPT(MolecularDynamics):
             Set to None to disable the thermostat.
 
             WARNING: Not specifying ttime sets it to None, disabling the
-            thermostat.            
+            thermostat.
 
         pfactor: float
             A constant in the barostat differential equation.  If
@@ -90,7 +90,7 @@ class NPT(MolecularDynamics):
             eV, Å, u; and B is the Bulk Modulus, given in eV/Å^3).
             Set to None to disable the barostat.
             Typical metallic bulk moduli are of the order of
-            100 GPa or 0.6 eV/A^3.  
+            100 GPa or 0.6 eV/A^3.
 
             WARNING: Not specifying pfactor sets it to None, disabling the
             barostat.

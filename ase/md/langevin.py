@@ -159,7 +159,8 @@ class Langevin(MolecularDynamics):
         self.rnd_vel = self.c3 * xi - self.c4 * eta
         if self.fix_com:
             self.rnd_pos -= self.rnd_pos.sum(axis=0) / natoms
-            self.rnd_vel -= (self.rnd_vel * self.masses).sum(axis=0) / (self.masses * natoms)
+            self.rnd_vel -= (self.rnd_vel *
+                             self.masses).sum(axis=0) / (self.masses * natoms)
 
         # First halfstep in the velocity.
         self.v += (self.c1 * forces / self.masses - self.c2 * self.v +

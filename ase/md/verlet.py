@@ -26,7 +26,7 @@ class VelocityVerlet(MolecularDynamics):
             Use '-' for stdout.  Default: None.
 
         loginterval: int (optional)
-            Only write a log line for every *loginterval* time steps.  
+            Only write a log line for every *loginterval* time steps.
             Default: 1
 
         append_trajectory: boolean
@@ -39,7 +39,8 @@ class VelocityVerlet(MolecularDynamics):
             Alias for timestep.
         """
         if dt is not None:
-            warnings.warn(FutureWarning('dt variable is deprecated; please use timestep.'))
+            warnings.warn(
+                FutureWarning('dt variable is deprecated; please use timestep.'))
             timestep = dt
         if timestep is None:
             raise TypeError('Missing timestep argument')

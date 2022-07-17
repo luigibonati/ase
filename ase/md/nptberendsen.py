@@ -69,7 +69,7 @@ class NPTBerendsen(NVTBerendsen):
             Use '-' for stdout.
 
         loginterval: int (optional)
-            Only write a log line for every *loginterval* time steps.  
+            Only write a log line for every *loginterval* time steps.
             Default: 1
 
         append_trajectory: boolean (optional)
@@ -195,7 +195,7 @@ class NPTBerendsen(NVTBerendsen):
         pressure_au: None or float
             Pressure in ev/Å^3.
 
-        Exactly one of the two pressure parameters must be different from 
+        Exactly one of the two pressure parameters must be different from
         None, otherwise an error is issued.
 
         Return value: Pressure in eV/Å^3.
