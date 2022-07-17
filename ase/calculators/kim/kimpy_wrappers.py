@@ -53,7 +53,8 @@ def check_call(f, *args, **kwargs):
     try:
         return f(*args, **kwargs)
     except RuntimeError as e:
-        raise KimpyError(f'Calling kimpy function "{f.__name__}" failed:\n  {str(e)}')
+        raise KimpyError(
+            f'Calling kimpy function "{f.__name__}" failed:\n  {str(e)}')
 
 
 def check_call_wrapper(func):
@@ -67,8 +68,10 @@ def check_call_wrapper(func):
 # kimpy methods
 collections_create = functools.partial(check_call, kimpy.collections.create)
 model_create = functools.partial(check_call, kimpy.model.create)
-simulator_model_create = functools.partial(check_call, kimpy.simulator_model.create)
-get_species_name = functools.partial(check_call, kimpy.species_name.get_species_name)
+simulator_model_create = functools.partial(
+    check_call, kimpy.simulator_model.create)
+get_species_name = functools.partial(
+    check_call, kimpy.species_name.get_species_name)
 get_number_of_species_names = functools.partial(
     check_call, kimpy.species_name.get_number_of_species_names
 )
@@ -211,7 +214,8 @@ class PortableModel:
         for i in range(num_kim_species):
             species_name = get_species_name(i)
 
-            species_is_supported, code = self.get_species_support_and_code(species_name)
+            species_is_supported, code = self.get_species_support_and_code(
+                species_name)
 
             if species_is_supported:
                 species.append(str(species_name))
@@ -299,7 +303,10 @@ class PortableModel:
         """
         parameters = {}
         for parameter_name, index_range in kwargs.items():
-            parameters.update(self._get_one_parameter(parameter_name, index_range))
+            parameters.update(
+                self._get_one_parameter(
+                    parameter_name,
+                    index_range))
         return parameters
 
     def set_parameters(self, **kwargs):
@@ -409,7 +416,8 @@ class PortableModel:
         dict
             Metadata associated with the requested model parameter.
         """
-        dtype, extent, name, description = self._get_parameter_metadata(index_parameter)
+        dtype, extent, name, description = self._get_parameter_metadata(
+            index_parameter)
         parameter_metadata = {
             "name": name,
             "dtype": repr(dtype),
@@ -420,7 +428,8 @@ class PortableModel:
 
     @check_call_wrapper
     def compute(self, compute_args_wrapped, release_GIL):
-        return self.kim_model.compute(compute_args_wrapped.compute_args, release_GIL)
+        return self.kim_model.compute(
+            compute_args_wrapped.compute_args, release_GIL)
 
     @check_call_wrapper
     def get_species_support_and_code(self, species_name):
@@ -443,7 +452,8 @@ class PortableModel:
 
 
 class KIMModelParameter(ABC):
-    def __init__(self, kim_model, dtype, extent, name, description, parameter_index):
+    def __init__(self, kim_model, dtype, extent,
+                 name, description, parameter_index):
         self._kim_model = kim_model
         self._dtype = dtype
         self._extent = extent
@@ -467,7 +477,8 @@ class KIMModelParameter(ABC):
     def _get_one_value(self, index_extent):
         get_parameter = getattr(self._kim_model, self._dtype_accessor)
         try:
-            return check_call(get_parameter, self._parameter_index, index_extent)
+            return check_call(
+                get_parameter, self._parameter_index, index_extent)
         except KimpyError as exception:
             raise KIMModelParameterError(
                 f"Failed to access component {index_extent} of model "
@@ -563,14 +574,16 @@ class ComputeArguments:
 
         for i in range(num_arguments):
             name = check_call(kimpy_arg_name.get_compute_argument_name, i)
-            dtype = check_call(kimpy_arg_name.get_compute_argument_data_type, name)
+            dtype = check_call(
+                kimpy_arg_name.get_compute_argument_data_type, name)
 
             arg_support = self.get_argument_support_status(name)
 
             if self.debug:
                 print(
                     "Compute Argument name {:21} is of type {:7} and has support "
-                    "status {}".format(*[str(x) for x in [name, dtype, arg_support]])
+                    "status {}".format(*[str(x)
+                                       for x in [name, dtype, arg_support]])
                 )
 
             # See if the model demands that we ask it for anything other than energy and
@@ -611,7 +624,8 @@ class ComputeArguments:
 
     @check_call_wrapper
     def set_argument_pointer(self, compute_arg_name, data_object):
-        return self.compute_args.set_argument_pointer(compute_arg_name, data_object)
+        return self.compute_args.set_argument_pointer(
+            compute_arg_name, data_object)
 
     @check_call_wrapper
     def get_argument_support_status(self, name):
@@ -622,13 +636,15 @@ class ComputeArguments:
         return self.compute_args.get_callback_support_status(name)
 
     @check_call_wrapper
-    def set_callback(self, compute_callback_name, callback_function, data_object):
+    def set_callback(self, compute_callback_name,
+                     callback_function, data_object):
         return self.compute_args.set_callback(
             compute_callback_name, callback_function, data_object
         )
 
     @check_call_wrapper
-    def set_callback_pointer(self, compute_callback_name, callback, data_object):
+    def set_callback_pointer(
+            self, compute_callback_name, callback, data_object):
         return self.compute_args.set_callback_pointer(
             compute_callback_name, callback, data_object
         )
@@ -641,7 +657,9 @@ class ComputeArguments:
         set_argument_pointer = self.set_argument_pointer
 
         set_argument_pointer(compute_arg_name.numberOfParticles, num_particles)
-        set_argument_pointer(compute_arg_name.particleSpeciesCodes, species_code)
+        set_argument_pointer(
+            compute_arg_name.particleSpeciesCodes,
+            species_code)
         set_argument_pointer(
             compute_arg_name.particleContributing, particle_contributing
         )
@@ -694,7 +712,8 @@ class SimulatorModel:
     def supported_species(self):
         supported_species = []
         for spec_code in range(self.num_supported_species):
-            species = check_call(self.simulator_model.get_supported_species, spec_code)
+            species = check_call(
+                self.simulator_model.get_supported_species, spec_code)
             supported_species.append(species)
 
         return tuple(supported_species)

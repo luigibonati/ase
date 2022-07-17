@@ -478,7 +478,8 @@ class OpenMX(FileIOCalculator):
             if threads is None:
                 threads_string = ''
             command += 'mpirun -np ' + \
-                str(processes) + ' ' + self.command + ' %s ' + threads_string + ' |tee %s'
+                str(processes) + ' ' + self.command + \
+                ' %s ' + threads_string + ' |tee %s'
             #str(processes) + ' openmx %s' + threads_string + ' > %s'
 
         if runfile is None:
@@ -511,7 +512,7 @@ class OpenMX(FileIOCalculator):
         This is band structure function. It is compatible to
         ase dft module """
         from ase.dft import band_structure
-        if type(self['kpts']) is tuple:
+        if isinstance(self['kpts'], tuple):
             self['kpts'] = self.get_kpoints(band_kpath=self['band_kpath'])
             return band_structure.get_band_structure(self.atoms, self, )
 

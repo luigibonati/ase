@@ -30,6 +30,7 @@ class Parameters_deMon(Parameters):
     input_arguments.
 
     """
+
     def __init__(
             self,
             label='rundir',
@@ -328,7 +329,7 @@ class Demon(FileIOCalculator):
 
             # print argument, here other options could change this
             value = self.parameters['print_out']
-            assert(type(value) is str)
+            assert(isinstance(value, str))
             value = value + add_print
 
             if not len(value) == 0:
@@ -633,7 +634,8 @@ class Demon(FileIOCalculator):
             lines = fd.readlines()
 
             for i in range(len(lines)):
-                if lines[i].rfind('DIPOLE') > -1 and lines[i].rfind('XAS') == -1:
+                if lines[i].rfind('DIPOLE') > - \
+                        1 and lines[i].rfind('XAS') == -1:
                     dipole[0] = float(lines[i + 1].split()[3])
                     dipole[1] = float(lines[i + 2].split()[3])
                     dipole[2] = float(lines[i + 3].split()[3])
@@ -658,7 +660,8 @@ class Demon(FileIOCalculator):
                     core_IP = float(lines[i].split()[3])
 
         try:
-            mode, ntrans, E_trans, osc_strength, trans_dip = parse_xray(self.label + '/deMon.xry')
+            mode, ntrans, E_trans, osc_strength, trans_dip = parse_xray(
+                self.label + '/deMon.xry')
         except ReadError:
             pass
         else:
@@ -708,7 +711,8 @@ class Demon(FileIOCalculator):
                         else:
                             break
 
-                        xyz.append([float(line[1]), float(line[2]), float(line[3])])
+                        xyz.append(
+                            [float(line[1]), float(line[2]), float(line[3])])
 
                 if len(line) > 4:
                     atomic_numbers.append(int(line[4]))

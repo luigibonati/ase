@@ -39,7 +39,8 @@ def LAMMPSRunCalculator(
         parameters = {}
 
         # In case the SM supplied its own atom_style in its model-init -- only needed
-        # because lammpsrun writes data files and needs to know the proper format
+        # because lammpsrun writes data files and needs to know the proper
+        # format
         if atom_style:
             parameters["atom_style"] = atom_style
 
@@ -88,14 +89,19 @@ def LAMMPSRunCalculator(
     supported_units = kwargs.get("supported_units", "metal")
 
     # Set up kim_init and kim_interactions lines
-    parameters = get_params(model_name, supported_units, supported_species, atom_style)
+    parameters = get_params(
+        model_name,
+        supported_units,
+        supported_species,
+        atom_style)
 
     return LAMMPS(
         **parameters, specorder=supported_species, keep_tmp_files=debug, **options
     )
 
 
-def LAMMPSLibCalculator(model_name, supported_species, supported_units, options):
+def LAMMPSLibCalculator(model_name, supported_species,
+                        supported_units, options):
     """
     Only used for LAMMPS Simulator Models
     """
@@ -125,7 +131,9 @@ def LAMMPSLibCalculator(model_name, supported_species, supported_units, options)
     for i_s, s in enumerate(supported_species):
         atom_types[s] = i_s + 1
 
-    kim_interactions = ["kim_interactions {}".format((" ").join(supported_species))]
+    kim_interactions = [
+        "kim_interactions {}".format(
+            (" ").join(supported_species))]
 
     # Return LAMMPSlib calculator
     return LAMMPSlib(
@@ -148,7 +156,10 @@ def ASAPCalculator(model_name, model_type, options, **kwargs):
 
     options_not_allowed = {"pm": ["name", "verbose"], "sm": ["Params"]}
 
-    _check_conflict_options(options, options_not_allowed[model_type], simulator="asap")
+    _check_conflict_options(
+        options,
+        options_not_allowed[model_type],
+        simulator="asap")
 
     if model_type == "pm":
 
@@ -204,15 +215,18 @@ def ASAPCalculator(model_name, model_type, options, **kwargs):
                 # Currently we only supported two specific EMT models that are built
                 # into ASAP
                 if pp.startswith("EMTRasmussenParameters"):
-                    asap_calc = asap3.EMT(parameters=asap3.EMTRasmussenParameters())
+                    asap_calc = asap3.EMT(
+                        parameters=asap3.EMTRasmussenParameters())
                     model_defn_is_valid = True
                 elif pp.startswith("EMTMetalGlassParameters"):
-                    asap_calc = asap3.EMT(parameters=asap3.EMTMetalGlassParameters())
+                    asap_calc = asap3.EMT(
+                        parameters=asap3.EMTMetalGlassParameters())
                     model_defn_is_valid = True
 
         if not model_defn_is_valid:
             raise KIMCalculatorError(
-                'Unknown model "{}" requested for simulator asap.'.format(model_defn)
+                'Unknown model "{}" requested for simulator asap.'.format(
+                    model_defn)
             )
 
         # Disable undocumented feature for the EMT self.calculators to take the

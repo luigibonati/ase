@@ -126,7 +126,8 @@ class KIMModelData:
             species_map[spec] = codes[i]
             if self.debug:
                 print(
-                    "Species {} is supported and its code is: {}".format(spec, codes[i])
+                    "Species {} is supported and its code is: {}".format(
+                        spec, codes[i])
                 )
 
         return species_map
@@ -300,7 +301,8 @@ class KIMModelCalculator(Calculator):
 
         try:
             volume = atoms.get_volume()
-            stress = self._compute_virial_stress(self.forces, self._coords, volume)
+            stress = self._compute_virial_stress(
+                self.forces, self._coords, volume)
         except ValueError:  # Volume cannot be computed
             stress = None
 
