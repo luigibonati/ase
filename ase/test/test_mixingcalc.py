@@ -8,7 +8,9 @@ def test_mixingcalc():
 
     from ase.build import fcc111
     from ase.calculators.emt import EMT
-    from ase.calculators.mixing import SumCalculator, LinearCombinationCalculator, AverageCalculator, MixedCalculator
+    from ase.calculators.mixing import (
+        SumCalculator, LinearCombinationCalculator, AverageCalculator,
+        MixedCalculator)
     from ase.calculators.calculator import CalculatorSetupError
     from ase.constraints import FixAtoms
 

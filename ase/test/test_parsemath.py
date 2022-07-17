@@ -96,20 +96,23 @@ def test_parsemath():
     try:
         eval_expression("99**99**99*99**99**99")
         raise RuntimeError(
-            "This should not be reached, the parser is now vulnerable to computational time based DNS attack")
+            "This should not be reached, the parser is now vulnerable "
+            "to computational time based DOS attack")
     except ValueError:
         pass
 
     try:
         eval_expression("e" * 10000000, dict())
         raise RuntimeError(
-            "This should not be reached, the parser is now vulnerable to memory based DNS attack")
+            "This should not be reached, the parser is now vulnerable "
+            "to memory based DOS attack")
     except ValueError:
         pass
 
     try:
         eval_expression("__import__('os').system('echo $HOME')")
         raise RuntimeError(
-            "This should not be reached, the parser can execute malicious code")
+            "This should not be reached, "
+            "the parser can execute malicious code")
     except TypeError:
         pass
