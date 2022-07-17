@@ -132,9 +132,9 @@ class Langevin(MolecularDynamics):
         if forces is None:
             forces = atoms.get_forces(md=True)
 
-        # This velocity as well as rnd_pos, rnd_mom and a few other variables are stored
-        # as attributes, so Asap can do its magic when atoms migrate between
-        # processors.
+        # This velocity as well as rnd_pos, rnd_mom and a few other
+        # variables are stored as attributes, so Asap can do its magic
+        # when atoms migrate between processors.
         self.v = atoms.get_velocities()
 
         xi = self.rng.standard_normal(size=(natoms, 3))
@@ -152,9 +152,9 @@ class Langevin(MolecularDynamics):
         self.communicator.broadcast(xi, 0)
         self.communicator.broadcast(eta, 0)
 
-        # To keep the center of mass stationary, we have to calculate the random
-        # perturbations to the positions and the momenta, and make sure that they
-        # sum to zero.
+        # To keep the center of mass stationary, we have to calculate
+        # the random perturbations to the positions and the momenta,
+        # and make sure that they sum to zero.
         self.rnd_pos = self.c5 * eta
         self.rnd_vel = self.c3 * xi - self.c4 * eta
         if self.fix_com:

@@ -136,9 +136,6 @@ class NPTBerendsen(NVTBerendsen):
         scl_pressure = (1.0 - taupscl * self.compressibility / 3.0 *
                         (self.pressure - old_pressure))
 
-        #print("old_pressure", old_pressure, self.pressure)
-        #print("volume scaling by:", scl_pressure)
-
         cell = self.atoms.get_cell()
         cell = scl_pressure * cell
         self.atoms.set_cell(cell, scale_atoms=True)
