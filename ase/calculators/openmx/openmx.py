@@ -32,7 +32,6 @@ from ase.calculators.openmx.parameters import OpenMXParameters
 from ase.calculators.openmx.default_settings import default_dictionary
 from ase.calculators.openmx.reader import read_openmx, get_file_name
 from ase.calculators.openmx.writer import write_openmx
-#from ase.calculators.openmx.dos import DOS
 
 
 def parse_omx_version(txt):
@@ -480,7 +479,7 @@ class OpenMX(FileIOCalculator):
             command += 'mpirun -np ' + \
                 str(processes) + ' ' + self.command + \
                 ' %s ' + threads_string + ' |tee %s'
-            #str(processes) + ' openmx %s' + threads_string + ' > %s'
+            # str(processes) + ' openmx %s' + threads_string + ' > %s'
 
         if runfile is None:
             runfile = abs_dir + '/' + self.prefix + '.dat'

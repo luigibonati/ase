@@ -759,7 +759,8 @@ class Siesta(FileIOCalculator):
           1 -- means that the coordinate will be updated during relaxation
           0 -- mains that the coordinate will be fixed during relaxation
         """
-        from ase.constraints import FixAtoms, FixedLine, FixedPlane, FixCartesian
+        from ase.constraints import (FixAtoms, FixedLine, FixedPlane,
+                                     FixCartesian)
         import sys
         import warnings
 
