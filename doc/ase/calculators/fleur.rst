@@ -4,6 +4,12 @@
 FLEUR
 =====
 
+.. warning::
+  This Calculator is unmaintained and deprecated.
+  It will be removed in future versions.
+  For ASE support for modern FLEUR versions refer to the python package
+  `ase-fleur <https://github.com/JuDFTteam/ase-fleur>`_
+
 Introduction
 ============
 
