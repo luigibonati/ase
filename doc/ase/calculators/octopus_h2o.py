@@ -7,7 +7,7 @@ from ase.optimize import QuasiNewton
 atoms = g2['H2O']
 atoms.rattle(stdev=0.1, seed=42)
 
-calc = Octopus(Spacing=0.25)
+calc = Octopus(directory='oct-h2o', Spacing=0.25)
 atoms.calc = calc
 
 opt = QuasiNewton(atoms, logfile='opt.log', trajectory='opt.traj')
