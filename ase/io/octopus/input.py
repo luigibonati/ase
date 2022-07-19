@@ -447,14 +447,14 @@ def generate_input(atoms, kwargs):
         assert kw not in kwargs
 
     defaultboxshape = 'parallelepiped' if atoms.cell.rank > 0 else 'minimum'
-    boxshape = kwargs.get('boxshape', defaultboxshape).lower()
+    boxshape = kwargs.pop('boxshape', defaultboxshape).lower()
     use_ase_cell = (boxshape == 'parallelepiped')
     atomskwargs = atoms2kwargs(atoms, use_ase_cell)
-    if 'boxshape' not in kwargs:
-        setvar('boxshape', boxshape)
+
+    setvar('boxshape', boxshape)
 
     if use_ase_cell:
-        if 'latticevectors' in atomskwargs:
+        if 'reducedcoordinates' in atomskwargs:
             extend(list2block('LatticeParameters', [[1., 1., 1.]]))
             block = list2block('LatticeVectors', atomskwargs['latticevectors'])
         else:
@@ -507,12 +507,14 @@ def atoms2kwargs(atoms, use_ase_cell):
         coordtype = 'coordinates'
         coords = atoms.positions / Bohr
 
-
     if use_ase_cell:
         cell = atoms.cell / Bohr
         if coordtype == 'coordinates':
             cell_offset = 0.5 * cell.sum(axis=0)
             coords -= cell_offset
+        else:
+            assert coordtype == 'reducedcoordinates'
+
         if atoms.cell.orthorhombic:
             Lsize = 0.5 * np.diag(cell)
             kwargs['lsize'] = [[repr(size) for size in Lsize]]
