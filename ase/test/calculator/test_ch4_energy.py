@@ -68,7 +68,7 @@ filterwarnings = pytest.mark.filterwarnings
       marks=[filterwarnings('ignore:.*?ignore_bad_restart_file'),
              filterwarnings('ignore:convert_string_to_fd')])
 @calc('nwchem')
-@calc('octopus', Spacing='0.3 * angstrom', BoxShape='minimum',
+@calc('octopus', Spacing='0.25 * angstrom', BoxShape='minimum',
       convreldens=1e-3)
 @calc('openmx')
 @calc('siesta', marks=pytest.mark.xfail)
