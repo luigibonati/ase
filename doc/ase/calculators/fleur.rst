@@ -1,5 +1,3 @@
-.. module:: ase.calculators.fleur
-
 =====
 FLEUR
 =====
