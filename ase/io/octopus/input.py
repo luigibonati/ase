@@ -431,6 +431,8 @@ def generate_input(atoms, kwargs):
     """Convert atoms and keyword arguments to Octopus input file."""
     _lines = []
 
+    kwargs = {key.lower(): value for key, value in kwargs.items()}
+
     def append(line):
         _lines.append(line)
 
@@ -448,6 +450,8 @@ def generate_input(atoms, kwargs):
     boxshape = kwargs.get('boxshape', defaultboxshape).lower()
     use_ase_cell = (boxshape == 'parallelepiped')
     atomskwargs = atoms2kwargs(atoms, use_ase_cell)
+    if 'boxshape' not in kwargs:
+        setvar('boxshape', boxshape)
 
     if use_ase_cell:
         if 'latticevectors' in atomskwargs:

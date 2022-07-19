@@ -68,7 +68,7 @@ filterwarnings = pytest.mark.filterwarnings
       marks=[filterwarnings('ignore:.*?ignore_bad_restart_file'),
              filterwarnings('ignore:convert_string_to_fd')])
 @calc('nwchem')
-@calc('octopus', Spacing='0.4 * angstrom')
+@calc('octopus', Spacing='0.2 * angstrom', BoxShape='minimum')
 @calc('openmx')
 @calc('siesta', marks=pytest.mark.xfail)
 def test_ch4_reaction(factory):
