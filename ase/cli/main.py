@@ -20,7 +20,7 @@ commands = [
     # ('show', 'ase.cli.show'),
     ('test', 'ase.test'),
     ('gui', 'ase.gui.ag'),
-    ('db', 'ase.db.cli'),
+    ('db', 'ase.cli.db'),
     ('run', 'ase.cli.run'),
     ('band-structure', 'ase.cli.band_structure'),
     ('build', 'ase.cli.build'),
