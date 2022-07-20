@@ -119,6 +119,7 @@ potentials)
     # parameters to choose options in LAMMPSRUN
     ase_parameters: Dict[str, Any] = dict(
         specorder=None,
+        atorder=False,
         always_triclinic=False,
         keep_alive=True,
         keep_tmp_files=False,
@@ -494,7 +495,7 @@ potentials)
 
         trj_atoms = read_lammps_dump(
             infileobj=lammps_trj,
-            order=False,
+            order=self.parameters.atorder,
             index=-1,
             prismobj=self.prism,
             specorder=self.parameters.specorder,
