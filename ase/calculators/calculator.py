@@ -131,7 +131,8 @@ names = ['abinit', 'ace', 'aims', 'amber', 'asap', 'castep', 'cp2k',
          'elk', 'emt', 'espresso', 'exciting', 'ff', 'fleur', 'gamess_us',
          'gaussian', 'gpaw', 'gromacs', 'gulp', 'hotbit', 'kim',
          'lammpslib', 'lammpsrun', 'lj', 'mopac', 'morse', 'nwchem',
-         'octopus', 'onetep', 'openmx', 'orca', 'plumed', 'psi4', 'qchem', 'siesta',
+         'octopus', 'onetep', 'openmx', 'orca',
+         'plumed', 'psi4', 'qchem', 'siesta',
          'tip3p', 'tip4p', 'turbomole', 'vasp']
 
 
@@ -621,7 +622,8 @@ class Calculator(BaseCalculator):
         self.prefix = None
         if label is not None:
             if self.directory == '.' and '/' in label:
-                # We specified directory in label, and nothing in the diretory key
+                # We specified directory in label, and nothing in the diretory
+                # key
                 self.label = label
             elif '/' not in label:
                 # We specified our directory in the directory keyword

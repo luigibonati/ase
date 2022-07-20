@@ -14,8 +14,8 @@ extensions = ['ext',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
               'sphinx.ext.intersphinx']
-extlinks = {'doi': ('https://doi.org/%s', 'doi:'),
-            'arxiv': ('https://arxiv.org/abs/%s', 'arXiv:')}
+extlinks = {'doi': ('https://doi.org/%s', 'doi: %s'),
+            'arxiv': ('https://arxiv.org/abs/%s', 'arXiv: %s')}
 source_suffix = '.rst'
 master_doc = 'index'
 project = 'ASE'
