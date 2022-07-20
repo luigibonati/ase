@@ -26,7 +26,7 @@ commands = [
     ('build', 'ase.cli.build'),
     ('dimensionality', 'ase.cli.dimensionality'),
     ('eos', 'ase.eos'),
-    ('ulm', 'ase.io.ulm'),
+    ('ulm', 'ase.cli.ulm'),
     ('find', 'ase.cli.find'),
     ('nebplot', 'ase.cli.nebplot'),
     ('nomad-upload', 'ase.cli.nomad'),
