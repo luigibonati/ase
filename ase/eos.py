@@ -4,7 +4,6 @@ from ase.units import kJ
 
 import numpy as np
 
-from scipy.optimize import curve_fit
 
 
 eos_names = ['sj', 'taylor', 'murnaghan', 'birch', 'birchmurnaghan',
@@ -197,6 +196,7 @@ class EquationOfState:
           print(B / kJ * 1.0e24, 'GPa')
 
         """
+        from scipy.optimize import curve_fit
 
         if self.eos_string == 'sj':
             return self.fit_sjeos()
