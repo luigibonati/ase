@@ -118,7 +118,7 @@ potentials)
     # parameters to choose options in LAMMPSRUN
     ase_parameters: Dict[str, Any] = dict(
         specorder=None,
-        atorder=False,
+        atorder=True,
         always_triclinic=False,
         keep_alive=True,
         keep_tmp_files=False,
