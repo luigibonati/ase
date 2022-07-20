@@ -1,3 +1,4 @@
+"""Defines class/functions to write input and parse output for FHI-aims."""
 import os
 import time
 import warnings
@@ -623,6 +624,17 @@ def write_species(fd, atoms, parameters):
         elif isinstance(tier, list):
             assert len(tier) == len(species)
             tierlist = tier
+        else:
+            # Tier parameter is poorly formatted.
+            raise ValueError(
+                "Given basis tier: %s, is not properly formatted. "
+                "It must be either None, or an integer, [0, z], "
+                "or a list of integers. None will give the so called standard "
+                "basis set size, 0 the minimal basis set size, 1 the tier1 basis set size, "
+                "2 the tier2 basis set size and so forth. Note, the standard basis set size "
+                "for many species is larger than the minimal basis set size and sometimes the tier 1 "
+                " and tier 2 basis set sizes. The standard basis set size is defined by the "
+                "numerical settings (light, tight, really tight) foe each species." % tier)         
 
     for i, symbol in enumerate(species):
         path = species_path / ("%02i_%s_default" % (atomic_numbers[symbol], symbol))
@@ -633,12 +645,15 @@ def write_species(fd, atoms, parameters):
                     if "First tier" in line:
                         reached_tiers = True
                         targettier = tierlist[i]
-                        foundtarget = False
-                        do_uncomment = True
+                        if tierlist[i] == 0:
+                            foundtarget = True
+                            do_uncomment = False
+                        else:
+                            foundtarget = False 
+                            do_uncomment = True
                     if reached_tiers:
                         line, foundtarget, do_uncomment = format_tiers(
-                            line, targettier, foundtarget, do_uncomment
-                        )
+                            line, targettier, foundtarget, do_uncomment)
                 fd.write(line)
 
         if tier is not None and not foundtarget:
