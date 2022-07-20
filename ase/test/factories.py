@@ -581,7 +581,6 @@ class Factories:
         'dftd3',
         'dmol',
         'exciting',
-        'fleur',
         'gamess_us',
         'gaussian',
         'gulp',
