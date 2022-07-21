@@ -7,6 +7,7 @@ def test_imports():
         'gpaw',  # external
         'scipy',  # large
         'ase.io.formats',  # possibly slow external formats
+        'ase.calculators.(?!names).*',  # any calculator
     ]
     check_imports("from ase.cli.main import main; main(args=[])",
                   forbidden_modules=forbidden_modules,

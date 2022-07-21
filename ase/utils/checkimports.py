@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import sys
 from pprint import pprint
 from subprocess import run
@@ -30,9 +31,11 @@ def check_imports(expression, *,
         print('modules:')
         pprint(sorted(modules))
 
-    for module in forbidden_modules:
-        assert module not in modules, \
-            f'{module} was imported'
+    for module_pattern in forbidden_modules:
+        r = re.compile(module_pattern)
+        for module in modules:
+            assert not r.fullmatch(module), \
+                f'{module} was imported'
 
     module_count = len(modules)
     assert module_count <= max_module_count, \
