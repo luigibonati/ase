@@ -5,7 +5,6 @@ from ase.units import kJ
 import numpy as np
 
 
-
 eos_names = ['sj', 'taylor', 'murnaghan', 'birch', 'birchmurnaghan',
              'pouriertarantola', 'vinet', 'antonschmidt', 'p3']
 
