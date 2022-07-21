@@ -3,7 +3,7 @@ import os
 import re
 import sys
 from pprint import pprint
-from subprocess import run
+from subprocess import run, PIPE
 
 
 def exec_and_check_modules(expression):
@@ -17,7 +17,11 @@ def exec_and_check_modules(expression):
                " modules = list(sys.modules.keys());"
                " import json; print(json.dumps(modules))")
     proc = run([sys.executable, '-c', command],
-               capture_output=True, text=True, check=True)
+               # For Python 3.6 and possibly older
+               stdout=PIPE, stderr=PIPE, universal_newlines=True,
+               # For Python 3.7+ the next line is equivalent
+               # capture_output=True, text=True,
+               check=True)
     return set(json.loads(proc.stdout))
 
 
