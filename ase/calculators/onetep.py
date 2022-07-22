@@ -377,8 +377,8 @@ class Onetep(FileIOCalculator):
             words = line.split()
             if len(words) == 0:
                 break
-            excitations.append([float(words[0]), float(
-                words[1])*Hartree, float(words[2])])
+            excitations.append([float(words[0]), float(words[1]) * Hartree,
+                                float(words[2])])
             line = out.readline()
         self.results['excitations'] = array(excitations)
 
