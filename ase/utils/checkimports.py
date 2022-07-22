@@ -27,12 +27,13 @@ def exec_and_check_modules(expression):
 
 def check_imports(expression, *,
                   forbidden_modules=[],
-                  max_module_count=10000,
+                  max_module_count=None,
+                  max_nonstdlib_module_count=None,
                   do_print=False):
     modules = exec_and_check_modules(expression)
 
     if do_print:
-        print('modules:')
+        print('all modules:')
         pprint(sorted(modules))
 
     for module_pattern in forbidden_modules:
@@ -41,9 +42,29 @@ def check_imports(expression, *,
             assert not r.fullmatch(module), \
                 f'{module} was imported'
 
-    module_count = len(modules)
-    assert module_count <= max_module_count, \
-        f'too many modules loaded {module_count}/{max_module_count}'
+    if max_nonstdlib_module_count is not None:
+        assert sys.version_info >= (3, 10), 'Python 3.10+ required'
+
+        nonstdlib_modules = []
+        for module in modules:
+            if module.split('.')[0] in sys.stdlib_module_names:
+                continue
+            nonstdlib_modules.append(module)
+
+        if do_print:
+            print('nonstdlib modules:')
+            pprint(sorted(nonstdlib_modules))
+
+        module_count = len(nonstdlib_modules)
+        assert module_count <= max_nonstdlib_module_count, (
+            'too many nonstdlib modules loaded:'
+            f' {module_count}/{max_nonstdlib_module_count}'
+        )
+
+    if max_module_count is not None:
+        module_count = len(modules)
+        assert module_count <= max_module_count, \
+            f'too many modules loaded: {module_count}/{max_module_count}'
 
 
 if __name__ == '__main__':
@@ -52,7 +73,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('expression')
     parser.add_argument('--forbidden_modules', nargs='+', default=[])
-    parser.add_argument('--max_module_count', type=int, default=10000)
+    parser.add_argument('--max_module_count', type=int, default=None)
+    parser.add_argument('--max_nonstdlib_module_count', type=int, default=None)
     parser.add_argument('--do_print', action='store_true')
     args = parser.parse_args()
 
