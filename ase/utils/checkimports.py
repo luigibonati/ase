@@ -85,7 +85,7 @@ def check_imports(expression: str, *,
 
         nonstdlib_modules = []
         for module in modules:
-            if module.split('.')[0] in sys.stdlib_module_names:
+            if module.split('.')[0] in sys.stdlib_module_names:  # type: ignore
                 continue
             nonstdlib_modules.append(module)
 
