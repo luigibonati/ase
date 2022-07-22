@@ -36,8 +36,8 @@ def exec_and_check_modules(expression: str) -> Set[str]:
     command = ("import sys;"
                f" stdout = sys.stdout; sys.stdout = open({repr(null)}, 'w');"
                f" {expression};"
-               f" sys.stdout = stdout;"
-               " modules = list(sys.modules.keys());"
+               " sys.stdout = stdout;"
+               " modules = list(sys.modules);"
                " import json; print(json.dumps(modules))")
     proc = run([sys.executable, '-c', command],
                # For Python 3.6 and possibly older
