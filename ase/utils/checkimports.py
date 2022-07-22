@@ -3,7 +3,7 @@
 This module was developed to monitor the import footprint of the ase CLI
 command: The CLI command can become unnecessarily slow and unresponsive
 if too many modules are imported even before the CLI is launched or
-it is know what modules will be actually needed.
+it is known what modules will be actually needed.
 See https://gitlab.com/ase/ase/-/issues/1124 for more discussion.
 
 The utility here is general, so it can be used for checking and
