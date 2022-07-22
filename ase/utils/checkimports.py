@@ -1,12 +1,35 @@
+"""Utility for checking Python module imports triggered by any code snippet.
+
+This module was developed to monitor the import footprint of the ase CLI
+command: The CLI command can become unnecessarily slow and unresponsive
+if too many modules are imported even before the CLI is launched or
+it is know what modules will be actually needed.
+See https://gitlab.com/ase/ase/-/issues/1124 for more discussion.
+
+The utility here is general, so it can be used for checking and
+monitoring other code snippets too.
+"""
 import json
 import os
 import re
 import sys
 from pprint import pprint
 from subprocess import run, PIPE
+from typing import List, Optional, Set
 
 
-def exec_and_check_modules(expression):
+def exec_and_check_modules(expression: str) -> Set[str]:
+    """Return modules loaded by the execution of a Python expression.
+
+    Parameters
+    ----------
+    expression
+        Python expression
+
+    Returns
+    -------
+    Set of module names.
+    """
     # Take null outside command to avoid
     # `import os` before expression
     null = os.devnull
@@ -25,11 +48,26 @@ def exec_and_check_modules(expression):
     return set(json.loads(proc.stdout))
 
 
-def check_imports(expression, *,
-                  forbidden_modules=[],
-                  max_module_count=None,
-                  max_nonstdlib_module_count=None,
-                  do_print=False):
+def check_imports(expression: str, *,
+                  forbidden_modules: List[str] = [],
+                  max_module_count: Optional[int] = None,
+                  max_nonstdlib_module_count: Optional[int] = None,
+                  do_print: bool = False) -> None:
+    """Check modules imported by the execution of a Python expression.
+
+    Parameters
+    ----------
+    expression
+        Python expression
+    forbidden_modules
+        Throws an error if any module in this list was loaded.
+    max_module_count
+        Throws an error if the number of modules exceeds this value.
+    max_nonstdlib_module_count
+        Throws an error if the number of non-stdlib modules exceeds this value.
+    do_print:
+        Print loaded modules if set.
+    """
     modules = exec_and_check_modules(expression)
 
     if do_print:
