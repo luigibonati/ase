@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 from io import StringIO
 import pytest
-from ase.io.aims import write_control
+from ase.io.aims import write_control, write_species, translate_tier, format_tiers, get_tier_list
 from ase.build import bulk
 from ase.calculators.aims import AimsCube
 
@@ -30,15 +30,19 @@ _PARAMETERS_DICT = {
 
 
 def contains(pattern, txt):
+    """"Regex search for pattern in the text."""
     return re.search(pattern, txt, re.M)
 
-@pytest.fixture
-def create_au_bulk_atoms_obj():
+
+@pytest.fixture(name="create_au_bulk_atoms_obj")
+def fixture_create_au_bulk_atoms_obj():
+    """Create an ASE.Atoms bulk object of Gold."""
     return bulk("Au")
+
 
 def test_control(create_au_bulk_atoms_obj):
     """Tests that control.in for a Gold bulk system works.
-    
+
     This test tests several things simulationeously, much of
     the aims IO functionality for writing the conrol.in file, such as adding an
     AimsCube to the system.
@@ -89,7 +93,7 @@ def test_control_functional(
 
 def test_control_wrong_tier(create_au_bulk_atoms_obj):
     """Test feeding a poorly formatted basis set size ('tier') parameter.
-    
+
     The basis set size (tier) needs to be either None (standard), 0 (minimal),
     1 (tier1), 2 (tier2), etc... A string format will be rejected.
     """
@@ -131,3 +135,53 @@ def test_control_tier(
     write_control(string_output, create_au_bulk_atoms_obj, parameters)
     txt = string_output.getvalue()
     assert contains(expected_basis_set_re, txt)
+
+@pytest.mark.parametrize(
+    "tier_as_str,expected_tier_as_int",
+    [
+        ("first", 1), ("second", 2), ("third", 3),
+        ("fourth", 4), ("Gibberish", -1)])
+def test_translate_tier(
+        tier_as_str,
+        expected_tier_as_int):
+    """Test translate_tier from string to integer."""
+    assert translate_tier(tier_as_str) == expected_tier_as_int
+
+
+def test_format_tiers(
+        line: str = "#     hydro 4 f 7.4"):
+    """Test commenting/uncommenting of basis function lines in species file."""
+    target_tier = "second"
+    found_target = True
+    do_uncomment = True
+    output_line, found_target_returned, do_uncomment_returned = format_tiers(
+        line, target_tier, found_target, do_uncomment)
+    assert output_line == "     hydro 4 f 7.4"
+    # These two state variables should not have been altered by the function.
+    assert found_target_returned == found_target
+    assert do_uncomment_returned == do_uncomment
+
+
+@pytest.mark.parametrize(
+    "tier,species,expected_tier_list",
+    [
+        (0, ['C', 'O'], [0, 0]), ([1, 1], ['C', 'H'], [1, 1]),
+        (None, ['C', 'O'], None),
+        pytest.param("s", None, None, marks=pytest.mark.xfail)])
+def test_get_tier_list(tier, species, expected_tier_list):
+    """Test getting a list of tiers using the get_tier_list method."""
+    tier_list = get_tier_list(tier, species)
+
+    if expected_tier_list is None:
+        assert tier_list == expected_tier_list
+    else:
+        assert list(tier_list) == expected_tier_list
+
+
+def test_write_species(create_au_bulk_atoms_obj):
+    """Test writing species file."""
+    parameters = {"tier": 0, "species_dir": f"{parent}/species_dir/"}
+    file_handle = StringIO()
+    write_species(
+        file_handle, create_au_bulk_atoms_obj, parameters)
+    assert contains("#     ionic 6 p auto", file_handle.getvalue())

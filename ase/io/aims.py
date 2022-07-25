@@ -580,6 +580,7 @@ def write_control(fd, atoms, parameters, verbose_header=False):
 
 
 def translate_tier(tier):
+    """Convert basis siset size tier from string to number."""
     if tier.lower() == "first":
         return 1
     elif tier.lower() == "second":
@@ -630,7 +631,30 @@ def get_species_directory(species_dir=None):
     return species_path
 
 
-def write_species(fd, atoms, parameters):
+def write_species(species_file_descriptor, atoms, parameters):
+    """Write species for the calculation depending on basis set size.
+
+    The calculation should include certain basis set size function depending
+    on the numerical settings (light, tight, really tight) and the basis set
+    size (minimal, tier1, tier2, tier3, tier4). If the basis set size is not
+    given then a 'standard' basis set size is used for each numerical setting.
+    The species files are defined according to these standard basis set sizes
+    for the numerical settings in the FHI-aims repository. This function
+    comments and uncomments basis set size functions according to the given
+    basis set size (when given) so thatt the correct basis set is used for the
+    calculation.
+
+    E.g. a basis function might be commented in the standard basis set size such
+        as "#     hydro 4 f 7.4" and this basis function should be uncommented
+        for another basis set size such as tier4.
+
+    Args:
+        species_file_descriptor: File descriptor to write the species file.
+        atoms: ASE Atoms Object that contains species (elements) in calculation.
+        parameters: Calculation parameters. This is where the basis set size
+            (tier) should be given if it's non default (e.g. when you don't
+            want to use the standard basis set size).
+    """
     parameters = dict(parameters)
     species_path = get_species_directory(parameters.get("species_dir"))
 
@@ -638,76 +662,121 @@ def write_species(fd, atoms, parameters):
 
     tier = parameters.pop("tier", None)
 
-    if tier is not None:
-        if isinstance(tier, int):
-            tierlist = np.ones(len(species), "int") * tier
-        elif isinstance(tier, list):
-            assert len(tier) == len(species)
-            tierlist = tier
-        else:
-            # Tier parameter is poorly formatted.
-            raise ValueError(
-                "Given basis tier: %s, is not properly formatted. "
-                "It must be either None, or an integer, [0, z], "
-                "or a list of integers. None will give the so called standard "
-                "basis set size, 0 the minimal basis set size, 1 the tier1 basis set size, "
-                "2 the tier2 basis set size and so forth. Note, the standard basis set size "
-                "for many species is larger than the minimal basis set size and sometimes the tier 1 "
-                " and tier 2 basis set sizes. The standard basis set size is defined by the "
-                "numerical settings (light, tight, really tight) foe each species." % tier)         
-
+    tier_list = get_tier_list(tier, species)
+    # Run through all the species in our unit cell for our calculation.
+    # We need to assign a species file to each species in our calculation.
+    # We format these species files based on the given basis set size (tier).
     for i, symbol in enumerate(species):
-        path = species_path / ("%02i_%s_default" %
-                               (atomic_numbers[symbol], symbol))
+        path = species_path / f"{atomic_numbers[symbol]:02}_{symbol}_default"
         reached_tiers = False
-        with open(path) as species_fd:
-            for line in species_fd:
+        with open(path, "r", encoding="utf8") as original_species_fd:
+            for line in original_species_fd:
                 if tier is not None:
                     if "First tier" in line:
                         reached_tiers = True
-                        targettier = tierlist[i]
-                        if tierlist[i] == 0:
-                            foundtarget = True
+                        target_tier = tier_list[i]
+                        # If the minimal basis set size is used (tier=0).
+                        # Ensure all the basis set functions that are
+                        # tier1/2/3/4 are commented out.
+                        if tier_list[i] == 0:
+                            found_target = True
                             do_uncomment = False
                         else:
-                            foundtarget = False 
+                            found_target = False
                             do_uncomment = True
                     if reached_tiers:
-                        line, foundtarget, do_uncomment = format_tiers(
-                            line, targettier, foundtarget, do_uncomment)
-                fd.write(line)
+                        line, found_target, do_uncomment = format_tiers(
+                            line, target_tier, found_target, do_uncomment)
+                # Write the line after deciding whether to comment/uncomment
+                # based on the tier (basis set size) to the species file
+                # for the calculation.
+                species_file_descriptor.write(line)
 
-        if tier is not None and not foundtarget:
+        if tier is not None and not found_target:
             raise RuntimeError(
-                "Basis tier %i not found for element %s" % (targettier, symbol)
-            )
+                f"Basis tier {target_tier} not found for element {symbol}")
 
         if parameters.get("plus_u") is not None:
             if symbol in parameters.plus_u:
-                fd.write("plus_u %s \n" % parameters.plus_u[symbol])
+                species_file_descriptor.write(
+                    f"plus_u {parameters.plus_u[symbol]} \n")
 
 
-def format_tiers(line, targettier, foundtarget, do_uncomment):
+def get_tier_list(tier, species):
+    """Get tier list based on basis set size and species present.
+
+    Args:
+        tier: Basis set size for the species. Either an integer of a list
+            of integers. Can also be None which means the calculation uses
+            the standard basis set size.
+        species: Names of species present in calculation.
+
+    Returns:
+        List of basis set sizes (tiers) for each species present in
+        calculation or raises an error.
+    """
+    if tier is None:
+        return None
+    elif isinstance(tier, int):
+        return np.ones(len(species), "int") * tier
+    elif isinstance(tier, list):
+        assert len(tier) == len(species)
+        return tier
+    else:
+        # Tier parameter is poorly formatted.
+        raise ValueError(
+            f"Given basis tier: {tier}, is not properly formatted. "
+            "It must be either None, or an integer, [0, z], "
+            "or a list of integers. None will give the so called standard "
+            "basis set size, 0 the minimal basis set size, 1 the tier1 basis"
+            "set size, 2 the tier2 basis set size and so forth. Note, the "
+            "standard basis set size for many species is larger than the "
+            "minimal basis set size and sometimes the tier 1 and tier 2 "
+            "basis set sizes. The standard basis set size is defined by "
+            "the numerical settings (light, tight, really tight) foe each "
+            "species.")
+
+
+def format_tiers(line, target_tier, found_target, do_uncomment):
+    """Decide whether to include basis set functions based on tier.
+
+    The function is fed a line from the species file. It then looks at the
+    target_tier (e.g. tier 1, tier 2) and checks if that tier has been reached.
+    It then decides to uncomment or comment basis set functions which will
+    dictate whether or not they are included in the calculation.
+
+    Args:
+        line: A single line of the species file.
+        target_tier: The basis set size to use for the calculation as integer
+            tiers (e.g. 1, 2, 3).
+        found_target: Whether you've reached the desired tier or not.
+        do_uncomment: If the line should be uncommented or not.
+
+    Returns:
+        output_line: The line after commenting/uncommenting.
+        found_target: Whether the target basis set tier has been found.
+        do_uncomment: Whether the line should be commented/uncommented.
+    """
     if "meV" in line:
         assert line[0] == "#"
         if "tier" in line and "Further" not in line:
             tier = line.split(" tier")[0]
             tier = tier.split('"')[-1]
             current_tier = translate_tier(tier)
-            if current_tier == targettier:
-                foundtarget = True
-            elif current_tier > targettier:
+            if current_tier == target_tier:
+                found_target = True
+            elif current_tier > target_tier:
                 do_uncomment = False
         else:
             do_uncomment = False
-        outputline = line
+        output_line = line
     elif do_uncomment and line[0] == "#":
-        outputline = line[1:]
+        output_line = line[1:]
     elif not do_uncomment and line[0] != "#":
-        outputline = "#" + line
+        output_line = "#" + line
     else:
-        outputline = line
-    return outputline, foundtarget, do_uncomment
+        output_line = line
+    return output_line, found_target, do_uncomment
 
 
 # Read aims.out files
