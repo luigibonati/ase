@@ -118,6 +118,7 @@ potentials)
     # parameters to choose options in LAMMPSRUN
     ase_parameters: Dict[str, Any] = dict(
         specorder=None,
+        atorder=True,
         always_triclinic=False,
         keep_alive=True,
         keep_tmp_files=False,
@@ -493,7 +494,7 @@ potentials)
 
         trj_atoms = read_lammps_dump(
             infileobj=lammps_trj,
-            order=False,
+            order=self.parameters.atorder,
             index=-1,
             prismobj=self.prism,
             specorder=self.parameters.specorder,
@@ -566,9 +567,10 @@ potentials)
         # read_log depends on that the first (three) thermo_style custom args
         # can be capitalized and matched against the log output. I.e.
         # don't use e.g. 'ke' or 'cpu' which are labeled KinEng and CPU.
-        _custom_thermo_mark = " ".join(
+        mark_re = r"^\s*" + r"\s+".join(
             [x.capitalize() for x in self.parameters.thermo_args[0:3]]
         )
+        _custom_thermo_mark = re_compile(mark_re)
 
         # !TODO: regex-magic necessary?
         # Match something which can be converted to a float
@@ -589,7 +591,7 @@ potentials)
                 raise RuntimeError(f'LAMMPS exits with error message: {line}')
 
             # get thermo output
-            if line.startswith(_custom_thermo_mark):
+            if _custom_thermo_mark.match(line):
                 bool_match = True
                 while bool_match:
                     line = fileobj.readline().decode("utf-8")

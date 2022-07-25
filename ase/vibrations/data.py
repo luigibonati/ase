@@ -117,10 +117,15 @@ class VibrationsData:
             indices of free atoms.
 
         """
-        #Only fully fixed atoms supported by VibrationsData
-        const_indices = constrained_indices(atoms, only_include=(FixCartesian, FixAtoms))
-        #Invert the selection to get free atoms
-        indices = np.setdiff1d(np.array(range(len(atoms))), const_indices).astype(int)
+        # Only fully fixed atoms supported by VibrationsData
+        const_indices = constrained_indices(
+            atoms, only_include=(FixCartesian, FixAtoms))
+        # Invert the selection to get free atoms
+        indices = np.setdiff1d(
+            np.array(
+                range(
+                    len(atoms))),
+            const_indices).astype(int)
         return indices.tolist()
 
     @staticmethod
@@ -180,7 +185,7 @@ class VibrationsData:
             ref_shape_txt = '{n:d}x3x{n:d}x3'.format(n=n_atoms)
 
         if (isinstance(hessian, np.ndarray)
-            and hessian.shape == tuple(ref_shape)):
+                and hessian.shape == tuple(ref_shape)):
             return n_atoms
         else:
             raise ValueError("Hessian for these atoms should be a "
@@ -221,8 +226,8 @@ class VibrationsData:
 
             - the first and third indices identify atoms in self.get_atoms()
 
-            - the second and fourth indices cover the corresponding Cartesian movements in x, y, z
-
+            - the second and fourth indices cover the corresponding
+              Cartesian movements in x, y, z
 
             e.g. the element h[0, 2, 1, 0] gives a harmonic force exerted on
             atoms[1] in the x-direction in response to a movement in the
@@ -521,7 +526,8 @@ class VibrationsData:
 
         all_images = list(self._get_jmol_images(atoms=self.get_atoms(),
                                                 energies=self.get_energies(),
-                                                modes=self.get_modes(all_atoms=True),
+                                                modes=self.get_modes(
+                                                    all_atoms=True),
                                                 ir_intensities=ir_intensities))
         ase.io.write(filename, all_images, format='extxyz')
 

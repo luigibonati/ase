@@ -1316,7 +1316,7 @@ class Atoms:
         Constraints are considered for scaled=False.
         """
         old_com = self.get_center_of_mass(scaled=scaled)
-        difference = old_com - com
+        difference = com - old_com
         if scaled:
             self.set_scaled_positions(self.get_scaled_positions() + difference)
         else:
@@ -1348,11 +1348,11 @@ class Atoms:
             I13 += -m * x * z
             I23 += -m * y * z
 
-        I = np.array([[I11, I12, I13],
-                      [I12, I22, I23],
-                      [I13, I23, I33]])
+        Itensor = np.array([[I11, I12, I13],
+                            [I12, I22, I23],
+                            [I13, I23, I33]])
 
-        evals, evecs = np.linalg.eigh(I)
+        evals, evecs = np.linalg.eigh(Itensor)
         if vectors:
             return evals, evecs.transpose()
         else:
