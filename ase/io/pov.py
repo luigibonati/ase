@@ -725,8 +725,16 @@ class POVRAYIsosurface:
 
         """
 
-        from skimage import measure
-        return measure.marching_cubes_lewiner(
+        # marching_cubes name was changed in skimage v0.19
+        try:
+            # New skimage
+            from skimage.measure import marching_cubes
+        except ImportError:
+            # Old skimage (remove at some point)
+            from skimage.measure import (
+                marching_cubes_lewiner as marching_cubes)
+
+        return marching_cubes(
             density_grid,
             level=cut_off,
             spacing=spacing,
