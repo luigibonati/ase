@@ -578,7 +578,27 @@ def write_control(fd, atoms, parameters, verbose_header=False):
         cubes.write(fd)
 
     fd.write(lim + "\n\n")
-    write_species(fd, atoms, parameters)
+
+    # Get the species directory
+    species_dir = get_species_directory
+    species_array = np.array(list(set(atoms.symbols)))
+    # Grab the tier specification from the parameters. THis may either
+    # be None, meaning the default should be used for all species, or a
+    # list of integers/None values giving a specific basis set size
+    # for each species in the calculation.
+    tier = parameters.pop("tier", None)
+    tier_array = np.full(len(species_array), tier)
+    # Path to species files for FHI-aims. In this files are specifications
+    # for the basis set sizes depending on which basis set tier is used.
+    species_dir = get_species_directory(parameters.get("species_dir"))
+    # Parse the species files for each species present in the calculation
+    # according to the tier of each species.
+    species_basis_dict = parse_species_path(
+        species_array=species_array, tier_array=tier_array,
+        species_dir=species_dir)
+    # Write the basis functions to be included for each species in the
+    # calculation into the control.in file (fd).
+    write_species(fd, species_basis_dict, parameters)
 
 
 def get_species_directory(species_dir=None):
@@ -620,7 +640,7 @@ def get_species_directory(species_dir=None):
     return species_path
 
 
-def write_species(species_file_descriptor, atoms, parameters):
+def write_species(control_file_descriptor, species_basis_dict, parameters):
     """Write species for the calculation depending on basis set size.
 
     The calculation should include certain basis set size function depending
@@ -628,10 +648,7 @@ def write_species(species_file_descriptor, atoms, parameters):
     size (minimal, tier1, tier2, tier3, tier4). If the basis set size is not
     given then a 'standard' basis set size is used for each numerical setting.
     The species files are defined according to these standard basis set sizes
-    for the numerical settings in the FHI-aims repository. This function
-    comments and uncomments basis set size functions according to the given
-    basis set size (when given) so thatt the correct basis set is used for the
-    calculation.
+    for the numerical settings in the FHI-aims repository.
 
     Note, for FHI-aims in ASE, we don't explicitly give the numerical setting.
     Instead we include the numerical setting in the species path: e.g.
@@ -643,40 +660,23 @@ def write_species(species_file_descriptor, atoms, parameters):
         uncommented for another basis set size such as tier4.
 
     Args:
-        species_file_descriptor: File descriptor to write the species file.
-        atoms: ASE Atoms Object that contains species (elements) in calculation.
-        parameters: Calculation parameters. This is where the basis set size
-            (tier) should be given if it's non default (e.g. when you don't
-            want to use the standard basis set size).
+        control_file_descriptor: File descriptor for the control.in file into
+            which we need to write relevant basis functions to be included for
+            the calculation.
+        species_basis_dict: Dictionary where keys as the species symbols and
+            each value is a single string containing all the basis functions
+            to be included in the caclculation.
+        parameters: Calculation parameters as a dict.
     """
-    parameters = dict(parameters)
-    species_array = np.array(list(set(atoms.symbols)))
-    print(species_array)
-    # Grab the tier specification from the parameters. THis may either
-    # be None, meaning the default should be used for all species, or a
-    # list of integers/None values giving a specific basis set size
-    # for each species in the calculation.
-    tier = parameters.pop("tier", None)
-    # TODO: (dts), add a check of the tier to make sure it has the right format.
-    tier_array = np.full(len(species_array), tier)
-    # Path to species files for FHI-aims. In this files are specifications
-    # for the basis set sizes depending on which basis set tier is used.
-    species_dir = get_species_directory(parameters.get("species_dir"))
-    # Parse the species files for each species present in the calculation
-    # according to the tier of each species.
-    species_basis_dict = parse_species_path(
-        species_array=species_array, tier_array=tier_array,
-        species_dir=species_dir)
-
     # Now for every species (key) in the species_basis_dict, save the
     # relevant basis functions (values) from the species_basis_dict, by
     # writing to the file handle (species_file_descriptor) given to this
     # function.
     for species_symbol, basis_set_text in species_basis_dict.items():
-        species_file_descriptor.write(basis_set_text)
+        control_file_descriptor.write(basis_set_text)
         if parameters.get("plus_u") is not None:
             if species_symbol in parameters.plus_u:
-                species_file_descriptor.write(
+                control_file_descriptor.write(
                     f"plus_u {parameters.plus_u[species_symbol]} \n")
 
 

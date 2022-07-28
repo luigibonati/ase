@@ -205,12 +205,13 @@ def test_parse_species_path(aims_species_dir_light):
     assert "#     ionic 6 s auto" in basis_function_dict["Au"]
 
 
-def test_write_species(bulk_au, aims_species_dir_light):
+def test_write_species(aims_species_dir_light):
     """Test writing species file."""
-    parameters = {"tier": 0, "species_dir": aims_species_dir_light}
+    parameters = {}
     file_handle = io.StringIO()
+    basis_function_dict = {'Au': "#     ionic 6 p auto"}
     ase.io.aims.write_species(
-        file_handle, bulk_au, parameters)
+        file_handle, basis_function_dict, parameters)
     assert contains("#     ionic 6 p auto", file_handle.getvalue())
 
 
