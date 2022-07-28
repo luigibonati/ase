@@ -41,3 +41,51 @@ def test_povray_highorder(testdir, povray_executable):
 def test_deprecated(testdir):
     with pytest.warns(FutureWarning):
         write_pov('tmp.pov', molecule('H2'), run_povray=True)
+
+
+import numpy as np
+import pytest
+from ase.io import write
+from ase import Atoms
+from ase.cell import Cell
+from ase.build import bulk
+from ase.io.pov import POVRAYIsosurface
+
+
+@pytest.fixture
+def isosurface_things():
+    rng = np.random.RandomState(42)
+    cell = Cell(rng.random((3, 3)))
+
+    values = np.zeros((3, 5, 7))
+    values[1, 2, 3] = 1
+    center_cell_position = cell.cartesian_positions([1 / 3, 2 / 5, 3 / 7])
+
+    surface = POVRAYIsosurface(
+        density_grid=values,
+        cut_off=0.12345,
+        cell=cell,
+        cell_origin=(0, 0, 0))
+
+    return cell, center_cell_position, surface
+
+
+def test_compute_isosurface(isosurface_things):
+    cell, center_cell_position, isosurf = isosurface_things
+
+    vert_centroid = np.mean(isosurf.verts @ cell, axis=0)
+    assert np.allclose(vert_centroid, center_cell_position)
+
+
+def test_render_isosurface(testdir, isosurface_things, povray_executable):
+    cell, center_cell_position, isosurf = isosurface_things
+
+    atoms = Atoms(
+        'H3',
+        scaled_positions=[[0, 0, 0], [1 / 3, 0, 0], [2 / 3, 0, 0]],
+        cell=cell)
+
+    renderer = write('tmp.pov', atoms, isosurface_data=[isosurf])
+    png_path = renderer.render(povray_executable=povray_executable)
+    # does the diamond appear over the second hydrogen atom?
+    assert png_path.is_file()

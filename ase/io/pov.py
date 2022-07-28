@@ -826,11 +826,18 @@ def write_pov(filename, atoms, *,
     pvars = PlottingVariables(atoms, scale=1.0, **generic_projection_settings)
     pov_obj = POVRAY.from_PlottingVariables(pvars, **povray_settings)
 
-    if isinstance(isosurface_data, Mapping):
-        pov_obj.isosurfaces = [POVRAYIsosurface.from_POVRAY(
-            pov_obj, **isosurface_data)]
-    elif isinstance(isosurface_data, Sequence):
-        pov_obj.isosurfaces = [POVRAYIsosurface.from_POVRAY(
-            pov_obj, **isodata) for isodata in isosurface_data]
+    if isosurface_data is None:
+        isosurface_data = []
+    elif not isinstance(isosurface_data, Sequence):
+        isosurface_data = [isosurface_data]
+
+    isosurfaces = []
+    for isodata in isosurface_data:
+        if isinstance(isodata, POVRAYIsosurface):
+            iso = isodata
+        else:
+            iso = POVRAYIsosurface.from_POVRAY(pov_obj, **isodata)
+        isosurfaces.append(iso)
+    pov_obj.isosurfaces = isosurfaces
 
     return pov_obj.write(filename)
