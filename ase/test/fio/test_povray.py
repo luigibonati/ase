@@ -50,7 +50,12 @@ def test_deprecated(testdir):
 
 
 @pytest.fixture
-def isosurface_things():
+def skimage():
+    return pytest.importorskip('skimage')
+
+
+@pytest.fixture
+def isosurface_things(skimage):
     rng = np.random.RandomState(42)
     cell = Cell(rng.random((3, 3)))
 
@@ -58,6 +63,7 @@ def isosurface_things():
     values[1, 2, 3] = 1
     center_cell_position = cell.cartesian_positions([1 / 3, 2 / 5, 3 / 7])
 
+    # This is the step which requires scikit-image:
     surface = POVRAYIsosurface(
         density_grid=values,
         cut_off=0.12345,
