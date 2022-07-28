@@ -1,8 +1,10 @@
 """Defines class/functions to write input and parse output for FHI-aims."""
 import os
+import re
 import time
 import warnings
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 from ase import Atom, Atoms
@@ -579,20 +581,6 @@ def write_control(fd, atoms, parameters, verbose_header=False):
     write_species(fd, atoms, parameters)
 
 
-def translate_tier(tier):
-    """Convert basis siset size tier from string to number."""
-    if tier.lower() == "first":
-        return 1
-    elif tier.lower() == "second":
-        return 2
-    elif tier.lower() == "third":
-        return 3
-    elif tier.lower() == "fourth":
-        return 4
-    else:
-        return -1
-
-
 def get_species_directory(species_dir=None):
     """Get the directory where the basis set information is stored
 
@@ -601,18 +589,19 @@ def get_species_directory(species_dir=None):
     Parameters
     ----------
     species_dir: str
-        Requested directory to find the basis set info from
+        Requested directory to find the basis set info from. E.g.
+        `~/aims2022/FHIaims/species_defaults/defaults_2020/light`.
 
     Returns
     -------
     Path
-        The Path to the requested or default species directory
+        The Path to the requested or default species directory.
 
     Raises
     ------
     RuntimeError
         If both the requested directory and the default one is not defined
-        or does not exit
+        or does not exit.
     """
     if species_dir is None:
         species_dir = os.environ.get("AIMS_SPECIES_DIR")
@@ -644,9 +633,14 @@ def write_species(species_file_descriptor, atoms, parameters):
     basis set size (when given) so thatt the correct basis set is used for the
     calculation.
 
-    E.g. a basis function might be commented in the standard basis set size such
-        as "#     hydro 4 f 7.4" and this basis function should be uncommented
-        for another basis set size such as tier4.
+    Note, for FHI-aims in ASE, we don't explicitly give the numerical setting.
+    Instead we include the numerical setting in the species path: e.g.
+    `~/aims2022/FHIaims/species_defaults/defaults_2020/light` this path has
+    `light`, the numerical setting, as the last folder in the path.
+
+    Example - a basis function might be commented in the standard basis set size
+        such as "#     hydro 4 f 7.4" and this basis function should be
+        uncommented for another basis set size such as tier4.
 
     Args:
         species_file_descriptor: File descriptor to write the species file.
@@ -656,127 +650,102 @@ def write_species(species_file_descriptor, atoms, parameters):
             want to use the standard basis set size).
     """
     parameters = dict(parameters)
-    species_path = get_species_directory(parameters.get("species_dir"))
-
-    species = set(atoms.symbols)
-
+    species_array = np.array(list(set(atoms.symbols)))
+    print(species_array)
+    # Grab the tier specification from the parameters. THis may either
+    # be None, meaning the default should be used for all species, or a
+    # list of integers/None values giving a specific basis set size
+    # for each species in the calculation.
     tier = parameters.pop("tier", None)
+    # TODO: (dts), add a check of the tier to make sure it has the right format.
+    tier_array = np.full(len(species_array), tier)
+    # Path to species files for FHI-aims. In this files are specifications
+    # for the basis set sizes depending on which basis set tier is used.
+    species_dir = get_species_directory(parameters.get("species_dir"))
+    # Parse the species files for each species present in the calculation
+    # according to the tier of each species.
+    species_basis_dict = parse_species_path(
+        species_array=species_array, tier_array=tier_array,
+        species_dir=species_dir)
 
-    tier_list = get_tier_list(tier, species)
-    # Run through all the species in our unit cell for our calculation.
-    # We need to assign a species file to each species in our calculation.
-    # We format these species files based on the given basis set size (tier).
-    for i, symbol in enumerate(species):
-        path = species_path / f"{atomic_numbers[symbol]:02}_{symbol}_default"
-        reached_tiers = False
-        with open(path, "r", encoding="utf8") as original_species_fd:
-            for line in original_species_fd:
-                if tier is not None:
-                    if "First tier" in line:
-                        reached_tiers = True
-                        target_tier = tier_list[i]
-                        # If the minimal basis set size is used (tier=0).
-                        # Ensure all the basis set functions that are
-                        # tier1/2/3/4 are commented out.
-                        if tier_list[i] == 0:
-                            found_target = True
-                            do_uncomment = False
-                        else:
-                            found_target = False
-                            do_uncomment = True
-                    if reached_tiers:
-                        line, found_target, do_uncomment = format_tiers(
-                            line, target_tier, found_target, do_uncomment)
-                # Write the line after deciding whether to comment/uncomment
-                # based on the tier (basis set size) to the species file
-                # for the calculation.
-                species_file_descriptor.write(line)
-
-        if tier is not None and not found_target:
-            raise RuntimeError(
-                f"Basis tier {target_tier} not found for element {symbol}")
-
+    # Now for every species (key) in the species_basis_dict, save the
+    # relevant basis functions (values) from the species_basis_dict, by
+    # writing to the file handle (species_file_descriptor) given to this
+    # function.
+    for species_symbol, basis_set_text in species_basis_dict.items():
+        species_file_descriptor.write(basis_set_text)
         if parameters.get("plus_u") is not None:
-            if symbol in parameters.plus_u:
+            if species_symbol in parameters.plus_u:
                 species_file_descriptor.write(
-                    f"plus_u {parameters.plus_u[symbol]} \n")
+                    f"plus_u {parameters.plus_u[species_symbol]} \n")
 
 
-def get_tier_list(tier, species):
-    """Get tier list based on basis set size and species present.
+def parse_species_path(species_array, tier_array, species_dir):
+    """Parse the species files for each species according to the tier given.
 
     Args:
-        tier: Basis set size for the species. Either an integer of a list
-            of integers. Can also be None which means the calculation uses
-            the standard basis set size.
-        species: Names of species present in calculation.
+        species_array: An array of species/element symbols present in the unit
+            cell (e.g. ['C', 'H'].)
+        tier_array: An array of None/integer values which define which basis
+            set size to use for each species/element in the calcualtion.
+        species_dir: Directory containing FHI-aims species files.
 
     Returns:
-        List of basis set sizes (tiers) for each species present in
-        calculation or raises an error.
+        Dictionary containing species as keys and the basis set specification
+            for each species as text as the value for the key.
     """
-    if tier is None:
-        return None
-    elif isinstance(tier, int):
-        return np.ones(len(species), "int") * tier
-    elif isinstance(tier, list):
-        assert len(tier) == len(species)
-        return tier
-    else:
-        # Tier parameter is poorly formatted.
+    if len(species_array) != len(tier_array):
         raise ValueError(
-            f"Given basis tier: {tier}, is not properly formatted. "
-            "It must be either None, or an integer, [0, z], "
-            "or a list of integers. None will give the so called standard "
-            "basis set size, 0 the minimal basis set size, 1 the tier1 basis"
-            "set size, 2 the tier2 basis set size and so forth. Note, the "
-            "standard basis set size for many species is larger than the "
-            "minimal basis set size and sometimes the tier 1 and tier 2 "
-            "basis set sizes. The standard basis set size is defined by "
-            "the numerical settings (light, tight, really tight) foe each "
-            "species.")
+            f"The species array length: {len(species_array)}, "
+            f"is not the same as the tier_array length: {len(tier_array)}")
+
+    species_basis_dict = {}
+
+    for symbol, tier in zip(species_array, tier_array):
+        path = species_dir / f"{atomic_numbers[symbol]:02}_{symbol}_default"
+        # Open the species file:
+        with open(path, "r", encoding="utf8") as species_file_handle:
+            # Read the species file into a string.
+            species_file_str = species_file_handle.read()
+            species_basis_dict[symbol] = manipulate_tiers(
+                species_file_str, tier)
+    return species_basis_dict
 
 
-def format_tiers(line, target_tier, found_target, do_uncomment):
-    """Decide whether to include basis set functions based on tier.
+def manipulate_tiers(species_string: str, tier: Union[None, int] = 1):
+    """Adds basis set functions based on the tier value.
 
-    The function is fed a line from the species file. It then looks at the
-    target_tier (e.g. tier 1, tier 2) and checks if that tier has been reached.
-    It then decides to uncomment or comment basis set functions which will
-    dictate whether or not they are included in the calculation.
+    This function takes in the species file as a string, it then searches
+    for relevant basis functions based on the tier value to include in a new
+    string that is returned.
 
     Args:
-        line: A single line of the species file.
-        target_tier: The basis set size to use for the calculation as integer
-            tiers (e.g. 1, 2, 3).
-        found_target: Whether you've reached the desired tier or not.
-        do_uncomment: If the line should be uncommented or not.
+        species_string: species file (default) for a given numerical setting
+            (light, tight, really tight) given as a string.
+        tier: The basis set size. This will dictate which basis set functions
+            are included in the returned string.
 
     Returns:
-        output_line: The line after commenting/uncommenting.
-        found_target: Whether the target basis set tier has been found.
-        do_uncomment: Whether the line should be commented/uncommented.
+        Basis set functions defined by the tier as a string.
     """
-    if "meV" in line:
-        assert line[0] == "#"
-        if "tier" in line and "Further" not in line:
-            tier = line.split(" tier")[0]
-            tier = tier.split('"')[-1]
-            current_tier = translate_tier(tier)
-            if current_tier == target_tier:
-                found_target = True
-            elif current_tier > target_tier:
-                do_uncomment = False
-        else:
-            do_uncomment = False
-        output_line = line
-    elif do_uncomment and line[0] == "#":
-        output_line = line[1:]
-    elif not do_uncomment and line[0] != "#":
-        output_line = "#" + line
-    else:
-        output_line = line
-    return output_line, found_target, do_uncomment
+    if tier is None:  # Then we use the default species file untouched.
+        return species_string
+    tier_pattern = r"(#  \".* tier\" .*|# +Further.*)"
+    top, *tiers = re.split(tier_pattern, species_string)
+    tier_comments = tiers[::2]
+    tier_basis = tiers[1::2]
+    assert len(
+        tier_comments) == len(tier_basis), "Something wrong with splitting"
+    n_tiers = len(tier_comments)
+    assert tier <= n_tiers, f"Only {n_tiers} tiers available, you choose {tier}"
+    string_new = top
+    for i, (c, b) in enumerate(zip(tier_comments, tier_basis)):
+        b = re.sub(r"\n( *for_aux| *hydro| *ionic| *confined)", r"\n#\g<1>", b)
+        if i < tier:
+            b = re.sub(
+                r"\n#( *for_aux| *hydro| *ionic| *confined)", r"\n\g<1>", b)
+        string_new += c + b
+    return string_new
 
 
 # Read aims.out files
