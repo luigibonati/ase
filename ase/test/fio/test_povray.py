@@ -1,8 +1,14 @@
 from subprocess import check_call, DEVNULL
+
+import numpy as np
 import pytest
-from ase.io.pov import write_pov
+
+from ase import Atoms
+from ase.cell import Cell
 from ase.build import molecule
-from ase.io.pov import get_bondpairs, set_high_bondorder_pairs
+from ase.io.pov import (write_pov, get_bondpairs, set_high_bondorder_pairs,
+                        POVRAYIsosurface)
+from ase.io import write
 
 
 def test_povray_io(testdir, povray_executable):
@@ -41,15 +47,6 @@ def test_povray_highorder(testdir, povray_executable):
 def test_deprecated(testdir):
     with pytest.warns(FutureWarning):
         write_pov('tmp.pov', molecule('H2'), run_povray=True)
-
-
-import numpy as np
-import pytest
-from ase.io import write
-from ase import Atoms
-from ase.cell import Cell
-from ase.build import bulk
-from ase.io.pov import POVRAYIsosurface
 
 
 @pytest.fixture
