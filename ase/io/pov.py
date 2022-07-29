@@ -3,7 +3,7 @@ Module for povray file format support.
 
 See http://www.povray.org/ for details on the format.
 """
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from subprocess import check_call, DEVNULL
 from os import unlink
 from pathlib import Path
