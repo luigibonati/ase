@@ -7,7 +7,8 @@ def test_mopac():
     from ase.build import molecule
     from ase.calculators.mopac import MOPAC
     from ase.optimize import BFGS
-    h2 = molecule('H2', calculator=MOPAC(label='h2'))
+    # Unrestricted Hartree-Fock; enable magmom calc
+    h2 = molecule('H2', calculator=MOPAC(label='h2', task='1SCF GRADIENTS UHF'))
     BFGS(h2, trajectory='h2.traj').run(fmax=0.01)
     e2 = h2.get_potential_energy()
     h1 = h2.copy()

@@ -25,7 +25,7 @@ class MOPAC(FileIOCalculator):
     default_parameters = dict(
         method='PM7',
         task='1SCF GRADIENTS',
-        charge=0,
+        charge=None,
         relscf=0.0001)
 
     methods = ['AM1', 'MNDO', 'MNDOD', 'PM3', 'PM6', 'PM6-D3', 'PM6-DH+',
@@ -86,7 +86,7 @@ class MOPAC(FileIOCalculator):
             s += 'RELSCF={0} '.format(p.relscf)
 
         # Write charge:
-        if p.charge:
+        if p.charge is not None:
             charge = p.charge
         else:
             charge = atoms.get_initial_charges().sum()
@@ -140,6 +140,9 @@ class MOPAC(FileIOCalculator):
                 p.task += keyword + ' '
 
         p.task.rstrip()
+        if 'charge' not in p:
+            p.charge = None
+
         self.atoms = self.read_atoms_from_file(lines)
         self.read_results()
 
@@ -193,11 +196,18 @@ class MOPAC(FileIOCalculator):
         with open(self.label + '.out') as fd:
             lines = fd.readlines()
 
+        total_energy_regex = re.compile(
+            r'^\s+TOTAL ENERGY\s+\=\s+(-?\d+\.\d+) EV')
+        final_heat_regex = re.compile(
+            r'^\s+FINAL HEAT OF FORMATION\s+\=\s+(-?\d+\.\d+) KCAL/MOL')
+
         for i, line in enumerate(lines):
-            if line.find('TOTAL ENERGY') != -1:
-                self.results['energy'] = float(line.split()[3])
-            elif re.match(r'\s+FINAL HEAT OF FORMATION = .+', line):
-                self.final_hof = float(line.split()[5]) * kcal / mol
+            if total_energy_regex.match(line):
+                self.results['energy'] = float(total_energy_regex.match(line)
+                                               .groups()[0])
+            elif final_heat_regex.match(line):
+                self.final_hof = float(final_heat_regex.match(line)
+                                       .groups()[0]) * kcal / mol
             elif line.find('NO. OF FILLED LEVELS') != -1:
                 self.nspins = 1
                 self.no_occ_levels = int(line.split()[-1])
