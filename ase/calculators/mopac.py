@@ -8,6 +8,7 @@ Set $ASE_MOPAC_COMMAND to something like::
 
 """
 import os
+import re
 
 import numpy as np
 
@@ -73,6 +74,10 @@ class MOPAC(FileIOCalculator):
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
         p = self.parameters
+
+        # Ensure DISP so total energy is available
+        if 'DISP' not in p.task.split():
+            p.task = p.task + ' DISP'
 
         # Build string to hold .mop input file:
         s = p.method + ' ' + p.task + ' '
@@ -191,7 +196,7 @@ class MOPAC(FileIOCalculator):
         for i, line in enumerate(lines):
             if line.find('TOTAL ENERGY') != -1:
                 self.results['energy'] = float(line.split()[3])
-            elif line.find('FINAL HEAT OF FORMATION') != -1:
+            elif re.match(r'\s+FINAL HEAT OF FORMATION = .+', line):
                 self.final_hof = float(line.split()[5]) * kcal / mol
             elif line.find('NO. OF FILLED LEVELS') != -1:
                 self.nspins = 1
