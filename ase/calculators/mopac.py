@@ -73,23 +73,23 @@ class MOPAC(FileIOCalculator):
 
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
-        p = self.parameters
+        p = self.parameters.copy()
 
         # Ensure DISP so total energy is available
         if 'DISP' not in p.task.split():
             p.task = p.task + ' DISP'
 
         # Build string to hold .mop input file:
-        s = p.method + ' ' + p.task + ' '
+        s = f'{p.method} {p.task} '
 
         if p.relscf:
             s += 'RELSCF={0} '.format(p.relscf)
 
         # Write charge:
-        if p.charge is not None:
-            charge = p.charge
-        else:
+        if p.charge is None:
             charge = atoms.get_initial_charges().sum()
+        else:
+            charge = p.charge
 
         if charge != 0:
             s += 'CHARGE={0} '.format(int(round(charge)))
@@ -105,8 +105,8 @@ class MOPAC(FileIOCalculator):
         for xyz, symbol in zip(atoms.positions, atoms.get_chemical_symbols()):
             s += ' {0:2} {1} 1 {2} 1 {3} 1\n'.format(symbol, *xyz)
 
-        for v, p in zip(atoms.cell, atoms.pbc):
-            if p:
+        for v, pbc in zip(atoms.cell, atoms.pbc):
+            if pbc:
                 s += 'Tv {0} {1} {2}\n'.format(*v)
 
         with open(self.label + '.mop', 'w') as fd:
@@ -139,7 +139,7 @@ class MOPAC(FileIOCalculator):
             else:
                 p.task += keyword + ' '
 
-        p.task.rstrip()
+        p = p.task.rstrip()
         if 'charge' not in p:
             p.charge = None
 
