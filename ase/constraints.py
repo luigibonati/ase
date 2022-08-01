@@ -1590,7 +1590,7 @@ class FixScaledParametricRelations(FixParametricRelations):
     def todict(self):
         """Create a dictionary representation of the constraint"""
         dct = super(FixScaledParametricRelations, self).todict()
-        del(dct["kwargs"]["use_cell"])
+        del dct["kwargs"]["use_cell"]
         return dct
 
 
