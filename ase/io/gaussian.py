@@ -500,7 +500,7 @@ def _validate_symbol_string(string):
 
 
 def _get_key_value_pairs(line):
-    '''Reads a line of a gaussian input file, which contains keywords and options
+    '''Read line of a gaussian input file with keywords and options
     separated according to the rules of the route section.
 
     Parameters
