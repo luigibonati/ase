@@ -6,7 +6,6 @@ and assert we find expected values.
 """
 # Standard imports.
 import io
-import pathlib
 import re
 # Third party imports.
 import pytest
@@ -16,24 +15,40 @@ import ase.build
 import ase.calculators.aims
 
 
-parent = pathlib.Path(__file__).parent
-
-
-_PARAMETERS_DICT = {
-    "xc": "LDA",
-    "kpts": [2, 2, 2],
-    "smearing": ("gaussian", 0.1),
-    "output": ["dos 0.0 10.0 101 0.05", "hirshfeld"],
-    "dos_kgrid_factors": [21, 21, 21],
-    "vdw_correction_hirshfeld": True,
-    "compute_forces": True,
-    "output_level": "MD_light",
-    "charge": 0.0}
+@pytest.fixture
+def parameters_dict():
+    """Creates a parameters dictionary used to configure Aims simulation."""
+    return {
+        "xc": "LDA",
+        "kpts": [2, 2, 2],
+        "smearing": ("gaussian", 0.1),
+        "output": ["dos 0.0 10.0 101 0.05", "hirshfeld"],
+        "dos_kgrid_factors": [21, 21, 21],
+        "vdw_correction_hirshfeld": True,
+        "compute_forces": True,
+        "output_level": "MD_light",
+        "charge": 0.0}
 
 
 def contains(pattern, txt):
     """"Regex search for pattern in the text."""
     return re.search(pattern, txt, re.M)
+
+
+def write_control_to_string(ase_atoms_obj, parameters):
+    """Helper function to write control.in file to a stringIO object.
+
+    Args:
+        ase_atoms_obj: ASE Atoms object that contains the atoms in the unit
+            cell that are to be simulated.
+        parameters: Dictionary that contains simulation parameters to be
+            written to the control.in FHI-aims file which dictates to the
+            aims executable how the simulation should be run.
+    """
+    string_output = io.StringIO()
+    ase.io.aims.write_control(
+        string_output, ase_atoms_obj, parameters)
+    return string_output.getvalue()
 
 
 @pytest.fixture
@@ -197,8 +212,8 @@ def test_parse_species_path(aims_species_dir_light):
         species_array=species_array,
         tier_array=tier_array,
         species_dir=aims_species_dir_light)
-    assert "Cl" in list(basis_function_dict.keys())
-    assert "Au" in list(basis_function_dict.keys())
+    assert "Cl" in basis_function_dict
+    assert "Au" in basis_function_dict
     # First tier basis function should now be uncommented.
     assert "\n     hydro 5 g 10.4" in basis_function_dict["Cl"]
     # First tier basis function should be commented for Au.
@@ -222,6 +237,7 @@ def test_write_species(aims_species_dir_light):
 def test_control_tier(
         aims_species_dir_light,
         bulk_au,
+        parameters_dict,
         output_level: str, tier: int,
         expected_basis_set_re: str):
     """Test that the correct basis set functions are included.
@@ -242,19 +258,18 @@ def test_control_tier(
             indicate whether a basis set function is included or not in the
             calcuation.
     """
-    parameters = _PARAMETERS_DICT.copy()
+    parameters = parameters_dict
     parameters["output_level"] = output_level
     parameters["species_dir"] = aims_species_dir_light
     parameters['tier'] = tier
-    string_output = io.StringIO()
-    ase.io.aims.write_control(
-        string_output, bulk_au, parameters)
-    txt = string_output.getvalue()
-    assert contains(r"output_level\s+" + "", txt)
-    assert contains(expected_basis_set_re, txt)
+
+    control_file_as_string = write_control_to_string(bulk_au, parameters)
+
+    assert contains(r"output_level\s+" + "", control_file_as_string)
+    assert contains(expected_basis_set_re, control_file_as_string)
 
 
-def test_control(bulk_au, aims_species_dir_light):
+def test_control(bulk_au, parameters_dict, aims_species_dir_light):
     """Tests that control.in for a Gold bulk system works.
 
     This test tests several things simulationeously, much of
@@ -263,33 +278,31 @@ def test_control(bulk_au, aims_species_dir_light):
     """
     # Copy the global parameters dicitonary to avoid rewriting common
     # parameters.
-    parameters = _PARAMETERS_DICT.copy()
+    parameters = parameters_dict
     parameters['species_dir'] = aims_species_dir_light
     # Add AimsCube to the parameter dictionary.
     parameters["cubes"] = ase.calculators.aims.AimsCube(
         plots=("delta_density",))
     # Write control.in file to a string which we can directly access for
     # testing.
-    string_output = io.StringIO()
-    ase.io.aims.write_control(
-        string_output, bulk_au, parameters)
-    txt = string_output.getvalue()
+    control_file_as_string = write_control_to_string(bulk_au, parameters)
 
-    assert contains(r"k_grid\s+2 2 2", txt)
-    assert contains(r"k_offset\s+0.250000 0.250000 0.250000", txt)
-    assert contains(r"occupation_type\s+gaussian 0.1", txt)
-    assert contains(r"output\s+dos 0.0 10.0 101 0.05", txt)
-    assert contains(r"output\s+hirshfeld", txt)
-    assert contains(r"dos_kgrid_factors\s+21 21 21", txt)
-    assert contains(r"vdw_correction_hirshfeld", txt)
-    assert contains(r"compute_forces\s+.true.", txt)
-    assert contains(r"output_level\s+MD_light", txt)
-    assert contains(r"charge\s+0.0", txt)
-    assert contains("output cube delta_density", txt)
-    assert contains("   cube origin 0 0 0 ", txt)
-    assert contains("   cube edge 50 0.1 0.0 0.0 ", txt)
-    assert contains("   cube edge 50 0.0 0.1 0.0", txt)
-    assert contains("   cube edge 50 0.0 0.0 0.1", txt)
+    assert contains(r"k_grid\s+2 2 2", control_file_as_string)
+    assert contains(
+        r"k_offset\s+0.250000 0.250000 0.250000", control_file_as_string)
+    assert contains(r"occupation_type\s+gaussian 0.1", control_file_as_string)
+    assert contains(r"output\s+dos 0.0 10.0 101 0.05", control_file_as_string)
+    assert contains(r"output\s+hirshfeld", control_file_as_string)
+    assert contains(r"dos_kgrid_factors\s+21 21 21", control_file_as_string)
+    assert contains(r"vdw_correction_hirshfeld", control_file_as_string)
+    assert contains(r"compute_forces\s+.true.", control_file_as_string)
+    assert contains(r"output_level\s+MD_light", control_file_as_string)
+    assert contains(r"charge\s+0.0", control_file_as_string)
+    assert contains("output cube delta_density", control_file_as_string)
+    assert contains("   cube origin 0 0 0 ", control_file_as_string)
+    assert contains("   cube edge 50 0.1 0.0 0.0 ", control_file_as_string)
+    assert contains("   cube edge 50 0.0 0.1 0.0", control_file_as_string)
+    assert contains("   cube edge 50 0.0 0.0 0.1", control_file_as_string)
 
 
 @pytest.mark.parametrize(
@@ -297,16 +310,14 @@ def test_control(bulk_au, aims_species_dir_light):
     [("PBE", r"xc\s+PBE"), ("LDA", r"xc\s+pw-lda"),
      pytest.param("PBE_06_Fake", None, marks=pytest.mark.xfail)])
 def test_control_functional(
-        aims_species_dir_light, bulk_au, functional: str,
+        aims_species_dir_light, bulk_au, parameters_dict, functional: str,
         expected_functional_expression: str):
     """Test that the functional written to the control.in file."""
     # Copy the global parameters dicitonary to avoid rewriting common
     # parameters. Then assign functional to parameter dictionary.
-    parameters = _PARAMETERS_DICT.copy()
+    parameters = parameters_dict
     parameters['species_dir'] = aims_species_dir_light
     parameters["xc"] = functional
-    string_output = io.StringIO()
-    ase.io.aims.write_control(
-        string_output, bulk_au, parameters)
-    txt = string_output.getvalue()
-    assert contains(expected_functional_expression, txt)
+
+    control_file_as_string = write_control_to_string(bulk_au, parameters)
+    assert contains(expected_functional_expression, control_file_as_string)
