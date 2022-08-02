@@ -3,7 +3,7 @@ Module for povray file format support.
 
 See http://www.povray.org/ for details on the format.
 """
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from subprocess import check_call, DEVNULL
 from os import unlink
 from pathlib import Path
@@ -725,8 +725,16 @@ class POVRAYIsosurface:
 
         """
 
-        from skimage import measure
-        return measure.marching_cubes_lewiner(
+        # marching_cubes name was changed in skimage v0.19
+        try:
+            # New skimage
+            from skimage.measure import marching_cubes
+        except ImportError:
+            # Old skimage (remove at some point)
+            from skimage.measure import (
+                marching_cubes_lewiner as marching_cubes)
+
+        return marching_cubes(
             density_grid,
             level=cut_off,
             spacing=spacing,
@@ -818,11 +826,18 @@ def write_pov(filename, atoms, *,
     pvars = PlottingVariables(atoms, scale=1.0, **generic_projection_settings)
     pov_obj = POVRAY.from_PlottingVariables(pvars, **povray_settings)
 
-    if isinstance(isosurface_data, Mapping):
-        pov_obj.isosurfaces = [POVRAYIsosurface.from_POVRAY(
-            pov_obj, **isosurface_data)]
-    elif isinstance(isosurface_data, Sequence):
-        pov_obj.isosurfaces = [POVRAYIsosurface.from_POVRAY(
-            pov_obj, **isodata) for isodata in isosurface_data]
+    if isosurface_data is None:
+        isosurface_data = []
+    elif not isinstance(isosurface_data, Sequence):
+        isosurface_data = [isosurface_data]
+
+    isosurfaces = []
+    for isodata in isosurface_data:
+        if isinstance(isodata, POVRAYIsosurface):
+            iso = isodata
+        else:
+            iso = POVRAYIsosurface.from_POVRAY(pov_obj, **isodata)
+        isosurfaces.append(iso)
+    pov_obj.isosurfaces = isosurfaces
 
     return pov_obj.write(filename)
