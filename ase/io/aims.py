@@ -1,7 +1,10 @@
+"""Defines class/functions to write input and parse output for FHI-aims."""
 import os
+import re
 import time
 import warnings
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 from ase import Atom, Atoms
@@ -575,20 +578,27 @@ def write_control(fd, atoms, parameters, verbose_header=False):
         cubes.write(fd)
 
     fd.write(lim + "\n\n")
-    write_species(fd, atoms, parameters)
 
-
-def translate_tier(tier):
-    if tier.lower() == "first":
-        return 1
-    elif tier.lower() == "second":
-        return 2
-    elif tier.lower() == "third":
-        return 3
-    elif tier.lower() == "fourth":
-        return 4
-    else:
-        return -1
+    # Get the species directory
+    species_dir = get_species_directory
+    species_array = np.array(list(set(atoms.symbols)))
+    # Grab the tier specification from the parameters. THis may either
+    # be None, meaning the default should be used for all species, or a
+    # list of integers/None values giving a specific basis set size
+    # for each species in the calculation.
+    tier = parameters.pop("tier", None)
+    tier_array = np.full(len(species_array), tier)
+    # Path to species files for FHI-aims. In this files are specifications
+    # for the basis set sizes depending on which basis set tier is used.
+    species_dir = get_species_directory(parameters.get("species_dir"))
+    # Parse the species files for each species present in the calculation
+    # according to the tier of each species.
+    species_basis_dict = parse_species_path(
+        species_array=species_array, tier_array=tier_array,
+        species_dir=species_dir)
+    # Write the basis functions to be included for each species in the
+    # calculation into the control.in file (fd).
+    write_species(fd, species_basis_dict, parameters)
 
 
 def get_species_directory(species_dir=None):
@@ -599,18 +609,19 @@ def get_species_directory(species_dir=None):
     Parameters
     ----------
     species_dir: str
-        Requested directory to find the basis set info from
+        Requested directory to find the basis set info from. E.g.
+        `~/aims2022/FHIaims/species_defaults/defaults_2020/light`.
 
     Returns
     -------
     Path
-        The Path to the requested or default species directory
+        The Path to the requested or default species directory.
 
     Raises
     ------
     RuntimeError
         If both the requested directory and the default one is not defined
-        or does not exit
+        or does not exit.
     """
     if species_dir is None:
         species_dir = os.environ.get("AIMS_SPECIES_DIR")
@@ -629,70 +640,112 @@ def get_species_directory(species_dir=None):
     return species_path
 
 
-def write_species(fd, atoms, parameters):
-    parameters = dict(parameters)
-    species_path = get_species_directory(parameters.get("species_dir"))
+def write_species(control_file_descriptor, species_basis_dict, parameters):
+    """Write species for the calculation depending on basis set size.
 
-    species = set(atoms.symbols)
+    The calculation should include certain basis set size function depending
+    on the numerical settings (light, tight, really tight) and the basis set
+    size (minimal, tier1, tier2, tier3, tier4). If the basis set size is not
+    given then a 'standard' basis set size is used for each numerical setting.
+    The species files are defined according to these standard basis set sizes
+    for the numerical settings in the FHI-aims repository.
 
-    tier = parameters.pop("tier", None)
+    Note, for FHI-aims in ASE, we don't explicitly give the numerical setting.
+    Instead we include the numerical setting in the species path: e.g.
+    `~/aims2022/FHIaims/species_defaults/defaults_2020/light` this path has
+    `light`, the numerical setting, as the last folder in the path.
 
-    if tier is not None:
-        if isinstance(tier, int):
-            tierlist = np.ones(len(species), "int") * tier
-        elif isinstance(tier, list):
-            assert len(tier) == len(species)
-            tierlist = tier
+    Example - a basis function might be commented in the standard basis set size
+        such as "#     hydro 4 f 7.4" and this basis function should be
+        uncommented for another basis set size such as tier4.
 
-    for i, symbol in enumerate(species):
-        path = species_path / ("%02i_%s_default" %
-                               (atomic_numbers[symbol], symbol))
-        reached_tiers = False
-        with open(path) as species_fd:
-            for line in species_fd:
-                if tier is not None:
-                    if "First tier" in line:
-                        reached_tiers = True
-                        targettier = tierlist[i]
-                        foundtarget = False
-                        do_uncomment = True
-                    if reached_tiers:
-                        line, foundtarget, do_uncomment = format_tiers(
-                            line, targettier, foundtarget, do_uncomment
-                        )
-                fd.write(line)
-
-        if tier is not None and not foundtarget:
-            raise RuntimeError(
-                "Basis tier %i not found for element %s" % (targettier, symbol)
-            )
-
+    Args:
+        control_file_descriptor: File descriptor for the control.in file into
+            which we need to write relevant basis functions to be included for
+            the calculation.
+        species_basis_dict: Dictionary where keys as the species symbols and
+            each value is a single string containing all the basis functions
+            to be included in the caclculation.
+        parameters: Calculation parameters as a dict.
+    """
+    # Now for every species (key) in the species_basis_dict, save the
+    # relevant basis functions (values) from the species_basis_dict, by
+    # writing to the file handle (species_file_descriptor) given to this
+    # function.
+    for species_symbol, basis_set_text in species_basis_dict.items():
+        control_file_descriptor.write(basis_set_text)
         if parameters.get("plus_u") is not None:
-            if symbol in parameters.plus_u:
-                fd.write("plus_u %s \n" % parameters.plus_u[symbol])
+            if species_symbol in parameters.plus_u:
+                control_file_descriptor.write(
+                    f"plus_u {parameters.plus_u[species_symbol]} \n")
 
 
-def format_tiers(line, targettier, foundtarget, do_uncomment):
-    if "meV" in line:
-        assert line[0] == "#"
-        if "tier" in line and "Further" not in line:
-            tier = line.split(" tier")[0]
-            tier = tier.split('"')[-1]
-            current_tier = translate_tier(tier)
-            if current_tier == targettier:
-                foundtarget = True
-            elif current_tier > targettier:
-                do_uncomment = False
-        else:
-            do_uncomment = False
-        outputline = line
-    elif do_uncomment and line[0] == "#":
-        outputline = line[1:]
-    elif not do_uncomment and line[0] != "#":
-        outputline = "#" + line
-    else:
-        outputline = line
-    return outputline, foundtarget, do_uncomment
+def parse_species_path(species_array, tier_array, species_dir):
+    """Parse the species files for each species according to the tier given.
+
+    Args:
+        species_array: An array of species/element symbols present in the unit
+            cell (e.g. ['C', 'H'].)
+        tier_array: An array of None/integer values which define which basis
+            set size to use for each species/element in the calcualtion.
+        species_dir: Directory containing FHI-aims species files.
+
+    Returns:
+        Dictionary containing species as keys and the basis set specification
+            for each species as text as the value for the key.
+    """
+    if len(species_array) != len(tier_array):
+        raise ValueError(
+            f"The species array length: {len(species_array)}, "
+            f"is not the same as the tier_array length: {len(tier_array)}")
+
+    species_basis_dict = {}
+
+    for symbol, tier in zip(species_array, tier_array):
+        path = species_dir / f"{atomic_numbers[symbol]:02}_{symbol}_default"
+        # Open the species file:
+        with open(path, "r", encoding="utf8") as species_file_handle:
+            # Read the species file into a string.
+            species_file_str = species_file_handle.read()
+            species_basis_dict[symbol] = manipulate_tiers(
+                species_file_str, tier)
+    return species_basis_dict
+
+
+def manipulate_tiers(species_string: str, tier: Union[None, int] = 1):
+    """Adds basis set functions based on the tier value.
+
+    This function takes in the species file as a string, it then searches
+    for relevant basis functions based on the tier value to include in a new
+    string that is returned.
+
+    Args:
+        species_string: species file (default) for a given numerical setting
+            (light, tight, really tight) given as a string.
+        tier: The basis set size. This will dictate which basis set functions
+            are included in the returned string.
+
+    Returns:
+        Basis set functions defined by the tier as a string.
+    """
+    if tier is None:  # Then we use the default species file untouched.
+        return species_string
+    tier_pattern = r"(#  \".* tier\" .*|# +Further.*)"
+    top, *tiers = re.split(tier_pattern, species_string)
+    tier_comments = tiers[::2]
+    tier_basis = tiers[1::2]
+    assert len(
+        tier_comments) == len(tier_basis), "Something wrong with splitting"
+    n_tiers = len(tier_comments)
+    assert tier <= n_tiers, f"Only {n_tiers} tiers available, you choose {tier}"
+    string_new = top
+    for i, (c, b) in enumerate(zip(tier_comments, tier_basis)):
+        b = re.sub(r"\n( *for_aux| *hydro| *ionic| *confined)", r"\n#\g<1>", b)
+        if i < tier:
+            b = re.sub(
+                r"\n#( *for_aux| *hydro| *ionic| *confined)", r"\n\g<1>", b)
+        string_new += c + b
+    return string_new
 
 
 # Read aims.out files
