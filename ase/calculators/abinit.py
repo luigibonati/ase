@@ -5,10 +5,11 @@ http://www.abinit.org/
 
 import re
 
+import os
 import ase.io.abinit as io
 from ase.calculators.genericfileio import (CalculatorTemplate,
                                            GenericFileIOCalculator)
-from subprocess import check_output
+from subprocess import check_output, check_call
 from pathlib import Path
 
 
@@ -28,13 +29,12 @@ class AbinitProfile:
         self.argv = argv
 
     def version(self):
-        from subprocess import check_output
         return check_output(self.argv + ['--version'])
 
     def run(self, directory, inputfile, outputfile):
-        from subprocess import check_call
         with open(outputfile, 'w') as fd:
             check_call(self.argv + [str(inputfile)], stdout=fd,
+                       env=os.environ,
                        cwd=directory)
 
 
@@ -55,7 +55,6 @@ class AbinitTemplate(CalculatorTemplate):
 
     def write_input(self, directory, atoms, parameters, properties):
         directory = Path(directory)
-        directory.mkdir(exist_ok=True, parents=True)
         parameters = dict(parameters)
         pp_paths = parameters.pop('pp_paths', None)
         assert pp_paths is not None

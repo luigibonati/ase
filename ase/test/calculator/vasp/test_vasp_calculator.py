@@ -5,9 +5,11 @@ import sys
 import pytest
 
 from ase.build import molecule
-from ase.calculators.calculator import CalculatorSetupError, get_calculator_class
+from ase.calculators.calculator import (CalculatorSetupError,
+                                        get_calculator_class)
 from ase.calculators.vasp import Vasp
-from ase.calculators.vasp.vasp import check_atoms, check_pbc, check_cell, check_atoms_type
+from ase.calculators.vasp.vasp import (check_atoms, check_pbc, check_cell,
+                                       check_atoms_type)
 
 
 @pytest.fixture
@@ -161,3 +163,11 @@ def test_make_command_explicit(monkeypatch):
     my_cmd = 'my command'
     cmd = calc.make_command(my_cmd)
     assert cmd == my_cmd
+
+
+def test_as_dict():
+    calc = Vasp(lreal=False, xc="pbe")
+    dct = calc.asdict()
+    inputs = dct["inputs"]
+    assert inputs["lreal"] is False
+    assert inputs["xc"] == "pbe"

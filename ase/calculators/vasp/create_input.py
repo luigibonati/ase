@@ -226,6 +226,7 @@ float_keys = [
     'qdt',  # Timestep for quickmin minimization (instanton)
     'qtpz',  # Temperature (instanton)
     'qftol',  # Tolerance (instanton)
+    'nupdown',  # fix spin moment to specified value
 ]
 
 exp_keys = [
@@ -293,7 +294,6 @@ int_keys = [
     'npar',  # parallelization over bands
     'nsim',  # evaluate NSIM bands simultaneously if using RMM-DIIS
     'nsw',  # number of steps for ionic upd.
-    'nupdown',  # fix spin moment to specified value
     'nwrite',  # verbosity write-flag (how much is written)
     'vdwgr',  # extra keyword for Andris program
     'vdwrn',  # extra keyword for Andris program
@@ -322,7 +322,9 @@ int_keys = [
     'nedos',  # Number of grid points in DOS
     'turbo',  # Ewald, 0 = Normal, 1 = PME
     'omegapar',  # Number of groups for response function calc.
-    'taupar',  # (Possibly Depricated) Number of groups in real time for response function calc.
+    # (Possibly Depricated) Number of groups in real time for
+    # response function calc.
+    'taupar',
     'ntaupar',  # Number of groups in real time for response function calc.
     'antires',  # How to treat antiresonant part of response function
     'magatom',  # Index of atom at which to place magnetic field (NMR)
@@ -1213,7 +1215,7 @@ class GenerateVaspInput:
                         LDA:  $VASP_PP_PATH/potpaw/
                         PBE:  $VASP_PP_PATH/potpaw_PBE/
                         PW91: $VASP_PP_PATH/potpaw_GGA/
-                        
+
                         No pseudopotential for {}!""".format(potcar, symbol))
                 raise RuntimeError(msg)
         return ppp_list
@@ -1657,9 +1659,9 @@ class GenerateVaspInput:
         column. It is used for restart purposes to get sorting right
         when reading in an old calculation to ASE."""
 
-        file = open(join(directory, 'ase-sort.dat'), 'w')
-        for n in range(len(self.sort)):
-            file.write('%5i %5i \n' % (self.sort[n], self.resort[n]))
+        with open(join(directory, 'ase-sort.dat'), 'w') as fd:
+            for n in range(len(self.sort)):
+                fd.write('%5i %5i \n' % (self.sort[n], self.resort[n]))
 
     # The below functions are used to restart a calculation
 
@@ -1952,11 +1954,11 @@ def read_potcar_numbers_of_electrons(file_obj):
 
 def count_symbols(atoms, exclude=()):
     """Count symbols in atoms object, excluding a set of indices
-    
+
     Parameters:
         atoms: Atoms object to be grouped
         exclude: List of indices to be excluded from the counting
-    
+
     Returns:
         Tuple of (symbols, symbolcount)
         symbols: The unique symbols in the included list

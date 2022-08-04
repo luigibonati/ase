@@ -60,9 +60,9 @@ class Dynamics(IOContext):
             if isinstance(trajectory, str):
                 mode = "a" if append_trajectory else "w"
                 trajectory = self.closelater(Trajectory(
-                    trajectory, mode=mode, atoms=atoms, master=master
+                    trajectory, mode=mode, master=master
                 ))
-            self.attach(trajectory)
+            self.attach(trajectory, atoms=atoms)
 
     def get_number_of_steps(self):
         return self.nsteps
@@ -307,7 +307,7 @@ class Optimizer(Dynamics):
             # ast = {1: "*", 0: ""}[self.force_consistent]
             ast = ''
             args = (name, self.nsteps, T[3], T[4], T[5], e, ast, fmax)
-            msg = "%s:  %3d %02d:%02d:%02d %15.6f%1s %12.5e\n" % args
+            msg = "%s:  %3d %02d:%02d:%02d %15.6f%1s %15.6f\n" % args
             self.logfile.write(msg)
 
             self.logfile.flush()
@@ -323,7 +323,8 @@ class Optimizer(Dynamics):
                 return read_json(fd, always_array=False)
             except Exception as ex:
                 msg = ('Could not decode restart file as JSON.  '
-                       f'You may need to delete the restart file {self.restart}')
+                       'You may need to delete the restart file '
+                       f'{self.restart}')
                 raise RestartError(msg) from ex
 
     def set_force_consistent(self):

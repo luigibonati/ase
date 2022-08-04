@@ -23,7 +23,7 @@ __all__ = ['exec_', 'basestring', 'import_module', 'seterr', 'plural',
            'opencew', 'OpenLock', 'rotate', 'irotate', 'pbc2pbc', 'givens',
            'hsv2rgb', 'hsv', 'pickleload', 'FileNotFoundError',
            'formula_hill', 'formula_metal', 'PurePath', 'xwopen',
-           'tokenize_version']
+           'tokenize_version', 'get_python_package_path_description']
 
 
 def tokenize_version(version_string: str):
@@ -170,7 +170,7 @@ def xwopen(filename, world=None):
             fd.close()
 
 
-#@deprecated('use "with xwopen(...) as fd: ..." to prevent resource leak')
+# @deprecated('use "with xwopen(...) as fd: ..." to prevent resource leak')
 def opencew(filename, world=None):
     return _opencew(filename, world)
 
@@ -470,6 +470,7 @@ class iofunction:
     """Decorate func so it accepts either str or file.
 
     (Won't work on functions that return a generator.)"""
+
     def __init__(self, mode):
         self.mode = mode
 
@@ -516,7 +517,7 @@ def read_json(cls, fd):
     """Read new instance from JSON file."""
     from ase.io.jsonio import read_json as _read_json
     obj = _read_json(fd)
-    assert type(obj) is cls
+    assert isinstance(obj, cls)
     return obj
 
 
@@ -641,3 +642,22 @@ class IOContext:
             return sys.stdout
 
         return self.closelater(open(file, mode=mode))
+
+
+def get_python_package_path_description(
+        package, default='module has no path') -> str:
+    """Helper to get path description of a python package/module
+
+    If path has multiple elements, the first one is returned.
+    If it is empty, the default is returned.
+    Exceptions are returned as strings default+(exception).
+    Always returns a string.
+    """
+    try:
+        p = list(package.__path__)
+        if p:
+            return str(p[0])
+        else:
+            return default
+    except Exception as ex:
+        return "{:} ({:})".format(default, ex)

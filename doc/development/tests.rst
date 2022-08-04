@@ -13,7 +13,8 @@ Run all tests with::
 
   ase test
 
-This requires installing pytest and pytest-xdist.
+This requires installing pytest, pytest-mock and pytest-xdist. You can install
+these dependencies automatically by running `pip install ase[test]`.
 See ``ase test --help`` for more information.
 
 You can also run ``pytest`` directly from within the ``ase.test`` directory.
