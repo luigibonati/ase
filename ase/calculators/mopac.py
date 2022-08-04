@@ -73,7 +73,7 @@ class MOPAC(FileIOCalculator):
 
     def write_input(self, atoms, properties=None, system_changes=None):
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
-        p = self.parameters.copy()
+        p = Parameters(self.parameters.copy())
 
         # Ensure DISP so total energy is available
         if 'DISP' not in p.task.split():
@@ -139,7 +139,7 @@ class MOPAC(FileIOCalculator):
             else:
                 p.task += keyword + ' '
 
-        p = p.task.rstrip()
+        p.task = p.task.rstrip()
         if 'charge' not in p:
             p.charge = None
 
