@@ -67,6 +67,7 @@ filterwarnings = pytest.mark.filterwarnings
 @calc('gpaw', symmetry='off', mode='pw', txt='gpaw.txt', mixer={'beta': 0.6},
       marks=[filterwarnings('ignore:.*?ignore_bad_restart_file'),
              filterwarnings('ignore:convert_string_to_fd')])
+@calc('mopac', task='UHF', method='PM7', marks=pytest.mark.xfail)
 @calc('nwchem')
 @calc('octopus', Spacing='0.25 * angstrom', BoxShape='minimum',
       convreldens=1e-3)
