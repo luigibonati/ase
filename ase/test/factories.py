@@ -305,12 +305,30 @@ class MOPACFactory:
 
     def calc(self, **kwargs):
         from ase.calculators.mopac import MOPAC
-        MOPAC.command = f'{executable} PREFIX.mop 2> /dev/null'
+        MOPAC.command = f'{self.executable} PREFIX.mop 2> /dev/null'
         return MOPAC(**kwargs)
 
     @classmethod
     def fromconfig(cls, config):
         return cls(config.executables['mopac'])
+
+    def version(self):
+        from ase import Atoms
+        from os import chdir
+        from pathlib import Path
+        import tempfile
+
+        cwd = Path('.').absolute()
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                chdir(directory)
+                h = Atoms('H')
+                h.calc = self.calc()
+                _ = h.get_potential_energy()
+            finally:
+                chdir(cwd)
+
+        return h.calc.results['version']
 
 
 @factory('vasp')
