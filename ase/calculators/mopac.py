@@ -9,7 +9,10 @@ Set $ASE_MOPAC_COMMAND to something like::
 """
 import os
 import re
+from typing import Sequence
+from warnings import warn
 
+from packaging import version
 import numpy as np
 
 from ase import Atoms
@@ -196,6 +199,8 @@ class MOPAC(FileIOCalculator):
         with open(self.label + '.out') as fd:
             lines = fd.readlines()
 
+        self.results['version'] = self.get_version_from_file(lines)
+
         total_energy_regex = re.compile(
             r'^\s+TOTAL ENERGY\s+\=\s+(-?\d+\.\d+) EV')
         final_heat_regex = re.compile(
@@ -203,11 +208,11 @@ class MOPAC(FileIOCalculator):
 
         for i, line in enumerate(lines):
             if total_energy_regex.match(line):
-                self.results['energy'] = float(total_energy_regex.match(line)
-                                               .groups()[0])
+                self.results['total_energy'] = float(
+                    total_energy_regex.match(line).groups()[0])
             elif final_heat_regex.match(line):
-                self.final_hof = float(final_heat_regex.match(line)
-                                       .groups()[0]) * kcal / mol
+                self.results['final_hof'] = float(final_heat_regex.match(line)
+                                                  .groups()[0]) * kcal / mol
             elif line.find('NO. OF FILLED LEVELS') != -1:
                 self.nspins = 1
                 self.no_occ_levels = int(line.split()[-1])
@@ -248,6 +253,27 @@ class MOPAC(FileIOCalculator):
                 self.results['dipole'] = np.array(
                     lines[i + 3].split()[1:1 + 3], float) * Debye
 
+        # Developers recommend using final HOF as it includes dispersion etc.
+        # For backward compatibility we won't change the results of old MOPAC
+        # calculations... yet
+        if version.parse(self.results['version']) >= version.parse('22'):
+            self.results['energy'] = self.results['final_hof']
+        else:
+            warn("Using a version of MOPAC lower than v22: ASE will use "
+                 "TOTAL ENERGY as the potential energy. In future, "
+                 "FINAL HEAT OF FORMATION will be preferred for all versions.")
+            self.results['energy'] = self.results['total_energy']
+
+    @staticmethod
+    def get_version_from_file(lines: Sequence[str]):
+        version_regex = re.compile(r'^ \*\*\s+MOPAC (v[\.\d]+)\s+\*\*\s$')
+        for line in lines:
+            match = version_regex.match(line)
+            if match:
+                return match.groups()[0]
+        else:
+            return ValueError('Version number was not found in MOPAC output')
+
     def get_eigenvalues(self, kpt=0, spin=0):
         return self.eigenvalues[spin, kpt]
 
@@ -280,6 +306,19 @@ class MOPAC(FileIOCalculator):
                              self.eigenvalues[1, 0, nb - 1]])
 
     def get_final_heat_of_formation(self):
-        """Final heat of formation as reported in the Mopac output file
-        """
-        return self.final_hof
+        """Final heat of formation as reported in the Mopac output file"""
+        warn("This method is deprecated, please use "
+             "MOPAC.results['final_hof']", DeprecationWarning)
+        return self.results['final_hof']
+
+    @property
+    def final_hof(self):
+        warn("This property is deprecated, please use "
+             "MOPAC.results['final_hof']", DeprecationWarning)
+        return self.results['final_hof']
+
+    @final_hof.setter
+    def final_hof(self, new_hof):
+        warn("This property is deprecated, please use "
+             "MOPAC.results['final_hof']", DeprecationWarning)
+        self.results['final_hof'] = new_hof
