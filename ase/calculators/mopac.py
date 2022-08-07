@@ -21,7 +21,7 @@ from ase.units import kcal, mol, Debye
 
 
 class MOPAC(FileIOCalculator):
-    implemented_properties = ['energy', 'forces', 'dipole', 'magmom']
+    implemented_properties = ['energy', 'forces', 'dipole', 'magmom', 'free_energy']
     command = 'mopac PREFIX.mop 2> /dev/null'
     discard_results_on_any_change = True
 
@@ -263,6 +263,7 @@ class MOPAC(FileIOCalculator):
                  "TOTAL ENERGY as the potential energy. In future, "
                  "FINAL HEAT OF FORMATION will be preferred for all versions.")
             self.results['energy'] = self.results['total_energy']
+        self.results['free_energy'] = self.results['energy']
 
     @staticmethod
     def get_version_from_file(lines: Sequence[str]):

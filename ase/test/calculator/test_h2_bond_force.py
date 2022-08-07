@@ -34,6 +34,7 @@ calc = pytest.mark.calculator
 @calc('cp2k')
 @calc('espresso', tprnfor=True)
 @calc('gpaw', mode='pw', symmetry='off', txt=None)
+@calc('mopac', method='PM7', task='UHF GRADIENTS', marks=pytest.mark.xfail)
 @calc('nwchem')
 @calc('siesta')
 def test_h2_bond(factory, atoms):
