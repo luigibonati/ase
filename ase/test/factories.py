@@ -298,6 +298,21 @@ class ExcitingFactory:
         return cls(config.executables['exciting'])
 
 
+@factory('mopac')
+class MOPACFactory:
+    def __init__(self, executable):
+        self.executable=executable
+
+    def calc(self, **kwargs):
+        from ase.calculators.mopac import MOPAC
+        MOPAC.command = f'{executable} PREFIX.mop 2> /dev/null'
+        return MOPAC(**kwargs)
+
+    @classmethod
+    def fromconfig(cls, config):
+        return cls(config.executables['mopac'])
+
+
 @factory('vasp')
 class VaspFactory:
     def __init__(self, executable):
@@ -586,7 +601,6 @@ class Factories:
         'gulp',
         'hotbit',
         'lammpslib',
-        'mopac',
         'onetep',
         'orca',
         'qchem',
