@@ -114,7 +114,8 @@ class ORCA(FileIOCalculator):
         found_line = re_energy.finditer(text)
         for match in found_line:
             if not re_not_converged.search(match.group()):
-                self.results['energy'] = float(match.group().split()[-1]) * Hartree
+                self.results['energy'] = float(
+                    match.group().split()[-1]) * Hartree
 
     def read_forces(self):
         """Read Forces from ORCA output file."""

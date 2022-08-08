@@ -1,7 +1,10 @@
+"""Defines class/functions to write input and parse output for FHI-aims."""
 import os
+import re
 import time
 import warnings
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 from ase import Atom, Atoms
@@ -113,7 +116,7 @@ def parse_geometry_lines(lines, apply_constraints=True):
                 xyz[2] = 1
 
         elif inp[0] == "velocity":
-            floatvect = [v_unit * float(l) for l in inp[1:4]]
+            floatvect = [v_unit * float(line) for line in inp[1:4]]
             velocities.append(floatvect)
 
         elif inp[0] in [
@@ -135,13 +138,18 @@ def parse_geometry_lines(lines, apply_constraints=True):
             "Cartesian and fractional coordinates"
         )
     elif scaled_positions and periodic.any():
-        atoms = Atoms(symbols, scaled_positions=positions, cell=cell, pbc=periodic)
+        atoms = Atoms(
+            symbols,
+            scaled_positions=positions,
+            cell=cell,
+            pbc=periodic)
     else:
         atoms = Atoms(symbols, positions)
 
     if len(velocities) > 0:
         if len(velocities) != len(positions):
-            raise Exception("Number of positions and velocities have to coincide.")
+            raise Exception(
+                "Number of positions and velocities have to coincide.")
         atoms.set_velocities(velocities)
 
     fix_params = []
@@ -242,7 +250,8 @@ def write_aims(
         write_velocities: bool
             If True add the atomic velocity vectors to the file
         velocities: bool
-            NOT AN ARRAY OF VELOCITIES, but the legacy version of `write_velocities`
+            NOT AN ARRAY OF VELOCITIES, but the legacy version of
+            `write_velocities`
         ghosts: list of Atoms
             A list of ghost atoms for the system
         info_str: str
@@ -255,8 +264,8 @@ def write_aims(
 
     if scaled and not np.all(atoms.pbc):
         raise ValueError(
-            "Requesting scaled for a calculation where scaled=True, but the system is not periodic"
-        )
+            "Requesting scaled for a calculation where scaled=True, but "
+            "the system is not periodic")
 
     if geo_constrain:
         if not scaled and np.all(atoms.pbc):
@@ -424,7 +433,8 @@ def get_sym_block(atoms):
 
     cell_inds = np.where(lv_param_constr == "")[0]
     for ind in cell_inds:
-        lv_param_constr[ind] = "{:.16f}, {:.16f}, {:.16f}".format(*atoms.cell[ind])
+        lv_param_constr[ind] = "{:.16f}, {:.16f}, {:.16f}".format(
+            *atoms.cell[ind])
 
     n_atomic_params = len(atomic_sym_params)
     n_lv_params = len(lv_sym_params)
@@ -485,7 +495,8 @@ def write_control(fd, atoms, parameters, verbose_header=False):
     parameters: dict
         The dictionary of all paramters for the calculation
     verbose_header: bool
-        If True then explcitly list the paramters used to generate the control.in file inside the header
+        If True then explcitly list the paramters used to generate the
+         control.in file inside the header
     """
 
     parameters = dict(parameters)
@@ -513,8 +524,16 @@ def write_control(fd, atoms, parameters, verbose_header=False):
         if key == "kpts":
             mp = kpts2mp(atoms, parameters["kpts"])
             dk = 0.5 - 0.5 / np.array(mp)
-            fd.write(format_aims_control_parameter("k_grid", tuple(mp), "%d %d %d"))
-            fd.write(format_aims_control_parameter("k_offset", tuple(dk), "%f %f %f"))
+            fd.write(
+                format_aims_control_parameter(
+                    "k_grid",
+                    tuple(mp),
+                    "%d %d %d"))
+            fd.write(
+                format_aims_control_parameter(
+                    "k_offset",
+                    tuple(dk),
+                    "%f %f %f"))
         elif key == "species_dir":
             continue
         elif key == "plus_u":
@@ -541,7 +560,9 @@ def write_control(fd, atoms, parameters, verbose_header=False):
         elif key == "vdw_correction_hirshfeld" and value:
             fd.write(format_aims_control_parameter(key, "", "%s"))
         elif isinstance(value, bool):
-            fd.write(format_aims_control_parameter(key, str(value).lower(), ".%s."))
+            fd.write(
+                format_aims_control_parameter(
+                    key, str(value).lower(), ".%s."))
         elif isinstance(value, (tuple, list)):
             fd.write(
                 format_aims_control_parameter(
@@ -557,20 +578,27 @@ def write_control(fd, atoms, parameters, verbose_header=False):
         cubes.write(fd)
 
     fd.write(lim + "\n\n")
-    write_species(fd, atoms, parameters)
 
-
-def translate_tier(tier):
-    if tier.lower() == "first":
-        return 1
-    elif tier.lower() == "second":
-        return 2
-    elif tier.lower() == "third":
-        return 3
-    elif tier.lower() == "fourth":
-        return 4
-    else:
-        return -1
+    # Get the species directory
+    species_dir = get_species_directory
+    species_array = np.array(list(set(atoms.symbols)))
+    # Grab the tier specification from the parameters. THis may either
+    # be None, meaning the default should be used for all species, or a
+    # list of integers/None values giving a specific basis set size
+    # for each species in the calculation.
+    tier = parameters.pop("tier", None)
+    tier_array = np.full(len(species_array), tier)
+    # Path to species files for FHI-aims. In this files are specifications
+    # for the basis set sizes depending on which basis set tier is used.
+    species_dir = get_species_directory(parameters.get("species_dir"))
+    # Parse the species files for each species present in the calculation
+    # according to the tier of each species.
+    species_basis_dict = parse_species_path(
+        species_array=species_array, tier_array=tier_array,
+        species_dir=species_dir)
+    # Write the basis functions to be included for each species in the
+    # calculation into the control.in file (fd).
+    write_species(fd, species_basis_dict, parameters)
 
 
 def get_species_directory(species_dir=None):
@@ -581,17 +609,19 @@ def get_species_directory(species_dir=None):
     Parameters
     ----------
     species_dir: str
-        Requested directory to find the basis set info from
+        Requested directory to find the basis set info from. E.g.
+        `~/aims2022/FHIaims/species_defaults/defaults_2020/light`.
 
     Returns
     -------
     Path
-        The Path to the requested or default species directory
+        The Path to the requested or default species directory.
 
     Raises
     ------
     RuntimeError
-        If both the requested directory and the default one is not defined or does not exit
+        If both the requested directory and the default one is not defined
+        or does not exit.
     """
     if species_dir is None:
         species_dir = os.environ.get("AIMS_SPECIES_DIR")
@@ -604,74 +634,118 @@ def get_species_directory(species_dir=None):
 
     species_path = Path(species_dir)
     if not species_path.exists():
-        raise RuntimeError(f"The requested species_dir {species_dir} does not exist")
+        raise RuntimeError(
+            f"The requested species_dir {species_dir} does not exist")
 
     return species_path
 
 
-def write_species(fd, atoms, parameters):
-    parameters = dict(parameters)
-    species_path = get_species_directory(parameters.get("species_dir"))
+def write_species(control_file_descriptor, species_basis_dict, parameters):
+    """Write species for the calculation depending on basis set size.
 
-    species = set(atoms.symbols)
+    The calculation should include certain basis set size function depending
+    on the numerical settings (light, tight, really tight) and the basis set
+    size (minimal, tier1, tier2, tier3, tier4). If the basis set size is not
+    given then a 'standard' basis set size is used for each numerical setting.
+    The species files are defined according to these standard basis set sizes
+    for the numerical settings in the FHI-aims repository.
 
-    tier = parameters.pop("tier", None)
+    Note, for FHI-aims in ASE, we don't explicitly give the numerical setting.
+    Instead we include the numerical setting in the species path: e.g.
+    `~/aims2022/FHIaims/species_defaults/defaults_2020/light` this path has
+    `light`, the numerical setting, as the last folder in the path.
 
-    if tier is not None:
-        if isinstance(tier, int):
-            tierlist = np.ones(len(species), "int") * tier
-        elif isinstance(tier, list):
-            assert len(tier) == len(species)
-            tierlist = tier
+    Example - a basis function might be commented in the standard basis set size
+        such as "#     hydro 4 f 7.4" and this basis function should be
+        uncommented for another basis set size such as tier4.
 
-    for i, symbol in enumerate(species):
-        path = species_path / ("%02i_%s_default" % (atomic_numbers[symbol], symbol))
-        reached_tiers = False
-        with open(path) as species_fd:
-            for line in species_fd:
-                if tier is not None:
-                    if "First tier" in line:
-                        reached_tiers = True
-                        targettier = tierlist[i]
-                        foundtarget = False
-                        do_uncomment = True
-                    if reached_tiers:
-                        line, foundtarget, do_uncomment = format_tiers(
-                            line, targettier, foundtarget, do_uncomment
-                        )
-                fd.write(line)
-
-        if tier is not None and not foundtarget:
-            raise RuntimeError(
-                "Basis tier %i not found for element %s" % (targettier, symbol)
-            )
-
+    Args:
+        control_file_descriptor: File descriptor for the control.in file into
+            which we need to write relevant basis functions to be included for
+            the calculation.
+        species_basis_dict: Dictionary where keys as the species symbols and
+            each value is a single string containing all the basis functions
+            to be included in the caclculation.
+        parameters: Calculation parameters as a dict.
+    """
+    # Now for every species (key) in the species_basis_dict, save the
+    # relevant basis functions (values) from the species_basis_dict, by
+    # writing to the file handle (species_file_descriptor) given to this
+    # function.
+    for species_symbol, basis_set_text in species_basis_dict.items():
+        control_file_descriptor.write(basis_set_text)
         if parameters.get("plus_u") is not None:
-            if symbol in parameters.plus_u:
-                fd.write("plus_u %s \n" % parameters.plus_u[symbol])
+            if species_symbol in parameters.plus_u:
+                control_file_descriptor.write(
+                    f"plus_u {parameters.plus_u[species_symbol]} \n")
 
 
-def format_tiers(line, targettier, foundtarget, do_uncomment):
-    if "meV" in line:
-        assert line[0] == "#"
-        if "tier" in line and "Further" not in line:
-            tier = line.split(" tier")[0]
-            tier = tier.split('"')[-1]
-            current_tier = translate_tier(tier)
-            if current_tier == targettier:
-                foundtarget = True
-            elif current_tier > targettier:
-                do_uncomment = False
-        else:
-            do_uncomment = False
-        outputline = line
-    elif do_uncomment and line[0] == "#":
-        outputline = line[1:]
-    elif not do_uncomment and line[0] != "#":
-        outputline = "#" + line
-    else:
-        outputline = line
-    return outputline, foundtarget, do_uncomment
+def parse_species_path(species_array, tier_array, species_dir):
+    """Parse the species files for each species according to the tier given.
+
+    Args:
+        species_array: An array of species/element symbols present in the unit
+            cell (e.g. ['C', 'H'].)
+        tier_array: An array of None/integer values which define which basis
+            set size to use for each species/element in the calcualtion.
+        species_dir: Directory containing FHI-aims species files.
+
+    Returns:
+        Dictionary containing species as keys and the basis set specification
+            for each species as text as the value for the key.
+    """
+    if len(species_array) != len(tier_array):
+        raise ValueError(
+            f"The species array length: {len(species_array)}, "
+            f"is not the same as the tier_array length: {len(tier_array)}")
+
+    species_basis_dict = {}
+
+    for symbol, tier in zip(species_array, tier_array):
+        path = species_dir / f"{atomic_numbers[symbol]:02}_{symbol}_default"
+        # Open the species file:
+        with open(path, "r", encoding="utf8") as species_file_handle:
+            # Read the species file into a string.
+            species_file_str = species_file_handle.read()
+            species_basis_dict[symbol] = manipulate_tiers(
+                species_file_str, tier)
+    return species_basis_dict
+
+
+def manipulate_tiers(species_string: str, tier: Union[None, int] = 1):
+    """Adds basis set functions based on the tier value.
+
+    This function takes in the species file as a string, it then searches
+    for relevant basis functions based on the tier value to include in a new
+    string that is returned.
+
+    Args:
+        species_string: species file (default) for a given numerical setting
+            (light, tight, really tight) given as a string.
+        tier: The basis set size. This will dictate which basis set functions
+            are included in the returned string.
+
+    Returns:
+        Basis set functions defined by the tier as a string.
+    """
+    if tier is None:  # Then we use the default species file untouched.
+        return species_string
+    tier_pattern = r"(#  \".* tier\" .*|# +Further.*)"
+    top, *tiers = re.split(tier_pattern, species_string)
+    tier_comments = tiers[::2]
+    tier_basis = tiers[1::2]
+    assert len(
+        tier_comments) == len(tier_basis), "Something wrong with splitting"
+    n_tiers = len(tier_comments)
+    assert tier <= n_tiers, f"Only {n_tiers} tiers available, you choose {tier}"
+    string_new = top
+    for i, (c, b) in enumerate(zip(tier_comments, tier_basis)):
+        b = re.sub(r"\n( *for_aux| *hydro| *ionic| *confined)", r"\n#\g<1>", b)
+        if i < tier:
+            b = re.sub(
+                r"\n#( *for_aux| *hydro| *ionic| *confined)", r"\n\g<1>", b)
+        string_new += c + b
+    return string_new
 
 
 # Read aims.out files
@@ -765,7 +839,8 @@ class AimsOutChunk:
         float
             The scalar value of the property
         """
-        line_start = self.reverse_search_for(scalar_property_to_line_key[property])
+        line_start = self.reverse_search_for(
+            scalar_property_to_line_key[property])
 
         if line_start == LINE_NOT_FOUND:
             return None
@@ -845,17 +920,20 @@ class AimsOutHeaderChunk(AimsOutChunk):
 
     @lazyproperty
     def initial_atoms(self):
-        """Create an atoms object for the initial geometry.in structure from the aims.out file"""
+        """Create an atoms object for the initial geometry.in structure
+        from the aims.out file"""
         line_start = self.reverse_search_for(["Atomic structure:"])
         if line_start == LINE_NOT_FOUND:
-            raise AimsParseError("No information about the structure in the chunk.")
+            raise AimsParseError(
+                "No information about the structure in the chunk.")
 
         line_start += 2
 
         cell = self.initial_cell
         positions = np.zeros((self.n_atoms, 3))
         symbols = [""] * self.n_atoms
-        for ll, line in enumerate(self.lines[line_start:line_start + self.n_atoms]):
+        for ll, line in enumerate(
+                self.lines[line_start:line_start + self.n_atoms]):
             inp = line.split()
             positions[ll, :] = [float(pos) for pos in inp[4:7]]
             symbols[ll] = inp[3]
@@ -871,7 +949,7 @@ class AimsOutHeaderChunk(AimsOutChunk):
 
     @lazyproperty
     def is_md(self):
-        """Determine if the calculation is a molecular dynamics calculation or not"""
+        """Determine if calculation is a molecular dynamics calculation"""
         return LINE_NOT_FOUND != self.reverse_search_for(
             ["Complete information for previous time-step:"]
         )
@@ -879,7 +957,8 @@ class AimsOutHeaderChunk(AimsOutChunk):
     @lazyproperty
     def is_relaxation(self):
         """Determine if the calculation is a geometry optimization or not"""
-        return LINE_NOT_FOUND != self.reverse_search_for(["Geometry relaxation:"])
+        return LINE_NOT_FOUND != self.reverse_search_for(
+            ["Geometry relaxation:"])
 
     @lazymethod
     def _parse_k_points(self):
@@ -928,12 +1007,13 @@ class AimsOutHeaderChunk(AimsOutChunk):
     @lazyproperty
     def n_bands(self):
         """The number of Kohn-Sham states for the chunk"""
-        line_start = self.reverse_search_for(scalar_property_to_line_key["n_bands"])
+        line_start = self.reverse_search_for(
+            scalar_property_to_line_key["n_bands"])
 
         if line_start == LINE_NOT_FOUND:
             raise AimsParseError(
-                "No information about the number of Kohn-Sham states in the header."
-            )
+                "No information about the number of Kohn-Sham states "
+                "in the header.")
 
         line = self.lines[line_start]
         if "| Number of Kohn-Sham states" in line:
@@ -944,7 +1024,8 @@ class AimsOutHeaderChunk(AimsOutChunk):
     @lazyproperty
     def n_electrons(self):
         """The number of electrons for the chunk"""
-        line_start = self.reverse_search_for(scalar_property_to_line_key["n_electrons"])
+        line_start = self.reverse_search_for(
+            scalar_property_to_line_key["n_electrons"])
 
         if line_start == LINE_NOT_FOUND:
             raise AimsParseError(
@@ -969,8 +1050,8 @@ class AimsOutHeaderChunk(AimsOutChunk):
         n_spins = self.parse_scalar("n_spins")
         if n_spins is None:
             raise AimsParseError(
-                "No information about the number of spin channels in the header."
-            )
+                "No information about the number of spin "
+                "channels in the header.")
         return int(n_spins)
 
     @lazyproperty
@@ -1033,11 +1114,14 @@ class AimsOutCalcChunk(AimsOutChunk):
 
     @lazymethod
     def _parse_atoms(self):
-        """Create an atoms object for the subsequent structures calculated in the aims.out file"""
+        """Create an atoms object for the subsequent structures
+        calculated in the aims.out file"""
         start_keys = [
-            "Atomic structure (and velocities) as used in the preceding time step",
+            "Atomic structure (and velocities) as used in the preceding "
+            "time step",
             "Updated atomic structure",
-            "Atomic structure that was used in the preceding time step of the wrapper",
+            "Atomic structure that was used in the preceding time step of "
+            "the wrapper",
         ]
         line_start = self.reverse_search_for(start_keys)
         if line_start == LINE_NOT_FOUND:
@@ -1046,8 +1130,8 @@ class AimsOutCalcChunk(AimsOutChunk):
         line_start += 1
 
         line_end = self.reverse_search_for(
-            ['Writing the current geometry to file "geometry.in.next_step"'], line_start
-        )
+            ['Writing the current geometry to file "geometry.in.next_step"'],
+            line_start)
         if line_end == LINE_NOT_FOUND:
             line_end = len(self.lines)
 
@@ -1059,9 +1143,8 @@ class AimsOutCalcChunk(AimsOutChunk):
                 cell.append([float(inp) for inp in line.split()[1:]])
             elif "atom   " in line:
                 line_split = line.split()
-                atoms.append(
-                    Atom(line_split[4], tuple([float(inp) for inp in line_split[1:4]]))
-                )
+                atoms.append(Atom(line_split[4], tuple(
+                    [float(inp) for inp in line_split[1:4]])))
             elif "velocity   " in line:
                 velocities.append([float(inp) for inp in line.split()[1:]])
 
@@ -1132,12 +1215,11 @@ class AimsOutCalcChunk(AimsOutChunk):
 
     @lazyproperty
     def is_metallic(self):
-        """Checks the outputfile to see if the chunk corresponds to a metallic system"""
+        """Checks the outputfile to see if the chunk corresponds
+        to a metallic system"""
         line_start = self.reverse_search_for(
-            [
-                "material is metallic within the approximate finite broadening function (occupation_type)"
-            ]
-        )
+            ["material is metallic within the approximate finite "
+             "broadening function (occupation_type)"])
         return line_start != LINE_NOT_FOUND
 
     @lazyproperty
@@ -1166,7 +1248,8 @@ class AimsOutCalcChunk(AimsOutChunk):
 
     @lazymethod
     def _parse_hirshfeld(self):
-        """Parse the Hirshfled charges volumes, and dipole moments from the ouput"""
+        """Parse the Hirshfled charges volumes, and dipole moments from the
+        ouput"""
         atoms = self._parse_atoms()
 
         line_start = self.reverse_search_for(
@@ -1190,7 +1273,8 @@ class AimsOutCalcChunk(AimsOutChunk):
             [float(self.lines[ind].split(":")[1]) for ind in line_inds]
         )
 
-        line_inds = self.search_for_all("Hirshfeld dipole vector", line_start, -1)
+        line_inds = self.search_for_all(
+            "Hirshfeld dipole vector", line_start, -1)
         hirshfeld_atomic_dipoles = np.array(
             [
                 [float(inp) for inp in self.lines[ind].split(":")[1].split()]
@@ -1214,7 +1298,11 @@ class AimsOutCalcChunk(AimsOutChunk):
 
     @lazymethod
     def _parse_eigenvalues(self):
-        """Parse the eigenvalues and occupancies of the system. If eigenvalue for a particular k-point is not present in the output file then set it to np.nan"""
+        """Parse the eigenvalues and occupancies of the system. If eigenvalue
+        for a particular k-point is not present in the output file
+        then set it to np.nan
+        """
+
         atoms = self._parse_atoms()
 
         line_start = self.reverse_search_for(["Writing Kohn-Sham eigenvalues."])
@@ -1226,7 +1314,8 @@ class AimsOutCalcChunk(AimsOutChunk):
         )
         line_end_2 = self.reverse_search_for(
             [
-                "What follows are estimated values for band gap, HOMO, LUMO, etc.",
+                "What follows are estimated values for band gap, "
+                "HOMO, LUMO, etc.",
                 "Current spin moment of the entire structure :",
             ],
             line_start,
@@ -1264,14 +1353,19 @@ class AimsOutCalcChunk(AimsOutChunk):
             spin_def = self.search_for_all("Spin-", line_start, line_end)
             assert len(spin_def) == len(occupation_block_start)
 
-            spins = [int("Spin-down eigenvalues:" in self.lines[ll]) for ll in spin_def]
+            spins = [int("Spin-down eigenvalues:" in self.lines[ll])
+                     for ll in spin_def]
 
-        for occ_start, kpt_ind, spin in zip(occupation_block_start, kpt_inds, spins):
+        for occ_start, kpt_ind, spin in zip(
+                occupation_block_start, kpt_inds, spins):
             for ll, line in enumerate(
                 self.lines[occ_start + 1:occ_start + self.n_bands + 1]
             ):
                 if "***" in line:
-                    warn_msg = f"The {ll+1}th eigenvalue for the {kpt_ind+1}th k-point and {spin}th channels could not be read (likely too large to be printed in the output file)"
+                    warn_msg = f"The {ll+1}th eigenvalue for the "
+                    "{kpt_ind+1}th k-point and {spin}th channels could "
+                    "not be read (likely too large to be printed "
+                    "in the output file)"
                     warnings.warn(warn_msg)
                     continue
                 split_line = line.split()
@@ -1281,7 +1375,8 @@ class AimsOutCalcChunk(AimsOutChunk):
 
     @lazyproperty
     def atoms(self):
-        """Convert AimsOutChunk to Atoms object and add all non-standard outputs to atoms.info"""
+        """Convert AimsOutChunk to Atoms object and add all non-standard
+outputs to atoms.info"""
         atoms = self._parse_atoms()
 
         atoms.calc = SinglePointDFTCalculator(
@@ -1317,7 +1412,9 @@ class AimsOutCalcChunk(AimsOutChunk):
             "occupancies": self.occupancies,
         }
 
-        return {key: value for key, value in results.items() if value is not None}
+        return {
+            key: value for key,
+            value in results.items() if value is not None}
 
     # Properties from the aims.out header
     @lazyproperty
@@ -1382,7 +1479,8 @@ class AimsOutCalcChunk(AimsOutChunk):
 
     @lazyproperty
     def n_iter(self):
-        """The number of SCF iterations needed to converge the SCF cycle for the chunk"""
+        """The number of SCF iterations needed to converge the SCF cycle for
+the chunk"""
         return self.parse_scalar("number_of_iterations")
 
     @lazyproperty
@@ -1443,8 +1541,9 @@ def get_header_chunk(fd):
 
     # Stop the header once the first SCF cycle begins
     while (
-        "Convergence:    q app. |  density  | eigen (eV) | Etot (eV)" not in line
-        and "Begin self-consistency iteration #" not in line
+        "Convergence:    q app. |  density  | eigen (eV) | Etot (eV)"
+            not in line
+            and "Begin self-consistency iteration #" not in line
     ):
         try:
             line = next(fd).strip()  # Raises StopIteration on empty file
@@ -1461,7 +1560,8 @@ def get_aims_out_chunks(fd, header_chunk):
     except StopIteration:
         return
 
-    # If the calculation is relaxation the updated structural information occurs before the re-initialization
+    # If the calculation is relaxation the updated structural information
+    # occurs before the re-initialization
     if header_chunk.is_relaxation:
         chunk_end_line = (
             "Geometry optimization: Attempting to predict improved coordinates."
@@ -1469,7 +1569,8 @@ def get_aims_out_chunks(fd, header_chunk):
     else:
         chunk_end_line = "Begin self-consistency loop: Re-initialization"
 
-    # If SCF is not converged then do not treat the next chunk_end_line as a new chunk until after the SCF is re-initialized
+    # If SCF is not converged then do not treat the next chunk_end_line as a
+    # new chunk until after the SCF is re-initialized
     ignore_chunk_end_line = False
     while True:
         try:
@@ -1480,11 +1581,11 @@ def get_aims_out_chunks(fd, header_chunk):
         lines = []
         while chunk_end_line not in line or ignore_chunk_end_line:
             lines.append(line)
-            # If SCF cycle not converged, don't end chunk on next Re-initialization
-            if (
-                "Self-consistency cycle not yet converged - restarting mixer to attempt better convergence."
-                in line
-            ):
+            # If SCF cycle not converged, don't end chunk on next
+            # Re-initialization
+            pattern = ("Self-consistency cycle not yet converged - "
+                       "restarting mixer to attempt better convergence.")
+            if pattern in line:
                 ignore_chunk_end_line = True
             elif "Begin self-consistency loop: Re-initialization" in line:
                 ignore_chunk_end_line = False
@@ -1535,7 +1636,8 @@ def read_aims_output(fd, index=-1, non_convergence_ok=False):
 
 @reader
 def read_aims_results(fd, index=-1, non_convergence_ok=False):
-    """Import FHI-aims output files and summarize all relevant information into a dictionary"""
+    """Import FHI-aims output files and summarize all relevant information
+into a dictionary"""
     header_chunk = get_header_chunk(fd)
     chunks = list(get_aims_out_chunks(fd, header_chunk))
     check_convergence(chunks, non_convergence_ok)
