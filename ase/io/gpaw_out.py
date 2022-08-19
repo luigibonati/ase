@@ -105,13 +105,17 @@ def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
             e = energy_contributions = None
         else:
             energy_contributions = {}
-            for line in lines[i + 2:i + 8]:
+            for line in lines[i + 2:i + 13]:
                 fields = line.split(':')
-                energy_contributions[fields[0]] = float(fields[1])
-            line = lines[i + 10]
-            assert (line.startswith('zero kelvin:') or
-                    line.startswith('extrapolated:'))
-            e = float(line.split()[-1])
+                if len(fields) == 2:
+                    name = fields[0]
+                    energy = float(fields[1])
+                    energy_contributions[name] = energy
+                    if name in ['zero kelvin', 'extrapolated']:
+                        e = energy
+                        break
+            else:  # no break
+                raise ValueError
 
         try:
             ii = index_pattern(lines, '(fixed )?fermi level(s)?:')

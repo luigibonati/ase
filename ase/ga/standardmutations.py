@@ -39,6 +39,7 @@ class RattleMutation(OffspringCreator):
     rng: Random number generator
         By default numpy.random.
     """
+
     def __init__(self, blmin, n_top, rattle_strength=0.8,
                  rattle_prop=0.4, test_dist_to_slab=True, use_tags=False,
                  verbose=False, rng=np.random):
@@ -133,6 +134,7 @@ class PermutationMutation(OffspringCreator):
     rng: Random number generator
         By default numpy.random.
     """
+
     def __init__(self, n_top, probability=0.33, test_dist_to_slab=True,
                  use_tags=False, blmin=None, rng=np.random, verbose=False):
         OffspringCreator.__init__(self, verbose, rng=rng)
@@ -238,6 +240,7 @@ class MirrorMutation(OffspringCreator):
     rng: Random number generator
         By default numpy.random.
     """
+
     def __init__(self, blmin, n_top, reflect=False, rng=np.random,
                  verbose=False):
         OffspringCreator.__init__(self, verbose, rng=rng)
@@ -372,13 +375,11 @@ class StrainMutation(OffspringCreator):
 
     For more information, see also:
 
-      * `Glass, Oganov, Hansen, Comp. Phys. Comm. 175 (2006) 713-720`__
+      * :doi:`Glass, Oganov, Hansen, Comp. Phys. Comm. 175 (2006) 713-720
+        <10.1016/j.cpc.2006.07.020>`
 
-        __ https://doi.org/10.1016/j.cpc.2006.07.020
-
-      * `Lonie, Zurek, Comp. Phys. Comm. 182 (2011) 372-387`__
-
-        __ https://doi.org/10.1016/j.cpc.2010.07.048
+      * :doi:`Lonie, Zurek, Comp. Phys. Comm. 182 (2011) 372-387
+        <10.1016/j.cpc.2010.07.048>`
 
     After initialization of the mutation, a scaling volume
     (to which each mutated structure is scaled before checking the
@@ -413,6 +414,7 @@ class StrainMutation(OffspringCreator):
     rng: Random number generator
         By default numpy.random.
     """
+
     def __init__(self, blmin, cellbounds=None, stddev=0.7,
                  number_of_variable_cell_vectors=3, use_tags=False,
                  rng=np.random, verbose=False):
@@ -556,9 +558,8 @@ class PermuStrainMutation(CombinationMutation):
 
     For more information, see also:
 
-      * `Lonie, Zurek, Comp. Phys. Comm. 182 (2011) 372-387`__
-
-        __ https://doi.org/10.1016/j.cpc.2010.07.048
+      * :doi:`Lonie, Zurek, Comp. Phys. Comm. 182 (2011) 372-387
+        <10.1016/j.cpc.2010.07.048>`
 
     Parameters:
 
@@ -568,6 +569,7 @@ class PermuStrainMutation(CombinationMutation):
     strainmutation: OffspringCreator instance
         A mutation that mutates by straining.
     """
+
     def __init__(self, permutationmutation, strainmutation, verbose=False):
         super(PermuStrainMutation, self).__init__(permutationmutation,
                                                   strainmutation,
@@ -617,6 +619,7 @@ class RotationalMutation(OffspringCreator):
     rng: Random number generator
         By default numpy.random.
     """
+
     def __init__(self, blmin, n_top=None, fraction=0.33, tags=None,
                  min_angle=1.57, test_dist_to_slab=True, rng=np.random,
                  verbose=False):
@@ -718,6 +721,7 @@ class RattleRotationalMutation(CombinationMutation):
     rotationalmutation: OffspringCreator instance
         A mutation that rotates moieties.
     """
+
     def __init__(self, rattlemutation, rotationalmutation, verbose=False):
         super(RattleRotationalMutation, self).__init__(rattlemutation,
                                                        rotationalmutation,

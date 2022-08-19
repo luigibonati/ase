@@ -7,7 +7,6 @@ sys.path.append('.')
 assert sys.version_info >= (3, 6)
 
 extensions = ['ext',
-              'images',
               'sphinx.ext.autodoc',
               'sphinx.ext.doctest',
               'sphinx.ext.extlinks',
@@ -15,8 +14,8 @@ extensions = ['ext',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
               'sphinx.ext.intersphinx']
-extlinks = {'doi': ('https://doi.org/%s', 'doi:'),
-            'arxiv': ('https://arxiv.org/abs/%s', 'arXiv:')}
+extlinks = {'doi': ('https://doi.org/%s', 'doi: %s'),
+            'arxiv': ('https://arxiv.org/abs/%s', 'arXiv: %s')}
 source_suffix = '.rst'
 master_doc = 'index'
 project = 'ASE'
@@ -29,8 +28,6 @@ autoclass_content = 'both'
 modindex_common_prefix = ['ase.']
 nitpick_ignore = [('envvar', 'VASP_PP_PATH'),
                   ('envvar', 'ASE_ABC_COMMAND'),
-                  ('envvar', 'FLEUR_INPGEN'),
-                  ('envvar', 'FLEUR'),
                   ('envvar', 'LAMMPS_COMMAND'),
                   ('envvar', 'ASE_NWCHEM_COMMAND'),
                   ('envvar', 'SIESTA_COMMAND'),
@@ -51,7 +48,7 @@ latex_documents = [
     ('index', 'ASE.tex', 'ASE', 'ASE-developers', 'howto', not True)]
 
 intersphinx_mapping = {'gpaw': ('https://wiki.fysik.dtu.dk/gpaw', None),
-                       'python': ('https://docs.python.org/3.9', None)}
+                       'python': ('https://docs.python.org/3.10', None)}
 
 # Avoid GUI windows during doctest:
 doctest_global_setup = """
@@ -62,4 +59,4 @@ visualize.view = lambda atoms: None
 Atoms.edit = lambda self: None
 """
 
-autodoc_mock_imports = ["kimpy"]
+autodoc_mock_imports = ['kimpy']

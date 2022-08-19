@@ -9,12 +9,13 @@ from ase.gui.utils import get_magmoms
 
 class ColorWindow:
     """A window for selecting how to color the atoms."""
+
     def __init__(self, gui):
         self.reset(gui)
 
     def reset(self, gui):
         """create a new color window"""
-        self.win = ui.Window(_('Colors'))
+        self.win = ui.Window(_('Colors'), wmtype='utility')
         self.gui = gui
         self.win.add(ui.Label(_('Choose how the atoms are colored:')))
         values = ['jmol', 'tag', 'force', 'velocity',

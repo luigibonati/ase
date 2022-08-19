@@ -380,7 +380,7 @@ F('dlp4', 'DL_POLY_4 CONFIG file', '1F',
 F('dlp-history', 'DL_POLY HISTORY file', '+F',
   module='dlp4', glob='HISTORY')
 F('dmol-arc', 'DMol3 arc file', '+S',
-  module='dmol')
+  module='dmol', ext='arc')
 F('dmol-car', 'DMol3 structure file', '1S',
   module='dmol', ext='car')
 F('dmol-incoor', 'DMol3 structure file', '1S',
@@ -478,7 +478,7 @@ F('turbomole-gradient', 'TURBOMOLE gradient file', '+F',
   module='turbomole', glob='gradient', magic=b'$grad')
 F('v-sim', 'V_Sim ascii file', '1F', ext='ascii')
 F('vasp', 'VASP POSCAR/CONTCAR', '1F',
-  ext='poscar', glob=['*POSCAR*', '*CONTCAR*'])
+  ext='poscar', glob=['*POSCAR*', '*CONTCAR*', '*CENTCAR*'])
 F('vasp-out', 'VASP OUTCAR file', '+F',
   module='vasp', glob='*OUTCAR*')
 F('vasp-xdatcar', 'VASP XDATCAR file', '+F',
@@ -498,7 +498,7 @@ F('xtd', 'Materials Studio file', '+F')
 #      The .xyz files are handled by the extxyz module by default.
 F('xyz', 'XYZ-file', '+F')
 
-#Register IO formats exposed through the ase.ioformats entry point
+# Register IO formats exposed through the ase.ioformats entry point
 register_external_io_formats('ase.ioformats')
 
 
@@ -579,7 +579,7 @@ def open_with_compression(filename: str, mode: str = 'r') -> IO:
         return gzip.open(filename, mode=mode)  # type: ignore
     elif compression == 'bz2':
         import bz2
-        return bz2.open(filename, mode=mode)
+        return bz2.open(filename, mode=mode)  # type: ignore
     elif compression == 'xz':
         import lzma
         return lzma.open(filename, mode)
@@ -606,7 +606,7 @@ def write(
         format: str = None,
         parallel: bool = True,
         append: bool = False,
-        **kwargs: dict
+        **kwargs: Any
 ) -> None:
     """Write Atoms object(s) to file.
 

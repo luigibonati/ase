@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 
 import ase
-from ase.utils import workdir, seterr
+from ase.utils import workdir, seterr, get_python_package_path_description
 from ase.test.factories import (CalculatorInputs,
                                 factory_classes,
                                 NoSuchCalculator,
@@ -84,7 +84,7 @@ def calculators_header(config):
             if hasattr(factory, 'importname'):
                 import importlib
                 module = importlib.import_module(factory.importname)
-                configinfo = str(module.__path__[0])  # type: ignore
+                configinfo = get_python_package_path_description(module)
             else:
                 configtokens = []
                 for varname, variable in vars(factory).items():
@@ -337,7 +337,10 @@ def arbitrarily_seed_rng(request):
     #
     # In order not to generate all the same random numbers in every test,
     # we seed according to a kind of hash:
-    ase_path = ase.__path__[0]
+    ase_path = get_python_package_path_description(ase, default='abort!')
+    if "abort!" in ase_path:
+        raise RuntimeError("Bad ase.__path__: {:}".format(
+            ase_path.replace('abort!', '')))
     abspath = Path(request.module.__file__)
     relpath = abspath.relative_to(ase_path)
     module_identifier = relpath.as_posix()  # Same on all platforms
