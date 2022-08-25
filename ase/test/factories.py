@@ -301,7 +301,7 @@ class ExcitingFactory:
 @factory('mopac')
 class MOPACFactory:
     def __init__(self, executable):
-        self.executable=executable
+        self.executable = executable
 
     def calc(self, **kwargs):
         from ase.calculators.mopac import MOPAC
