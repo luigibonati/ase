@@ -141,7 +141,8 @@ def ode12r(f, X0, h=None, verbose=1, fmax=1e-6, maxtol=1e3, steps=100,
 
             # We check the residuals again
             if Rn >= maxtol:
-                raise OptimizerConvergenceError(f"ODE12r: Residual {Rn} is too "
+                raise OptimizerConvergenceError(
+                    f"ODE12r: Residual {Rn} is too "
                     f"large at iteration number {nit}")
 
             if converged(Fn, X):
