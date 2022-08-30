@@ -35,3 +35,17 @@ def test_mopac(mopac_factory):
     print('AM1 homo lumo:', atoms.calc.get_homo_lumo_levels())
     calc = mopac_factory.calc(restart='h1')
     print('magmom:', calc.get_magnetic_moment())
+
+
+@pytest.mark.calculator_lite
+def test_mopac_forces_consistent(mopac_factory):
+    """Check MOPAC forces follow Newton's 3rd Law"""
+    from ase.build import molecule
+    from numpy.testing import assert_allclose
+
+    ch4 = molecule('CH4')
+    ch4.rattle()
+    ch4.calc = mopac_factory.calc(task='1SCF GRADIENTS', method='PM7')
+    forces = ch4.get_forces()
+
+    assert_allclose(forces.sum(axis=0), [0, 0, 0], atol=1e-7)
