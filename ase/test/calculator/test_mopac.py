@@ -1,3 +1,7 @@
+import pytest
+
+
+@pytest.mark.xfail(reason='Calculator binary not configured: factory imminent')
 def test_mopac():
     """Test H2 molecule atomization with MOPAC."""
     from ase.build import molecule
