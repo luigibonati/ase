@@ -1,17 +1,21 @@
 import pytest
+from numpy.testing import assert_allclose
+
+from ase.build import molecule
+from ase.calculators.mopac import MOPAC
+from ase.io.trajectory import Trajectory
+from ase.optimize import BFGS
 
 
 @pytest.mark.calculator
 def test_mopac(mopac_factory):
     """Test H2 molecule atomization with MOPAC."""
-    from ase.build import molecule
-    from ase.calculators.mopac import MOPAC
-    from ase.optimize import BFGS
     # Unrestricted Hartree-Fock; enable magmom calc
     h2 = molecule('H2',
                   calculator=mopac_factory.calc(label='h2',
                                                 task='1SCF GRADIENTS UHF'))
-    BFGS(h2, trajectory='h2.traj').run(fmax=0.01)
+    with Trajectory('h2.traj', mode='w') as traj:
+        BFGS(h2, trajectory=traj).run(fmax=0.01)
     e2 = h2.get_potential_energy()
     h1 = h2.copy()
     del h1[1]
@@ -40,8 +44,6 @@ def test_mopac(mopac_factory):
 @pytest.mark.calculator_lite
 def test_mopac_forces_consistent(mopac_factory):
     """Check MOPAC forces follow Newton's 3rd Law"""
-    from ase.build import molecule
-    from numpy.testing import assert_allclose
 
     ch4 = molecule('CH4')
     ch4.rattle()
