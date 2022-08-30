@@ -142,6 +142,8 @@ def sessionlevel_testing_path():
     # So we use the tempfile module for this temporary directory.
     import tempfile
     with tempfile.TemporaryDirectory(prefix='ase-test-workdir-') as tempdir:
+        tempdir = '/shared/jovcar' + tempdir
+        os.mkdir(tempdir)
         path = Path(tempdir)
         path.chmod(0o555)
         with workdir(path):
@@ -152,7 +154,7 @@ def sessionlevel_testing_path():
 @pytest.fixture(autouse=False)
 def testdir(tmp_path):
     # Pytest can on some systems provide a Path from pathlib2.  Normalize:
-    path = Path(str(tmp_path))
+    path = Path('/shared/jovcar' + str(tmp_path))
     with workdir(path, mkdir=True):
         yield tmp_path
     # We print the path so user can see where test failed, if it failed.

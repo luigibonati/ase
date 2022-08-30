@@ -96,14 +96,18 @@ class GaussianIRC(GaussianDynamics):
 
 class Gaussian(FileIOCalculator):
     implemented_properties = ['energy', 'forces', 'dipole']
-    command = 'GAUSSIAN < PREFIX.com > PREFIX.log'
+#    command = 'GAUSSIAN < PREFIX.com > PREFIX.log'
+
+    cwd = os.getcwd()
+    command = 'bash /storage/shared/jovcar/gaussian/scripting/run.sh ' + cwd + ' PREFIX ' + 'dog16'
+
     discard_results_on_any_change = True
 
     def __init__(self, *args, label='Gaussian', **kwargs):
         FileIOCalculator.__init__(self, *args, label=label, **kwargs)
 
     def calculate(self, *args, **kwargs):
-        gaussians = ('g16', 'g09', 'g03')
+        gaussians = ('g16', 'g09', 'g03', 'dog16', 'dog09')
         if 'GAUSSIAN' in self.command:
             for gau in gaussians:
                 if which(gau):

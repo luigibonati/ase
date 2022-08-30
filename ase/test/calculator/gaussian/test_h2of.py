@@ -1,3 +1,5 @@
+import os
+
 from ase import Atoms
 from ase.calculators.gaussian import Gaussian
 
@@ -59,6 +61,8 @@ def test_h2of(testdir):
     with open('def2-svp.gbs', 'w') as bfile:
         bfile.write(basis)
 
+    basis_path = os.path.abspath('def2-svp.gbs')
+
     atoms = Atoms('OH2F', positions=[(-1.853788, -0.071113, 0.000000),
                                      (-1.892204, 0.888768, 0.000000),
                                      (-0.888854, -0.232973, 0.000000),
@@ -69,7 +73,7 @@ def test_h2of(testdir):
         charge=-1.0,
         basis='gen',
         method='B3LYP',
-        basisfile='@def2-svp.gbs/N',
+        basisfile='@' + basis_path + '/N',
         label=label,
         ioplist=['6/80=1', '6/35=4000000'],
         density='current',
@@ -77,7 +81,7 @@ def test_h2of(testdir):
     )
     # FIXME: the "addsec" argument above is correctly incorporated into the
     # input file, but it doesn't appear to do anything to the calculation.
-    # What is it for? What is it suppsoed to do?
+    # What is it for? What is it supposed to do?
 
     atoms.calc = calc
     atoms.get_potential_energy()

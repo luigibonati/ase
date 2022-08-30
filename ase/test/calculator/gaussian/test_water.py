@@ -1,8 +1,10 @@
+from ase.calculators.gaussian import Gaussian
+from ase.atoms import Atoms
+from ase.optimize.lbfgs import LBFGS
+from ase.io import read
+
+
 def test_water():
-    from ase.calculators.gaussian import Gaussian
-    from ase.atoms import Atoms
-    from ase.optimize.lbfgs import LBFGS
-    from ase.io import read
 
     # First test to make sure Gaussian works
     calc = Gaussian(xc='pbe', chk='water.chk', label='water')
@@ -32,3 +34,4 @@ def test_water():
     assert abs(forces - forces2).max() < 1e-9
     assert abs(positions - positions2).max() < 1e-6
     assert abs(dist - dist2).max() < 1e-6
+
