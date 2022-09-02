@@ -53,7 +53,13 @@ Calculators:
   https://openkim.org/doc/repository/kim-content/ for an explanation of types
   of OpenKIM models).
 
+* :class:`ase.calculators.mopac.MOPAC` updated to support MOPAC_
+  version 22, which was released under GPL in May 2022.  When using
+  this MOPAC version or newer, the output "final heat of formation"
+  will be interpreted as potential/free energy for ASE purposes.
+
 .. _Plumed: https://www.plumed.org/
+.. _MOPAC: https://doi.org/10.5281/zenodo.6511958
 
 Version 3.22.1
 ==============
