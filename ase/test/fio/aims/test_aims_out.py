@@ -139,3 +139,18 @@ def test_parse_singlepoint(testdir):
     results = read_aims_results(parent / "testdata/aims/singlepoint.out")
     assert np.allclose(results["forces"], f0)
     assert np.abs(results["energy"] + 2.06302072675943e03) < 1e-15
+
+
+def test_parse_dfpt_dielectric(testdir):
+    outfile = parent / "testdata/aims/DFPT_dielectric.out"
+    atoms = read(outfile, format="aims-output")
+
+    diel = atoms.calc.results["dielectric_tensor"]
+
+    diel_0 = [
+        [7.18759265e00, -1.0000000e-15, 1.9000000e-14],
+        [-1.000000e-15, 7.18759284e00, 2.59000000e-13],
+        [2.0000000e-14, 2.58000000e-13, 7.1875928e00],
+    ]
+
+    assert np.allclose(diel, diel_0)
