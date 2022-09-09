@@ -153,7 +153,8 @@ class BFGSClimbFixInternals(BFGS):
         with self.optB(self.atoms, **self.optB_kwargs) as opt:
             opt.run(fmax)  # optimize with scaled fmax
             if self.converged() and fmax > self.optB_fmax:
-                opt.run(self.optB_fmax)  # (final) optimization with desired fmax
+                # (final) optimization with desired fmax
+                opt.run(self.optB_fmax)
 
     def get_scaled_fmax(self):
         """Return the adaptive 'fmax' based on the estimated distance to the

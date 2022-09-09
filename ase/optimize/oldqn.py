@@ -306,7 +306,8 @@ class GoodOldQuasiNewton(Optimizer):
                         (de, self.energy_estimate))
                     if abs(self.energy_estimate) > self.eps:
                         forces = abs((de / self.energy_estimate) - 1)
-                        self.write_log('Energy prediction factor ' + str(forces))
+                        self.write_log('Energy prediction factor '
+                                       + str(forces))
                         # fg = self.get_force_prediction(G)
                         self.radius *= scale_radius_energy(forces, self.radius)
 

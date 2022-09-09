@@ -27,9 +27,12 @@ def test_climb_fix_internals(scaling, testdir):
 
     # Define reaction coordinate via linear combination of bond lengths
     reaction_coord = [[0, 4, 1.0], [1, 4, 1.0]]  # 1 * bond_1 + 1 * bond_2
-    # Use current value `FixInternals.get_combo(atoms, reaction_coord)` as initial value
-    bondcombo = [None, reaction_coord]  # 'None' will convert to the current value
-    atoms.set_constraint([FixInternals(bondcombos=[bondcombo])] + atoms.constraints)
+    # Use current value `FixInternals.get_combo(atoms, reaction_coord)`
+    # as initial value
+
+    bondcombo = [None, reaction_coord]  # 'None' will converts to current value
+    atoms.set_constraint([FixInternals(bondcombos=[bondcombo])]
+                         + atoms.constraints)
 
     # Optimizer for transition state search along reaction coordinate
     opt = BFGSClimbFixInternals(atoms, climb_coordinate=reaction_coord,

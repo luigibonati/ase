@@ -844,7 +844,7 @@ class FixScaled(IndexedConstraint):
 class FixInternals(FixConstraint):
     """Constraint object for fixing multiple internal coordinates.
 
-    Allows fixing bonds, angles, dihedrals as well as linear combinations 
+    Allows fixing bonds, angles, dihedrals as well as linear combinations
     of bonds (bondcombos).
 
     Please provide angular units in degrees using `angles_deg` and
@@ -938,7 +938,8 @@ class FixInternals(FixConstraint):
             for datum in data:
                 targetvalue = datum[0]
                 if targetvalue is None:  # set to current value
-                    targetvalue = ConstrClass.get_value(atoms, datum[1], self.mic)
+                    targetvalue = ConstrClass.get_value(atoms, datum[1],
+                                                        self.mic)
                 constr = ConstrClass(targetvalue, datum[1], masses, cell, pbc)
                 self.constraints.append(constr)
         self.initialized = True
@@ -1179,8 +1180,8 @@ class FixInternals(FixConstraint):
             return FixInternals.get_bondcombo(atoms, indices, mic)
 
         def __repr__(self):
-            r = f'FixBondCombo({self.targetvalue}, {self.indices}, {self.coefs})'
-            return r
+            return (f'FixBondCombo({self.targetvalue}, {self.indices}, '
+                    '{self.coefs})')
 
     class FixBondLengthAlt(FixBondCombo):
         """Constraint subobject for fixing bond length within FixInternals.
