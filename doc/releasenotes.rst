@@ -61,6 +61,12 @@ Calculators:
 .. _Plumed: https://www.plumed.org/
 .. _MOPAC: https://doi.org/10.5281/zenodo.6511958
 
+Optimizers:
+
+* Add :class:`ase.optimize.climbfixinternals.ClimbFixInternals` class for
+  transition state search and optimization along internal reaction coordinates
+
+
 Version 3.22.1
 ==============
 
