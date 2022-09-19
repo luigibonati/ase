@@ -1,5 +1,4 @@
 import argparse
-import sys
 import textwrap
 from importlib import import_module
 
