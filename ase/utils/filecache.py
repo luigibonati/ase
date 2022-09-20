@@ -17,6 +17,20 @@ class Locked(Exception):
     pass
 
 
+# Note:
+#
+# The communicator handling is a complete hack.
+# We should entirely remove communicators from these objects.
+# (Actually: opencew() should not know about communicators.)
+# Then the caller is responsible for handling parallelism,
+# which makes life simpler for both the caller and us!
+#
+# Also, things like clean()/__del__ are not correctly implemented
+# in parallel.  The reason why it currently "works" is that
+# we don't call those functions from Vibrations etc., or they do so
+# only for rank==0.
+
+
 class JSONBackend:
     extension = '.json'
     DecodeError = json.decoder.JSONDecodeError
@@ -30,20 +44,21 @@ class JSONBackend:
         return read_json(fname, always_array=False)
 
     @staticmethod
-    def open_and_write(target, data):
-        write_json(target, data)
+    def open_and_write(target, data, comm):
+        if comm.rank == 0:
+            write_json(target, data)
 
     @staticmethod
     def write(fd, value):
         fd.write(encode_json(value).encode('utf-8'))
 
     @classmethod
-    def dump_cache(cls, path, dct):
-        return CombinedJSONCache.dump_cache(path, dct)
+    def dump_cache(cls, path, dct, comm):
+        return CombinedJSONCache.dump_cache(path, dct, comm)
 
     @classmethod
-    def create_multifile_cache(cls, directory):
-        return MultiFileJSONCache(directory)
+    def create_multifile_cache(cls, directory, comm):
+        return MultiFileJSONCache(directory, comm=comm)
 
 
 class ULMBackend:
@@ -65,21 +80,22 @@ class ULMBackend:
         return data
 
     @staticmethod
-    def open_and_write(target, data):
-        with ulmopen(target, 'w') as w:
-            w.write('cache', data)
+    def open_and_write(target, data, comm):
+        if comm.rank == 0:
+            with ulmopen(target, 'w') as w:
+                w.write('cache', data)
 
     @staticmethod
     def write(fd, value):
         fd.write('cache', value)
 
     @classmethod
-    def dump_cache(cls, path, dct):
-        return CombinedULMCache.dump_cache(path, dct)
+    def dump_cache(cls, path, dct, comm):
+        return CombinedULMCache.dump_cache(path, dct, comm)
 
     @classmethod
-    def create_multifile_cache(cls, directory):
-        return MultiFileULMCache(directory)
+    def create_multifile_cache(cls, directory, comm):
+        return MultiFileULMCache(directory, comm=comm)
 
 
 class CacheLock:
@@ -164,7 +180,8 @@ class _MultiFileCacheTemplate(MutableMapping):
             missing(key)
 
     def combine(self):
-        cache = self.backend.dump_cache(self.directory, dict(self))
+        cache = self.backend.dump_cache(self.directory, dict(self),
+                                        comm=self.comm)
         assert set(cache) == set(self)
         self.clear()
         assert len(self) == 0
@@ -212,18 +229,18 @@ class _CombinedCacheTemplate(Mapping):
         if target.exists():
             raise RuntimeError(f'Already exists: {target}')
         self.directory.mkdir(exist_ok=True, parents=True)
-        self.backend.open_and_write(target, self._dct)
+        self.backend.open_and_write(target, self._dct, comm=self.comm)
 
     @classmethod
-    def dump_cache(cls, path, dct):
-        cache = cls(path, dct)
+    def dump_cache(cls, path, dct, comm=world):
+        cache = cls(path, dct, comm=comm)
         cache._dump()
         return cache
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path, comm):
         # XXX Very hacky this one
-        cache = cls(path, {})
+        cache = cls(path, {}, comm=comm)
         dct = cls.backend.read(cache._filename)
         cache._dct.update(dct)
         return cache
@@ -236,7 +253,8 @@ class _CombinedCacheTemplate(Mapping):
         return self
 
     def split(self):
-        cache = self.backend.create_multifile_cache(self.directory)
+        cache = self.backend.create_multifile_cache(self.directory,
+                                                    comm=self.comm)
         assert len(cache) == 0
         cache.update(self)
         assert set(cache) == set(self)
@@ -260,8 +278,8 @@ class CombinedULMCache(_CombinedCacheTemplate):
     backend = ULMBackend()
 
 
-def get_json_cache(directory):
+def get_json_cache(directory, comm=world):
     try:
-        return CombinedJSONCache.load(directory)
+        return CombinedJSONCache.load(directory, comm=comm)
     except FileNotFoundError:
-        return MultiFileJSONCache(directory)
+        return MultiFileJSONCache(directory, comm=comm)
