@@ -6,7 +6,7 @@ from ase.io.jsonio import read_json, write_json
 from ase.io.jsonio import encode as encode_json
 from ase.io.ulm import ulmopen, NDArrayReader, Writer, InvalidULMFileError
 from ase.utils import opencew
-from ase.parallel import DummyMPI, world
+from ase.parallel import world
 
 
 def missing(key):
