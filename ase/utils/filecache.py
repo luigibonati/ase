@@ -6,6 +6,7 @@ from ase.io.jsonio import read_json, write_json
 from ase.io.jsonio import encode as encode_json
 from ase.io.ulm import ulmopen, NDArrayReader, Writer, InvalidULMFileError
 from ase.utils import opencew
+from ase.parallel import DummyMPI, world
 
 
 def missing(key):
@@ -21,8 +22,8 @@ class JSONBackend:
     DecodeError = json.decoder.JSONDecodeError
 
     @staticmethod
-    def open_for_writing(path):
-        return opencew(path)
+    def open_for_writing(path, comm):
+        return opencew(path, world=comm)
 
     @staticmethod
     def read(fname):
@@ -50,8 +51,8 @@ class ULMBackend:
     DecodeError = InvalidULMFileError
 
     @staticmethod
-    def open_for_writing(path):
-        fd = opencew(path)
+    def open_for_writing(path, comm):
+        fd = opencew(path, world=comm)
         if fd is not None:
             return Writer(fd, 'w', '')
 
@@ -99,8 +100,9 @@ class CacheLock:
 class _MultiFileCacheTemplate(MutableMapping):
     writable = True
 
-    def __init__(self, directory):
+    def __init__(self, directory, comm=world):
         self.directory = Path(directory)
+        self.comm = comm
 
     def _filename(self, key):
         return self.directory / (f'cache.{key}' + self.backend.extension)
@@ -121,9 +123,10 @@ class _MultiFileCacheTemplate(MutableMapping):
 
     @contextmanager
     def lock(self, key):
-        self.directory.mkdir(exist_ok=True, parents=True)
+        if self.comm.rank == 0:
+            self.directory.mkdir(exist_ok=True, parents=True)
         path = self._filename(key)
-        fd = self.backend.open_for_writing(path)
+        fd = self.backend.open_for_writing(path, self.comm)
         try:
             if fd is None:
                 yield None
@@ -183,9 +186,10 @@ class _MultiFileCacheTemplate(MutableMapping):
 class _CombinedCacheTemplate(Mapping):
     writable = False
 
-    def __init__(self, directory, dct):
+    def __init__(self, directory, dct, comm=world):
         self.directory = Path(directory)
         self._dct = dict(dct)
+        self.comm = comm
 
     def filecount(self):
         return int(self._filename.is_file())
