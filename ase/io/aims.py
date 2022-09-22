@@ -1238,7 +1238,7 @@ class AimsOutCalcChunk(AimsOutChunk):
 
     @lazyproperty
     def dipole(self):
-        """Parse the electric dipole moment from the aims.out file file."""
+        """Parse the electric dipole moment from the aims.out file."""
         line_start = self.reverse_search_for(["Total dipole moment [eAng]"])
         if line_start == LINE_NOT_FOUND:
             return
@@ -1258,6 +1258,15 @@ class AimsOutCalcChunk(AimsOutChunk):
 
         # make ndarray and return
         return np.array([np.fromstring(line, sep=' ') for line in lines])
+
+    @lazyproperty
+    def polarization(self):
+        """ Parse the polarization vector from the aims.out file"""
+        line_start = self.reverse_search_for(["| Cartesian Polarization"])
+        if line_start == LINE_NOT_FOUND:
+            return
+        line = self.lines[line_start]
+        return np.array([float(s) for s in line.split()[-3:]])
 
     @lazymethod
     def _parse_hirshfeld(self):
@@ -1402,6 +1411,7 @@ outputs to atoms.info"""
             magmom=self.magmom,
             dipole=self.dipole,
             dielectric_tensor=self.dielectric_tensor,
+            polarization=self.polarization,
         )
         return atoms
 
@@ -1425,6 +1435,7 @@ outputs to atoms.info"""
             "eigenvalues": self.eigenvalues,
             "occupancies": self.occupancies,
             "dielectric_tensor": self.dielectric_tensor,
+            "polarization": self.polarization,
         }
 
         return {
