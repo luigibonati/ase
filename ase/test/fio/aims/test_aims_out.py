@@ -154,3 +154,13 @@ def test_parse_dfpt_dielectric(testdir):
     ]
 
     assert np.allclose(diel, diel_0)
+
+def test_parse_polarization(testdir):
+    outfile = parent / "testdata/aims/polarization.out"
+    atoms = read(outfile, format="aims-output")
+
+    polar = atoms.calc.results["polarization"]
+
+    polar_0 = [-51.045557E-03, -51.045557E-03, -51.458008E-03]
+
+    assert np.allclose(polar, polar_0)
