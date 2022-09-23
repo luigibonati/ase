@@ -100,7 +100,7 @@ def set_high_bondorder_pairs(bondpairs, high_bondorder_pairs=None):
 
 
 class POVRAY:
-    # these new styles were an attempt to port the old styles o the correct gamma, many had or still have unphysical light properties inorder to acheive a certain look. 
+    # These new styles were an attempt to port the old styles o the correct gamma, many had or still have unphysical light properties inorder to acheive a certain look. 
     material_styles_dict = dict(
         simple='finish {phong 0.7 ambient 0.4 diffuse 0.55}',
         #In general, 'pale' doesn't conserve energy and can look strange in many cases.
@@ -121,7 +121,7 @@ class POVRAY:
                 'reflection 0.25 roughness 0.001}'),
     )
 
-    # these styles were made when assumed_gamma was 1.0 which gives poor color reproduction, the correct gamma is 2.2 for the sRGB standard. 
+    # These styles were made when assumed_gamma was 1.0 which gives poor color reproduction, the correct gamma is 2.2 for the sRGB standard. 
     material_styles_dict_old = dict(
         simple='finish {phong 0.7}',
         pale=('finish {ambient 0.5 diffuse 0.85 roughness 0.001 '
