@@ -557,7 +557,7 @@ bool_keys = [
     'oddonly',  # Undocumented HF parameter
     'evenonly',  # Undocumented HF parameter
     'lfockaedft',  # Undocumented HF parameter
-    'lsubsrot',  # Enable subspace rotation diagonalization
+    'lsubrot',  # Enable subspace rotation diagonalization
     'mixfirst',  # Mix before diagonalization
     'lvcader',  # Calculate derivs. w.r.t. VCA parameters
     'lcompat',  # Enable "full compatibility"
