@@ -100,7 +100,29 @@ def set_high_bondorder_pairs(bondpairs, high_bondorder_pairs=None):
 
 
 class POVRAY:
+    # these new styles were an attempt to port the old styles o the correct gamma, many had or still have unphysical light properties inorder to acheive a certain look. 
     material_styles_dict = dict(
+        simple='finish {phong 0.7 ambient 0.4 diffuse 0.55}',
+        #In general, 'pale' doesn't conserve energy and can look strange in many cases.
+        pale=('finish {ambient 0.9 diffuse 0.30 roughness 0.001 '
+              'specular 0.2 }'), 
+        intermediate=('finish {ambient 0.4 diffuse 0.6 specular 0.1 '
+                      'roughness 0.04}'),
+        vmd=('finish {ambient 0.2 diffuse 0.80 phong 0.25 phong_size 10.0 specular 0.2 roughness 0.1}'),
+        jmol=('finish {ambient 0.4 diffuse 0.6 specular 1 roughness 0.001 '
+              'metallic}'),
+        ase2=('finish {ambient 0.2 brilliance 3 diffuse 0.6 metallic '
+              'specular 0.7 roughness 0.04 reflection 0.15}'),
+        ase3=('finish {ambient 0.4 brilliance 2 diffuse 0.6 metallic '
+              'specular 1.0 roughness 0.001 reflection 0.0}'),
+        glass=('finish {ambient 0.4 diffuse 0.35 specular 1.0 '
+               'roughness 0.001}'),
+        glass2=('finish {ambient 0.3 diffuse 0.3 specular 1.0 '
+                'reflection 0.25 roughness 0.001}'),
+    )
+
+    # these styles were made when assumed_gamma was 1.0 which gives poor color reproduction, the correct gamma is 2.2 for the sRGB standard. 
+    material_styles_dict_old = dict(
         simple='finish {phong 0.7}',
         pale=('finish {ambient 0.5 diffuse 0.85 roughness 0.001 '
               'specular 0.200 }'),
@@ -119,6 +141,7 @@ class POVRAY:
         glass2=('finish {ambient 0.01 diffuse 0.3 specular 1.0 '
                 'reflection 0.25 roughness 0.001}'),
     )
+
 
     def __init__(self, cell, cell_vertices, positions, diameters, colors,
                  image_width, image_height, constraints=tuple(), isosurfaces=[],
@@ -503,10 +526,11 @@ Verbose=False
                     f'{trans}, {tex}) // #{a:n} \n'
         constraints = constraints.strip('\n')
 
-        pov = f"""#include "colors.inc"
+        pov = f"""#version 3.6;
+#include "colors.inc"
 #include "finish.inc"
 
-global_settings {{assumed_gamma 1 max_trace_level 6}}
+global_settings {{assumed_gamma 2.2 max_trace_level 6}}
 background {{{pc(self.background)}{' transmit 1.0' if self.transparent else ''}}}
 camera {{{self.camera_type}
   right -{self.image_width:.2f}*x up {self.image_height:.2f}*y
