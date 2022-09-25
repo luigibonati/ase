@@ -1238,13 +1238,35 @@ class AimsOutCalcChunk(AimsOutChunk):
 
     @lazyproperty
     def dipole(self):
-        """Parse the electric dipole moment from the aims.out file file."""
+        """Parse the electric dipole moment from the aims.out file."""
         line_start = self.reverse_search_for(["Total dipole moment [eAng]"])
         if line_start == LINE_NOT_FOUND:
             return
 
         line = self.lines[line_start]
         return np.array([float(inp) for inp in line.split()[6:9]])
+
+    @lazyproperty
+    def dielectric_tensor(self):
+        """Parse the dielectric tensor from the aims.out file"""
+        line_start = self.reverse_search_for(["PARSE DFPT_dielectric_tensor"])
+        if line_start == LINE_NOT_FOUND:
+            return
+
+        # we should find the tensor in the next three lines:
+        lines = self.lines[line_start + 1:line_start + 4]
+
+        # make ndarray and return
+        return np.array([np.fromstring(line, sep=' ') for line in lines])
+
+    @lazyproperty
+    def polarization(self):
+        """ Parse the polarization vector from the aims.out file"""
+        line_start = self.reverse_search_for(["| Cartesian Polarization"])
+        if line_start == LINE_NOT_FOUND:
+            return
+        line = self.lines[line_start]
+        return np.array([float(s) for s in line.split()[-3:]])
 
     @lazymethod
     def _parse_hirshfeld(self):
@@ -1388,6 +1410,8 @@ outputs to atoms.info"""
             stresses=self.stresses,
             magmom=self.magmom,
             dipole=self.dipole,
+            dielectric_tensor=self.dielectric_tensor,
+            polarization=self.polarization,
         )
         return atoms
 
@@ -1410,6 +1434,8 @@ outputs to atoms.info"""
             "hirshfeld_atomic_dipoles": self.hirshfeld_atomic_dipoles,
             "eigenvalues": self.eigenvalues,
             "occupancies": self.occupancies,
+            "dielectric_tensor": self.dielectric_tensor,
+            "polarization": self.polarization,
         }
 
         return {
@@ -1626,7 +1652,7 @@ def read_aims_output(fd, index=-1, non_convergence_ok=False):
     chunks = list(get_aims_out_chunks(fd, header_chunk))
     check_convergence(chunks, non_convergence_ok)
 
-    # Relaxations have an additional fotter chunk due to how it is split
+    # Relaxations have an additional footer chunk due to how it is split
     if header_chunk.is_relaxation:
         images = [chunk.atoms for chunk in chunks[:-1]]
     else:

@@ -479,7 +479,7 @@ F('turbomole-gradient', 'TURBOMOLE gradient file', '+F',
   module='turbomole', glob='gradient', magic=b'$grad')
 F('v-sim', 'V_Sim ascii file', '1F', ext='ascii')
 F('vasp', 'VASP POSCAR/CONTCAR', '1F',
-  ext='poscar', glob=['*POSCAR*', '*CONTCAR*'])
+  ext='poscar', glob=['*POSCAR*', '*CONTCAR*', '*CENTCAR*'])
 F('vasp-out', 'VASP OUTCAR file', '+F',
   module='vasp', glob='*OUTCAR*')
 F('vasp-xdatcar', 'VASP XDATCAR file', '+F',
