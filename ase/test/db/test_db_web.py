@@ -66,7 +66,8 @@ def test_add_columns(database):
 
 
 def test_favicon(client):
-    assert client.get('/favicon.ico').status_code in (204, 308)  # no content or redirect
+    # no content or redirect
+    assert client.get('/favicon.ico').status_code in (204, 308)
     assert client.get('/favicon.ico/').status_code == 204  # no content
 
 
