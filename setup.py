@@ -23,7 +23,7 @@ install_requires = [
     'numpy>=1.17.0',  # July 2019
     'scipy>=1.3.1',  # August 2019
     'matplotlib>=3.1.0',  # May 2019
-    'excitingtools>=1.1.0',  # September 2022
+    'excitingtools>=1.0.0',  # September 2022
     'importlib-metadata>=0.12;python_version<"3.8"'
 ]
 
