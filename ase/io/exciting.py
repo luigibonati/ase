@@ -55,7 +55,7 @@ def write_input_xml_file(
 
     structure = ExcitingStructure(atoms, species_path=species_path)
 
-    input_xml: ET.ElementTree = exciting_input_xml(
+    input_xml = exciting_input_xml(
         structure=structure, title=title, groundstate=ground_state)
     input_xml = ET.ElementTree(input_xml)
     with open (file_name, "wb") as file_handle:

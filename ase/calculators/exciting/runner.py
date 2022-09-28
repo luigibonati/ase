@@ -24,10 +24,10 @@ class SimpleBinaryRunner:
     path_type = Union[str, Path]
 
     def __init__(self,
-                 binary: str,
+                 binary,
                  run_cmd: Union[List[str], str],
                  omp_num_threads: int,
-                 time_out: int,
+                 time_out: Optional[int],
                  directory: Optional[path_type] = './',
                  args=None) -> None:
         """Initialise class.
@@ -49,7 +49,7 @@ class SimpleBinaryRunner:
             args = ['']
         self.binary = binary
         self.directory = directory
-        self.run_cmd = run_cmd
+        self.run_cmd = list(run_cmd)
         self.omp_num_threads = omp_num_threads
         self.time_out = time_out
         self.args = args
@@ -63,7 +63,7 @@ class SimpleBinaryRunner:
                 raise FileNotFoundError(
                     f"{binary} does not exist and cannot be found in the $PATH")
 
-        if not Path(directory).is_dir():
+        if directory is not None and not Path(directory).is_dir():
             raise OSError(f"Run directory does not exist: {directory}")
 
         if isinstance(run_cmd, str):
@@ -78,7 +78,7 @@ class SimpleBinaryRunner:
         if omp_num_threads <= 0:
             raise ValueError("Number of OMP threads must be > 0")
 
-        if time_out <= 0:
+        if time_out is not None and time_out <= 0:
             raise ValueError("time_out must be a positive integer")
 
     def _check_mpi_processes(self):

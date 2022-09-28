@@ -193,29 +193,30 @@ def structure_xml_to_ase_atoms(fileobj) -> ase.Atoms:
     # Parse file into element tree
     doc = ET.parse(fileobj)
     root = doc.getroot()
-    speciesnodes = root.find('structure').iter('species')
+    species_nodes = root.find('structure').iter('species')  # type: ignore
 
     symbols = []
     positions = []
     basevects = []
 
     # Collect data from tree
-    for speciesnode in speciesnodes:
-        symbol = speciesnode.get('speciesfile').split('.')[0]
-        natoms = speciesnode.iter('atom')
+    for species_node in species_nodes:
+        symbol = species_node.get('speciesfile').split('.')[0]  # type: ignore
+        natoms = species_node.iter('atom')
         for atom in natoms:
-            x_pos, y_pos, z_pos = atom.get('coord').split()
+            x_pos, y_pos, z_pos = atom.get('coord').split()  # type: ignore
             positions.append([float(x_pos), float(y_pos), float(z_pos)])
             symbols.append(symbol)
 
     # scale unit cell according to scaling attributes
-    if 'scale' in doc.find('structure/crystal').attrib:
-        scale = float(str(doc.find('structure/crystal').attrib['scale']))
+    if 'scale' in doc.find('structure/crystal').attrib:  # type: ignore
+        scale = float(str(
+            doc.find('structure/crystal').attrib['scale']))  # type: ignore
     else:
         scale = 1
 
-    if 'stretch' in doc.find('structure/crystal').attrib:
-        a_stretch, b_stretch, c_stretch = doc.find(
+    if 'stretch' in doc.find('structure/crystal').attrib:  # type: ignore
+        a_stretch, b_stretch, c_stretch = doc.find(  # type: ignore
             'structure/crystal').attrib['stretch'].text.split()
         stretch = np.array(
             [float(a_stretch), float(b_stretch), float(c_stretch)])
@@ -224,16 +225,16 @@ def structure_xml_to_ase_atoms(fileobj) -> ase.Atoms:
 
     basevectsn = root.findall('structure/crystal/basevect')
     for basevect in basevectsn:
-        x_mag, y_mag, z_mag = basevect.text.split()
+        x_mag, y_mag, z_mag = basevect.text.split()  # type: ignore
         basevects.append(np.array([float(x_mag) * Bohr * stretch[0],
                                    float(y_mag) * Bohr * stretch[1],
                                    float(z_mag) * Bohr * stretch[2]
-                                   ]) * scale)
+                                   ]) * scale)  # type: ignore
     atoms = ase.Atoms(symbols=symbols, cell=basevects)
 
     atoms.set_scaled_positions(positions)
-    if 'molecule' in root.find('structure').attrib.keys():
-        if root.find('structure').attrib['molecule']:
+    if 'molecule' in root.find('structure').attrib.keys():  # type: ignore
+        if root.find('structure').attrib['molecule']:  # type: ignore
             atoms.set_pbc(False)
     else:
         atoms.set_pbc(True)
