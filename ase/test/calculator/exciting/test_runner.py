@@ -1,15 +1,17 @@
+"""Test runner classes to run exciting simulations using subproces."""
 import pytest
 
 from ase.calculators.exciting.runner import SimpleBinaryRunner, ExcitingRunner
 
 
 def test_class_simple_binary_runner(tmpdir):
-    """
-    Test SimpleBinaryRunner
-    """
+    """Test SimpleBinaryRunner."""
     binary = tmpdir / 'binary.exe'
     binary.write("Arbitrary text such that file exists")
-    runner = SimpleBinaryRunner(binary, ['mpirun', '-np', '2'], 1, 600, directory=tmpdir, args=['input.txt'])
+    runner = SimpleBinaryRunner(
+        binary=binary, run_cmd=['mpirun', '-np', '2'], omp_num_threads=1,
+        time_out=600, directory=tmpdir,
+        args=['input.txt'])
 
     # Attributes
     assert runner.binary == binary
@@ -25,11 +27,12 @@ def test_class_simple_binary_runner(tmpdir):
 
 
 @pytest.mark.parametrize(
-    "binary_name, expected_run_cmd, expected_omp_num_threads, expected_directory, expected_timeout, expected_args",
-    [("exciting_serial",  ['./'],                 1, './', 600, ['']),
-     ("exciting_purempi", ['mpirun', '-np', '2'], 1, './', 600, ['']),
-     ("exciting_smp",     ['./'],                 4, './', 600, ['']),
-     ("exciting_mpismp",  ['mpirun', '-np', '2'], 2, './', 600, [''])
+    ("binary_name, expected_run_cmd, expected_omp_num_threads,"
+     "expected_directory, expected_timeout, expected_args"),
+        [("exciting_serial",  ['./'],                 1, './', 600, ['']),
+        ("exciting_purempi", ['mpirun', '-np', '2'], 1, './', 600, ['']),
+        ("exciting_smp",     ['./'],                 4, './', 600, ['']),
+        ("exciting_mpismp",  ['mpirun', '-np', '2'], 2, './', 600, [''])
      ])
 def test_class_exciting_runner_binary_defaults(tmpdir, binary_name,
                                                expected_run_cmd,
@@ -37,9 +40,7 @@ def test_class_exciting_runner_binary_defaults(tmpdir, binary_name,
                                                expected_directory,
                                                expected_timeout,
                                                expected_args):
-    """
-    Valid binary names and corresponding default attributes
-    """
+    """Valid binary names and corresponding default attributes."""
     binary = tmpdir / binary_name
     binary.write("Arbitrary text such that file exists")
     runner = ExcitingRunner(binary)
@@ -54,24 +55,22 @@ def test_class_exciting_runner_binary_defaults(tmpdir, binary_name,
 
 
 def test_class_exciting_runner_no_defaults_with_binary_alias(tmpdir):
-    """
-    Binary alias does not have specified default run settings
-    """
+    """Binary alias does not have specified default run settings."""
     binary = tmpdir / "exciting"
     binary.write("Arbitrary text such that file exists")
 
     with pytest.raises(KeyError) as error_info:
-        runner = ExcitingRunner(binary)
-    assert error_info.value.args[0] == "No default settings exist for this binary choice: exciting"
+        ExcitingRunner(binary)
+    assert error_info.value.args[0] == (
+        "No default settings exist for this binary choice: exciting")
 
 
 def test_class_exciting_runner_erroneous_binary_name(tmpdir):
-    """
-    Binary name is not listed class `binaries` attribute
-    """
+    """Binary name is not listed class `binaries` attribute."""
     binary = tmpdir / "exciting_erroneous_name"
     binary.write("Arbitrary text such that file exists")
 
     with pytest.raises(ValueError) as error_info:
-        runner = ExcitingRunner(binary)
-    assert error_info.value.args[0] == "binary name is not a valid choice: exciting_erroneous_name"
+        ExcitingRunner(binary)
+    assert error_info.value.args[0] == (
+        "binary name is not a valid choice: exciting_erroneous_name")

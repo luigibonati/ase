@@ -1,5 +1,4 @@
-"""Binary runner and results class.
-"""
+"""Binary runner and results class."""
 from typing import List, Optional, Union
 from pathlib import Path
 import os
@@ -9,8 +8,7 @@ import time
 
 
 class SubprocessRunResults:
-    """Results returned from subprocess.run().
-    """
+    """Results returned from subprocess.run()."""
     def __init__(
             self, stdout, stderr, return_code: int,
             process_time: Optional[float] = None):
@@ -22,8 +20,7 @@ class SubprocessRunResults:
 
 
 class SimpleBinaryRunner:
-    """Class to execute a subprocess.
-    """
+    """Class to execute a subprocess."""
     path_type = Union[str, Path]
 
     def __init__(self,
@@ -90,18 +87,19 @@ class SimpleBinaryRunner:
         try:
             i = self.run_cmd.index('-np')
             mpi_processes = eval(self.run_cmd[i + 1])
-            if type(mpi_processes) != int:
+            if not isinstance(mpi_processes, int):
                 raise ValueError("Number of MPI processes should be an int")
             if mpi_processes <= 0:
                 raise ValueError("Number of MPI processes must be > 0")
         # Serial and OMP-only
         except ValueError:
-            # .index will return ValueError if 'np' not found. This corresponds to serial and omp calculations.
+            # .index will return ValueError if 'np' not found. This corresponds
+            # to serial and omp calculations.
             pass
 
-    def _compose_execution_list(self) -> list:
+    def compose_execution_list(self) -> list:
         """Generate a complete list of strings to pass to subprocess.run().
-        
+
         This is done to execute the calculation.
 
         For example, given:
@@ -115,9 +113,8 @@ class SimpleBinaryRunner:
             return self.run_cmd + [self.binary] + self.args
 
     def run(self) -> SubprocessRunResults:
-        """Run a binary.
-        """
-        execution_list = self._compose_execution_list()
+        """Run a binary."""
+        execution_list = self.compose_execution_list()
         my_env = {**os.environ, "OMP_NUM_THREADS": str(self.omp_num_threads)}
 
         time_start: float = time.time()
@@ -140,9 +137,7 @@ class SimpleBinaryRunner:
 
 
 class ExcitingRunner(SimpleBinaryRunner):
-    """
-    Execute an exciting calculation using a simple binary runner.
-    """
+    """Execute an exciting calculation using a simple binary runner."""
 
     # Exciting has one input file
     input_name = 'input.xml'
@@ -175,7 +170,7 @@ class ExcitingRunner(SimpleBinaryRunner):
             args = ['']
         binary_name = os.path.basename(binary)
 
-        if not (binary_name in self.binaries):
+        if not binary_name in self.binaries:
             raise ValueError(
                 "binary name is not a valid choice: " + binary_name)
 

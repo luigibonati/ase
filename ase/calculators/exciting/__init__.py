@@ -1,3 +1,3 @@
-from .exciting import ExcitingGroundState
+from .exciting import ExcitingGroundStateCalculator
 
-__all__ = ["ExcitingGroundState"]
+__all__ = ["ExcitingGroundStateCalculator"]

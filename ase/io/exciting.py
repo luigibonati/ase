@@ -10,6 +10,9 @@ These functions are primarily called by the exciting caculator in
 ase/calculators/exciting/exciting.py.
 
 See the correpsonding test file in ase/test/io/test_exciting.py.
+
+Plan is to add parsing of eigenvalues in the next iteration using
+excitingtools.exciting_dict_parsers.groundstate_parser.parse_eigval
 """
 from pathlib import Path
 from typing import Dict
@@ -24,12 +27,8 @@ try:
     from excitingtools.input.ground_state import ExcitingGroundStateInput
     from excitingtools.input.structure import ExcitingStructure
 except ModuleNotFoundError:
-    message = "excitingtools must be installed with pip install excitingtools."
-    raise ModuleNotFoundError(message)
-
-
-# TODO(Dan): Add parsing of eigenvalues in next iteration using 
-# excitingtools.exciting_dict_parsers.groundstate_parser.parse_eigval
+    MESSAGE = "excitingtools must be installed with pip install excitingtools."
+    raise ModuleNotFoundError(MESSAGE)
 
 
 def parse_output(info_out_file_path):
@@ -43,7 +42,7 @@ def write_input_xml_file(
         file_name, atoms: ase.Atoms, input_parameters: Dict,
         species_path, title = None):
     """Write input xml file for exciting calculation.
-    
+
     Args:
         file_name: where to save the input xml file.
         atoms: ASE Atoms object.
@@ -59,5 +58,5 @@ def write_input_xml_file(
     input_xml: ET.ElementTree = exciting_input_xml(
         structure=structure, title=title, groundstate=ground_state)
     input_xml = ET.ElementTree(input_xml)
-    with open (file_name, "wb") as fd:
-        input_xml.write(fd)
+    with open (file_name, "wb") as file_handle:
+        input_xml.write(file_handle)
