@@ -46,15 +46,17 @@ def get_atomtypes(fname):
             if 'TITEL' in line:
                 atomtypes.append(line.split()[3].split('_')[0].split('.')[0])
             elif 'POTCAR:' in line:
-                atomtypes_alt.append(line.split()[2].split('_')[0].split('.')[0])
+                atomtypes_alt.append(
+                    line.split()[2].split('_')[0].split('.')[0])
 
     if len(atomtypes) == 0 and len(atomtypes_alt) > 0:
         # old VASP doesn't echo TITEL, but all versions print out species lines
         # preceded by "POTCAR:", twice
         if len(atomtypes_alt) % 2 != 0:
-            raise ParseError(f'Tried to get atom types from {len(atomtypes_alt)} "POTCAR": '
-                              'lines in OUTCAR, but expected an even number')
-        atomtypes = atomtypes_alt[0:len(atomtypes_alt)//2]
+            raise ParseError(
+                f'Tried to get atom types from {len(atomtypes_alt)} "POTCAR": '
+                'lines in OUTCAR, but expected an even number')
+        atomtypes = atomtypes_alt[0:len(atomtypes_alt) // 2]
 
     return atomtypes
 
@@ -137,7 +139,7 @@ def read_vasp(filename='CONTCAR'):
 
     # Now the lattice vectors
     a = []
-    for ii in range(3):
+    for _ in range(3):
         s = fd.readline().split()
         floatvect = float(s[0]), float(s[1]), float(s[2])
         a.append(floatvect)
@@ -285,7 +287,7 @@ def read_vasp_xdatcar(filename='XDATCAR', index=-1):
        objects retrieved from the XDATCAR will not have constraints set.
     """
     fd = filename  # @reader decorator ensures this is a file descriptor
-    images = list()
+    images = []
 
     cell = np.eye(3)
     atomic_formula = str()
@@ -562,17 +564,39 @@ def read_vasp_xml(filename='vasprun.xml', index=-1):
         if len(kpoints) == 0:
             kpoints = None
 
+        # DFPT properties
+        # dielectric tensor
+        dielectric_tensor = None
+        sblocks = step.find('varray[@name="dielectric_dft"]')
+        if sblocks is not None:
+            dielectric_tensor = np.zeros((3, 3), dtype=float)
+            for ii, vector in enumerate(sblocks):
+                dielectric_tensor[ii] = np.fromstring(vector.text, sep=' ')
+
+        # Born effective charges
+        born_charges = None
+        fblocks = step.find('array[@name="born_charges"]')
+        if fblocks is not None:
+            born_charges = np.zeros((natoms, 3, 3), dtype=float)
+            for ii, block in enumerate(fblocks[1:]):  # 1. element = dimension
+                for jj, vector in enumerate(block):
+                    born_charges[ii, jj] = np.fromstring(vector.text, sep=' ')
+
         atoms = atoms_init.copy()
         atoms.set_cell(cell)
         atoms.set_scaled_positions(scpos)
-        atoms.calc = SinglePointDFTCalculator(atoms,
-                                              energy=energy,
-                                              forces=forces,
-                                              stress=stress,
-                                              free_energy=free_energy,
-                                              ibzkpts=ibz_kpts,
-                                              efermi=efermi,
-                                              dipole=dipole)
+        atoms.calc = SinglePointDFTCalculator(
+            atoms,
+            energy=energy,
+            forces=forces,
+            stress=stress,
+            free_energy=free_energy,
+            ibzkpts=ibz_kpts,
+            efermi=efermi,
+            dipole=dipole,
+            dielectric_tensor=dielectric_tensor,
+            born_effective_charges=born_charges
+        )
         atoms.calc.name = 'vasp'
         atoms.calc.kpts = kpoints
         atoms.calc.parameters = parameters

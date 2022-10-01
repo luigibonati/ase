@@ -478,7 +478,7 @@ F('turbomole-gradient', 'TURBOMOLE gradient file', '+F',
   module='turbomole', glob='gradient', magic=b'$grad')
 F('v-sim', 'V_Sim ascii file', '1F', ext='ascii')
 F('vasp', 'VASP POSCAR/CONTCAR', '1F',
-  ext='poscar', glob=['*POSCAR*', '*CONTCAR*'])
+  ext='poscar', glob=['*POSCAR*', '*CONTCAR*', '*CENTCAR*'])
 F('vasp-out', 'VASP OUTCAR file', '+F',
   module='vasp', glob='*OUTCAR*')
 F('vasp-xdatcar', 'VASP XDATCAR file', '+F',
@@ -498,7 +498,7 @@ F('xtd', 'Materials Studio file', '+F')
 #      The .xyz files are handled by the extxyz module by default.
 F('xyz', 'XYZ-file', '+F')
 
-#Register IO formats exposed through the ase.ioformats entry point
+# Register IO formats exposed through the ase.ioformats entry point
 register_external_io_formats('ase.ioformats')
 
 
@@ -606,7 +606,7 @@ def write(
         format: str = None,
         parallel: bool = True,
         append: bool = False,
-        **kwargs: dict
+        **kwargs: Any
 ) -> None:
     """Write Atoms object(s) to file.
 

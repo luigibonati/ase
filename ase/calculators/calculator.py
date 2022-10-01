@@ -14,6 +14,8 @@ from ase.outputs import Properties, all_outputs
 from ase.utils import jsonable
 from ase.calculators.abc import GetPropertiesMixin
 
+from .names import names
+
 
 class CalculatorError(RuntimeError):
     """Base class of error types related to ASE calculators."""
@@ -118,21 +120,12 @@ def compare_atoms(atoms1, atoms2, tol=1e-15, excluded_properties=None):
 
 
 all_properties = ['energy', 'forces', 'stress', 'stresses', 'dipole',
-                  'charges', 'magmom', 'magmoms', 'free_energy', 'energies']
+                  'charges', 'magmom', 'magmoms', 'free_energy', 'energies',
+                  'dielectric_tensor', 'born_effective_charges', 'polarization']
 
 
 all_changes = ['positions', 'numbers', 'cell', 'pbc',
                'initial_charges', 'initial_magmoms']
-
-
-# Recognized names of calculators sorted alphabetically:
-names = ['abinit', 'ace', 'aims', 'amber', 'asap', 'castep', 'cp2k',
-         'crystal', 'demon', 'demonnano', 'dftb', 'dftd3', 'dmol', 'eam',
-         'elk', 'emt', 'espresso', 'exciting', 'ff', 'fleur', 'gamess_us',
-         'gaussian', 'gpaw', 'gromacs', 'gulp', 'hotbit', 'kim',
-         'lammpslib', 'lammpsrun', 'lj', 'mopac', 'morse', 'nwchem',
-         'octopus', 'onetep', 'openmx', 'orca', 'plumed', 'psi4', 'qchem', 'siesta',
-         'tip3p', 'tip4p', 'turbomole', 'vasp']
 
 
 special = {'cp2k': 'CP2K',
@@ -144,7 +137,6 @@ special = {'cp2k': 'CP2K',
            'emt': 'EMT',
            'crystal': 'CRYSTAL',
            'ff': 'ForceField',
-           'fleur': 'FLEUR',
            'gamess_us': 'GAMESSUS',
            'gulp': 'GULP',
            'kim': 'KIM',
@@ -621,7 +613,8 @@ class Calculator(BaseCalculator):
         self.prefix = None
         if label is not None:
             if self.directory == '.' and '/' in label:
-                # We specified directory in label, and nothing in the diretory key
+                # We specified directory in label, and nothing in the diretory
+                # key
                 self.label = label
             elif '/' not in label:
                 # We specified our directory in the directory keyword

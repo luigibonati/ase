@@ -183,7 +183,8 @@ def test_internals():
     hff = HarmonicForceField(**parameters)
     calc = HarmonicCalculator(hff)
     atoms = setup_water(calc)       # 'variable_orientation' not set to True!
-    run_optimize(atoms)             # but water has rotational degrees of freedom
+    # but water has rotational degrees of freedom
+    run_optimize(atoms)
     with pytest.raises(AssertionError):  # hence forces were incorrect
         assert_water_is_relaxed(atoms)   # original configuration not recovered
 
@@ -260,7 +261,7 @@ def test_thermodynamic_integration():
                 e0, e1 = calc_linearCombi.get_energy_contributions(atoms)
                 ediffs[lamb].append(float(e1) - float(e0))
             ediffs[lamb] = np.mean(ediffs[lamb])
-    dA = np.trapz([ediffs[lamb] for lamb in lambs])  # anharmonic correction
+    dA = np.trapz([ediffs[lamb] for lamb in lambs], x=lambs)  # anharm. corr.
     assert -0.005 < dA < 0.005  # the MD run is to short for convergence
     if dA == 0.0:
         raise ValueError('there is most likely something wrong, but it could '
