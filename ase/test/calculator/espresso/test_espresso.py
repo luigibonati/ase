@@ -22,6 +22,12 @@ def test_version(version, txt):
     assert EspressoProfile.parse_version(txt) == version
 
 
+def test_version_integration(espresso_factory):
+    profile = EspressoProfile([espresso_factory.executable])
+    version = profile.version()
+    assert version[0].isdigit()
+
+
 def verify(calc):
     assert calc.get_fermi_level() is not None
     assert calc.get_ibz_k_points() is not None

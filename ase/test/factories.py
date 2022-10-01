@@ -257,7 +257,7 @@ class EspressoFactory:
         return EspressoProfile([self.executable])
 
     def version(self):
-        self._profile().version()
+        return self._profile().version()
 
     def calc(self, **kwargs):
         from ase.calculators.espresso import Espresso
