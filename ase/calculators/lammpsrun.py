@@ -159,22 +159,6 @@ potentials)
 
     default_parameters = dict(ase_parameters, **lammps_parameters)
 
-    # legacy parameter persist, when the 'parameters' dictinary is manipulated
-    # from the outside.  All others are rested to the default value
-    legacy_parameters = [
-        "specorder",
-        "dump_period",
-        "always_triclinic",
-        "keep_alive",
-        "keep_tmp_files",
-        "tmp_dir",
-        "parameters",
-        "no_data_file",
-        "files",
-        "write_velocities",
-        "trajectory_out",
-    ]
-
     def __init__(self, label="lammps", **kwargs):
         super().__init__(label=label, **kwargs)
         assert 'specorder' in self.parameters
