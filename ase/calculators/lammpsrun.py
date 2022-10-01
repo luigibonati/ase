@@ -288,15 +288,6 @@ potentials)
         else:
             raise AttributeError("Setting unknown Attribute '{}'".format(key))
 
-    def __getattr__(self, key):
-        """Corresponding getattribute-function to emulate legacy behavior.
-        """
-        if key in self.legacy_parameters and key != "parameters":
-            return self.parameters[key]
-        if key in self.legacy_parameters_map:
-            return self.parameters[self.legacy_parameters_map[key]]
-        return object.__getattribute__(self, key)
-
     def clean(self, force=False):
 
         self._lmp_end()
