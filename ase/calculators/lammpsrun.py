@@ -436,13 +436,14 @@ potentials)
                 shlex.split(command, posix=(os.name == "posix")),
                 stdin=PIPE,
                 stdout=PIPE,
+                encoding='ascii',
             )
         lmp_handle = self._lmp_handle
 
         # Create thread reading lammps stdout (for reference, if requested,
         # also create lammps_log, although it is never used)
         if self.parameters.keep_tmp_files:
-            lammps_log_fd = open(lammps_log, "wb")
+            lammps_log_fd = open(lammps_log, "w")
             fd = SpecialTee(lmp_handle.stdout, lammps_log_fd)
         else:
             fd = lmp_handle.stdout
@@ -452,7 +453,7 @@ potentials)
         # write LAMMPS input (for reference, also create the file lammps_in,
         # although it is never used)
         if self.parameters.keep_tmp_files:
-            lammps_in_fd = open(lammps_in, "wb")
+            lammps_in_fd = open(lammps_in, "w")
             fd = SpecialTee(lmp_handle.stdin, lammps_in_fd)
         else:
             fd = lmp_handle.stdin
@@ -549,20 +550,9 @@ potentials)
     def __exit__(self, *args):
         self._lmp_end()
 
-    def read_lammps_log(self, lammps_log=None):
+    def read_lammps_log(self, fileobj):
         # !TODO: somehow communicate 'thermo_content' explicitly
         """Method which reads a LAMMPS output log file."""
-
-        if lammps_log is None:
-            lammps_log = self.label + ".log"
-
-        if isinstance(lammps_log, str):
-            fileobj = paropen(lammps_log, "wb")
-            close_log_file = True
-        else:
-            # Expect lammps_in to be a file-like object
-            fileobj = lammps_log
-            close_log_file = False
 
         # read_log depends on that the first (three) thermo_style custom args
         # can be capitalized and matched against the log output. I.e.
@@ -582,19 +572,17 @@ potentials)
         )
 
         thermo_content = []
-        line = fileobj.readline().decode("utf-8")
+        line = fileobj.readline()
         while line and line.strip() != CALCULATION_END_MARK:
             # check error
             if 'ERROR:' in line:
-                if close_log_file:
-                    fileobj.close()
                 raise RuntimeError(f'LAMMPS exits with error message: {line}')
 
             # get thermo output
             if _custom_thermo_mark.match(line):
                 bool_match = True
                 while bool_match:
-                    line = fileobj.readline().decode("utf-8")
+                    line = fileobj.readline()
                     bool_match = _custom_thermo_re.match(line)
                     if bool_match:
                         # create a dictionary between each of the
@@ -608,10 +596,7 @@ potentials)
                             )
                         )
             else:
-                line = fileobj.readline().decode("utf-8")
-
-        if close_log_file:
-            fileobj.close()
+                line = fileobj.readline()
 
         self.thermo_content = thermo_content
 
