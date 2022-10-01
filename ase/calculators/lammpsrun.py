@@ -29,12 +29,10 @@ from subprocess import Popen, PIPE, TimeoutExpired
 from threading import Thread
 from re import compile as re_compile, IGNORECASE
 from tempfile import mkdtemp, NamedTemporaryFile, mktemp as uns_mktemp
-import inspect
 import warnings
 from typing import Dict, Any
 import numpy as np
 
-from ase.parallel import paropen
 from ase.calculators.calculator import Calculator
 from ase.calculators.calculator import all_changes
 from ase.data import chemical_symbols
@@ -161,8 +159,6 @@ potentials)
 
     def __init__(self, label="lammps", **kwargs):
         super().__init__(label=label, **kwargs)
-        assert 'specorder' in self.parameters
-        assert hasattr(self.parameters, 'tostring')
 
         self.prism = None
         self.calls = 0
@@ -183,14 +179,15 @@ potentials)
         if self.parameters['tmp_dir'] is None:
             self.parameters['tmp_dir'] = mkdtemp(prefix="LAMMPS-")
         else:
-            self.parameters['tmp_dir'] = os.path.realpath(self.parameters['tmp_dir'])
+            self.parameters['tmp_dir'] = os.path.realpath(
+                self.parameters['tmp_dir'])
             if not os.path.isdir(self.parameters['tmp_dir']):
                 os.mkdir(self.parameters['tmp_dir'], 0o755)
 
         for f in self.parameters['files']:
             shutil.copy(
-                f, os.path.join(self.parameters['tmp_dir'], os.path.basename(f))
-            )
+                f, os.path.join(self.parameters['tmp_dir'],
+                                os.path.basename(f)))
 
     def get_lammps_command(self):
         cmd = self.parameters.get('command')
