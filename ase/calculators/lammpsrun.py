@@ -182,22 +182,7 @@ potentials)
     legacy_warn_string += "Please use {}.set().".format(name.upper())
 
     def __init__(self, label="lammps", **kwargs):
-        # "Parameters" used to be the dictionary with all parameters forwarded
-        # to lammps.  This clashes with the implementation in Calculator to
-        # reload an old one. Trying to catch both cases to not break old
-        # scripts.
-        if "parameters" in kwargs:
-            old_parameters = kwargs["parameters"]
-            if isinstance(old_parameters, dict):
-                warnings.warn(self.legacy_warn_string.format("parameters"))
-                del kwargs["parameters"]
-        else:
-            old_parameters = None
-
-        Calculator.__init__(self, label=label, **kwargs)
-
-        if old_parameters and isinstance(old_parameters, dict):
-            self.set(**old_parameters)
+        super().__init__(label=label, **kwargs)
 
         self.prism = None
         self.calls = 0
