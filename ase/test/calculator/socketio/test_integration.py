@@ -34,15 +34,13 @@ calc = pytest.mark.calculator
 # including the cell_factor.
 @pytest.mark.xfail
 @pytest.mark.calculator_lite
-@calc('espresso', ecutwfc=200 / Ry) # , cell_factor=2.5)
+@calc('espresso', ecutwfc=200 / Ry)
 # @calc('abinit', ecut=200, **abinit_boilerplate)
 def test_socketio_espresso(factory):
     name = factory.name
     if name == 'abinit':
         factory.require_version('9.4')
 
-    from ase.build import molecule
-    # atoms = molecule('H2O', vacuum=4.0)
     atoms = bulk('Si')
 
     exe = factory.factory.executable
