@@ -14,6 +14,14 @@ def test_manually():
 
 @pytest.mark.parametrize('name', ioformats)
 def test_ioformat(name):
+    """Test getting the full description of each ioformat."""
+    if name == 'exciting':
+        # Check if excitingtools is installed, if not skip exciting tests.
+        try:
+            __import__('excitingtools')
+        except ModuleNotFoundError:
+            pytest.skip(
+                'excitingtools not installed so skipping exciting test.')
     ioformat = ioformats[name]
     print(name)
     print('=' * len(name))
