@@ -9,7 +9,7 @@ properties.
 """
 
 from abc import ABC
-from pathlib import Path
+from os import PathLike
 from typing import Union, List, Optional, Mapping
 
 import ase.io.exciting
@@ -54,7 +54,8 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
     program_name = 'exciting'
     parser = {'info.xml': ase.io.exciting.parse_info_out}
     output_names = list(parser)
-    implemented_properties = ['energy', 'tforce']
+    # Use frozenset since the CalculatorTemplate enforces it.
+    implemented_properties = frozenset(['energy', 'tforce'])
 
     def __init__(self, binary_runner = None):
         """Initialise with constant class attributes.
@@ -89,7 +90,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
         return input_parameters
 
     def write_input(self,
-                    directory: Path,
+                    directory: PathLike,
                     atoms: ase.Atoms,
                     parameters: dict,
                     properties=None):
@@ -142,7 +143,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
                 ' is None')
         return self.binary_runner.run(directory)
 
-    def read_results(self, directory: Path) -> Mapping[str, any]:
+    def read_results(self, directory: PathLike) -> Mapping[str, str]:
         """Parse results from each ground state output file.
 
           Note we allow for the ability for there to be multiple output files.
@@ -150,8 +151,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
           Args:
               directory: Directory path to output file from exciting simulation.
           Returns:
-              Dictionary (technically abc.Mapping) containing important output
-              properties.
+              Dictionary containing important output properties.
         """
         results = {}
         for file_name in self.output_names:
