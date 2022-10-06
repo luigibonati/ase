@@ -229,17 +229,20 @@ class FileIOSocketClientLauncher:
 
     def __call__(self, atoms, properties=None, port=None, unixsocket=None):
         assert self.calc is not None
-        self.calc.write_input(atoms, properties=properties,
-                              system_changes=all_changes)
         cwd = self.calc.directory
         profile = getattr(self.calc, 'profile', None)
         if profile is not None:
+            # New GenericFileIOCalculator:
+            self.calc.write_inputfiles(atoms, properties)
             if unixsocket is not None:
                 argv = profile.socketio_argv_unix(socket=unixsocket)
             else:
                 argv = profile.socketio_argv_inet(port=port)
             return Popen(argv, cwd=cwd)
         else:
+            # Old FileIOCalculator:
+            self.calc.write_input(atoms, properties=properties,
+                                  system_changes=all_changes)
             cmd = self.calc.command.replace('PREFIX', self.calc.prefix)
             cmd = cmd.format(port=port, unixsocket=unixsocket)
             return Popen(cmd, shell=True, cwd=cwd)

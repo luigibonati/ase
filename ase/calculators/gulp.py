@@ -150,7 +150,7 @@ class GULP(FileIOCalculator):
             elif line.find('Final Cartesian derivatives') != -1:
                 s = i + 5
                 forces = []
-                while(True):
+                while True:
                     s = s + 1
                     if lines[s].find("------------") != -1:
                         break
@@ -165,7 +165,7 @@ class GULP(FileIOCalculator):
             elif line.find('Final internal derivatives') != -1:
                 s = i + 5
                 forces = []
-                while(True):
+                while True:
                     s = s + 1
                     if lines[s].find("------------") != -1:
                         break
