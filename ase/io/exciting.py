@@ -14,11 +14,15 @@ See the correpsonding test file in ase/test/io/test_exciting.py.
 Plan is to add parsing of eigenvalues in the next iteration using
 excitingtools.exciting_dict_parsers.groundstate_parser.parse_eigval
 """
+import logging
 from pathlib import Path
 from typing import Dict
 from xml.etree import ElementTree as ET
 
 import ase
+
+
+LOGGER = logging.getLogger(__name__)
 
 try:
     __import__('excitingtools')
@@ -27,8 +31,10 @@ try:
     from excitingtools.input.ground_state import ExcitingGroundStateInput
     from excitingtools.input.structure import ExcitingStructure
 except ModuleNotFoundError:
-    MESSAGE = "excitingtools must be installed with pip install excitingtools."
-    raise ModuleNotFoundError(MESSAGE)
+    MESSAGE = (
+        "excitingtools must be installed with pip install excitingtools for"
+        " the exciting io to work.")
+    LOGGER.warn(MESSAGE)
 
 
 def parse_output(info_out_file_path):

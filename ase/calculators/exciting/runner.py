@@ -1,7 +1,7 @@
 """Binary runner and results class."""
+import os
 from typing import List, Optional, Union
 from pathlib import Path
-import os
 import subprocess
 import shutil
 import time

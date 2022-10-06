@@ -9,6 +9,7 @@ properties.
 """
 
 from abc import ABC
+import logging
 from os import PathLike
 from typing import Union, List, Optional, Mapping
 
@@ -19,15 +20,19 @@ from ase.calculators.genericfileio import (
 from ase.calculators.exciting.runner import ExcitingRunner, SubprocessRunResults
 from ase.calculators.calculator import PropertyNotImplementedError
 
+
+LOGGER = logging.getLogger(__name__)
+
+
 try:
     __import__('excitingtools')
     from excitingtools.input.base_class import query_exciting_version
     from excitingtools.input.ground_state import ExcitingGroundStateInput
 except ModuleNotFoundError:
     MESSAGE = (
-        "excitingtools is now on PyPi:"
-        "https://pypi.org/project/excitingtools/")
-    raise ModuleNotFoundError(MESSAGE)
+        "excitingtools must be installed with pip install excitingtools for"
+        " the exciting io to work.")
+    LOGGER.warn(MESSAGE)
 
 
 class ExcitingProfile:
