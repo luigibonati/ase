@@ -1,5 +1,6 @@
 """Test file for exciting ASE calculator."""
 
+import logging
 import os
 import xml.etree.ElementTree as ET
 
@@ -7,8 +8,19 @@ import numpy as np
 import pytest
 
 import ase
-import ase.calculators.exciting.exciting as exciting
-from ase.calculators.exciting.runner import ExcitingRunner
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+try:
+    __import__('excitingtools')
+    import ase.calculators.exciting.exciting as exciting
+    from ase.calculators.exciting.runner import ExcitingRunner
+
+except ModuleNotFoundError:
+    MESSAGE = "exciting tests are skipped if excitingtools not installed."
+    LOGGER.info(MESSAGE)
 
 
 LDA_VWN_AR_INFO_OUT = """
@@ -172,6 +184,12 @@ LDA_VWN_AR_INFO_OUT = """
 """
 
 @pytest.fixture
+def excitingtools():
+    """If we cannot import excitingtools we skip tests with this fixture."""
+    return pytest.importorskip('excitingtools')
+
+
+@pytest.fixture
 def nitrogen_trioxide_atoms():
     """Pytest fixture that creates ASE Atoms cell for other tests."""
     return ase.Atoms('NO3',
@@ -181,7 +199,7 @@ def nitrogen_trioxide_atoms():
                      pbc=True)
 
 
-def test_exciting_profile_init():
+def test_exciting_profile_init(excitingtools):
     """Test initializing an ExcitingProfile object."""
     exciting_root = 'testdir/nowhere/'
     species_path = 'testdir/species/'
@@ -192,7 +210,7 @@ def test_exciting_profile_init():
             exciting_root=exciting_root, species_path=species_path)
 
 
-def test_ground_state_template_init():
+def test_ground_state_template_init(excitingtools):
     """Test initialization of the ExcitingGroundStateTemplate class."""
     gs_template_obj = exciting.ExcitingGroundStateTemplate()
     assert gs_template_obj.name == 'exciting'
@@ -200,7 +218,8 @@ def test_ground_state_template_init():
     assert 'energy' in gs_template_obj.implemented_properties
 
 
-def test_ground_state_template_write_input(tmp_path, nitrogen_trioxide_atoms):
+def test_ground_state_template_write_input(
+        tmp_path, nitrogen_trioxide_atoms, excitingtools):
     """Test the write input method of ExcitingGroundStateTemplate.
 
     Args:
@@ -252,7 +271,8 @@ def test_ground_state_template_write_input(tmp_path, nitrogen_trioxide_atoms):
     assert element_tree.getroot()[2].attrib['rgkmax'] == '8.0'
 
 
-def test_grond_state_template_read_results(tmp_path):
+def test_grond_state_template_read_results(
+        tmp_path, excitingtools):
     """Test the read result method of ExcitingGroundStateTemplate."""
     # ASE doesn't want us to store any other files for test, so instead
     # we copy an example exciting INFO.out file into the global variable
@@ -269,7 +289,7 @@ def test_grond_state_template_read_results(tmp_path):
         final_scl_iteration]["Hartree energy"]) - 205.65454603, 6) == 0.
 
 
-def test_ground_state_template_execute(tmpdir):
+def test_ground_state_template_execute(tmpdir, excitingtools):
     """Test ExcitingGroundStateTemplate execute method when no runner given."""
     # If we don't pass a binary runner in the init() of the
     # ExcitingGroundStateTemplate we expect the method to fail.
@@ -277,7 +297,7 @@ def test_ground_state_template_execute(tmpdir):
         exciting.ExcitingGroundStateTemplate().execute(directory=tmpdir)
 
 
-def test_get_total_energy_and_bandgap():
+def test_get_total_energy_and_bandgap(excitingtools):
     """Test getter methods for energy/bandgap results."""
     # Create a fake results dictionary that has two SCL cycles
     # and only contains values for the total energy and bandgap.
@@ -301,7 +321,7 @@ def test_get_total_energy_and_bandgap():
     assert np.round(results_obj.band_gap() - 3.1, 7) == 0
 
 
-def test_ground_state_calculator_init(tmpdir):
+def test_ground_state_calculator_init(tmpdir, excitingtools):
     """Test initiliazation of the ExcitingGroundStateCalculator"""
     ground_state_input_dict = {
         "rgkmax": 8.0,

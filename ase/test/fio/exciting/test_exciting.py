@@ -1,5 +1,6 @@
 """Test file for exciting file input and output methods."""
 
+import logging
 import os
 import xml.etree.ElementTree as ET
 
@@ -7,8 +8,18 @@ import pytest
 import numpy as np
 
 import ase
-import ase.io.exciting
 from ase.units import Bohr
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+try:
+    __import__('excitingtools')
+    import ase.io.exciting
+except ModuleNotFoundError:
+    MESSAGE = "exciting tests are skipped if excitingtools not installed."
+    LOGGER.info(MESSAGE)
 
 
 LDA_VWN_AR_INFO_OUT = """
@@ -171,6 +182,11 @@ LDA_VWN_AR_INFO_OUT = """
 | EXCITING NITROGEN-14 stopped                                                 =
 """
 
+@pytest.fixture
+def excitingtools():
+    """If we cannot import excitingtools we skip tests with this fixture."""
+    return pytest.importorskip('excitingtools')
+
 
 @pytest.fixture
 def nitrogen_trioxide_atoms():
@@ -242,7 +258,7 @@ def structure_xml_to_ase_atoms(fileobj) -> ase.Atoms:
     return atoms
 
 
-def test_write_input_xml_file(tmp_path, nitrogen_trioxide_atoms):
+def test_write_input_xml_file(tmp_path, nitrogen_trioxide_atoms, excitingtools):
     """Test writing input.xml file using write_input_xml_file()."""
     file_path = os.path.join(tmp_path, 'input.xml')
     input_param_dict = {
@@ -273,7 +289,7 @@ def test_write_input_xml_file(tmp_path, nitrogen_trioxide_atoms):
     assert list(input_xml_tree)[2].get("tforce") == 'true'
 
 
-def test_parse_info_out_xml_bad_path(tmp_path):
+def test_parse_info_out_xml_bad_path(tmp_path, excitingtools):
     """Tests parse method raises error when info.out file doesn't exist."""
     output_file_path = os.path.join(tmp_path, 'info.out')
 
@@ -282,7 +298,7 @@ def test_parse_info_out_xml_bad_path(tmp_path):
             output_file_path)
 
 
-def test_parse_info_out_energy(tmp_path):
+def test_parse_info_out_energy(tmp_path, excitingtools):
     """Test parsing the INFO.OUT output from exciting using parse_output()."""
     file = tmp_path / "INFO.OUT"
     file.write_text(LDA_VWN_AR_INFO_OUT)

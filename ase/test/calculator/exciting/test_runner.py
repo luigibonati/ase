@@ -1,10 +1,27 @@
 """Test runner classes to run exciting simulations using subproces."""
+import logging
 import pytest
 
-from ase.calculators.exciting.runner import SimpleBinaryRunner, ExcitingRunner
+
+LOGGER = logging.getLogger(__name__)
 
 
-def test_class_simple_binary_runner(tmpdir):
+try:
+    __import__('excitingtools')
+    from ase.calculators.exciting.runner import SimpleBinaryRunner, ExcitingRunner
+
+except ModuleNotFoundError:
+    MESSAGE = "exciting tests are skipped if excitingtools not installed."
+    LOGGER.info(MESSAGE)
+
+
+@pytest.fixture
+def excitingtools():
+    """If we cannot import excitingtools we skip tests with this fixture."""
+    return pytest.importorskip('excitingtools')
+
+
+def test_class_simple_binary_runner(tmpdir, excitingtools):
     """Test SimpleBinaryRunner."""
     binary = tmpdir / 'binary.exe'
     binary.write("Arbitrary text such that file exists")
@@ -34,12 +51,15 @@ def test_class_simple_binary_runner(tmpdir):
         ("exciting_smp",     ['./'],                 4, './', 600, ['']),
         ("exciting_mpismp",  ['mpirun', '-np', '2'], 2, './', 600, [''])
      ])
-def test_class_exciting_runner_binary_defaults(tmpdir, binary_name,
-                                               expected_run_cmd,
-                                               expected_omp_num_threads,
-                                               expected_directory,
-                                               expected_timeout,
-                                               expected_args):
+def test_class_exciting_runner_binary_defaults(
+        tmpdir,
+        binary_name,
+        expected_run_cmd,
+        expected_omp_num_threads,
+        expected_directory,
+        expected_timeout,
+        expected_args,
+        excitingtools):
     """Valid binary names and corresponding default attributes."""
     binary = tmpdir / binary_name
     binary.write("Arbitrary text such that file exists")
@@ -54,7 +74,8 @@ def test_class_exciting_runner_binary_defaults(tmpdir, binary_name,
     assert runner.args == expected_args
 
 
-def test_class_exciting_runner_no_defaults_with_binary_alias(tmpdir):
+def test_class_exciting_runner_no_defaults_with_binary_alias(
+        tmpdir, excitingtools):
     """Binary alias does not have specified default run settings."""
     binary = tmpdir / "exciting"
     binary.write("Arbitrary text such that file exists")
@@ -65,7 +86,7 @@ def test_class_exciting_runner_no_defaults_with_binary_alias(tmpdir):
         "No default settings exist for this binary choice: exciting")
 
 
-def test_class_exciting_runner_erroneous_binary_name(tmpdir):
+def test_class_exciting_runner_erroneous_binary_name(tmpdir, excitingtools):
     """Binary name is not listed class `binaries` attribute."""
     binary = tmpdir / "exciting_erroneous_name"
     binary.write("Arbitrary text such that file exists")
