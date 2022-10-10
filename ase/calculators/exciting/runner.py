@@ -170,7 +170,7 @@ class ExcitingRunner(SimpleBinaryRunner):
             args = ['']
         binary_name = os.path.basename(binary)
 
-        if not binary_name in self.binaries:
+        if binary_name not in self.binaries:
             raise ValueError(
                 "binary name is not a valid choice: " + binary_name)
 

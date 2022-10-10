@@ -47,8 +47,7 @@ def test_class_simple_binary_runner(tmpdir, excitingtools):
 @pytest.mark.parametrize(
     (
         "binary_name, expected_run_cmd, expected_omp_num_threads,"
-        "expected_directory, expected_timeout, expected_args"),
-        [
+        "expected_directory, expected_timeout, expected_args"), [
             ("exciting_serial", ['./'], 1, './', 600, ['']),
             ("exciting_purempi", ['mpirun', '-np', '2'], 1, './', 600, ['']),
             ("exciting_smp", ['./'], 4, './', 600, ['']),

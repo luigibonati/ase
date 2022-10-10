@@ -13,7 +13,7 @@ gs_template_obj = ExcitingGroundStateTemplate()
 # Write an exciting input.xml file for the NO3 system.
 gs_template_obj.write_input(
     directory='./', atoms=nitrogen_trioxide_atoms,
-    parameters = {
+    parameters={
         "title": None,
         "species_path": './',
         "ground_state_input": {

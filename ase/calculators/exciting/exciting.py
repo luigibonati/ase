@@ -36,7 +36,7 @@ except ModuleNotFoundError:
     MESSAGE = (
         "excitingtools must be installed with pip install excitingtools for"
         " the exciting io to work.")
-    LOGGER.warn(MESSAGE)
+    LOGGER.warning(MESSAGE)
 
 
 class ExcitingProfile:
@@ -152,7 +152,8 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
 
         Note we allow for the ability for there to be multiple output files.
 
-        :param directory: Directory path to output file from exciting simulation.
+        :param directory: Directory path to output file from exciting
+            simulation.
         :return: Dictionary containing important output properties.
         """
         results = {}

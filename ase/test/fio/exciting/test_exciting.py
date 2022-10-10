@@ -93,7 +93,7 @@ LDA_VWN_AR_INFO_OUT = """
  Total number of local-orbitals             :      12
 
  Exchange-correlation type                  :     100
-     libxc; exchange: Slater exchange; correlation: Vosko, Wilk & Nusair (VWN5) (see libxc for references)
+     libxc; exchange: Slater exchange; correlation: Vosko, Wilk & Nusair (VWN5)
 
  Smearing scheme                            :    Gaussian
  Smearing width                             :       0.00100000
@@ -139,7 +139,7 @@ LDA_VWN_AR_INFO_OUT = """
  Estimated fundamental gap                  :         0.36071248
         valence-band maximum at    1      0.0000  0.0000  0.0000
      conduction-band minimum at    1      0.0000  0.0000  0.0000
-                                                     
+
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 | Convergency criteria checked for the last 2 iterations                       +
 | Convergence targets achieved. Performing final SCF iteration                 +
