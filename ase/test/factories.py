@@ -286,7 +286,7 @@ class EspressoFactory:
 @factory('exciting')
 class ExcitingFactory:
     """Factory to run exciting tests."""
-    def __init__(self, executable, species_path):
+    def __init__(self, executable, species_path='./'):
         self.executable = executable
         self.species_path = species_path
 
