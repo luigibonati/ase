@@ -78,7 +78,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
 
     @staticmethod
     def _require_forces(
-            input_parameters: Union[dict, ExcitingGroundStateInput]):
+            input_parameters):
         """Expect ASE always wants forces, enforce setting in input_parameters.
 
         :param input_parameters: exciting ground state input parameters, either
@@ -225,7 +225,7 @@ class ExcitingGroundStateCalculator(GenericFileIOCalculator):
     """
     def __init__(self, *,
                  runner: ExcitingRunner,
-                 ground_state_input: Union[dict, ExcitingGroundStateInput],
+                 ground_state_input,
                  directory='./',
                  species_path='./',
                  title='ASE-generated input'):
