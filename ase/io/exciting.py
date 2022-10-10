@@ -38,7 +38,7 @@ except ModuleNotFoundError:
     MESSAGE = (
         "excitingtools must be installed with pip install excitingtools for"
         " the exciting io to work.")
-    LOGGER.warn(MESSAGE)
+    LOGGER.warning(MESSAGE)
 
 
 def parse_output(info_out_file_path):
