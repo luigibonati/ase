@@ -15,7 +15,7 @@ from abc import ABC
 import logging
 from os import PathLike
 from pathlib import Path
-from typing import Union, List, Optional, Mapping
+from typing import List, Optional, Mapping
 
 import ase.io.exciting
 
