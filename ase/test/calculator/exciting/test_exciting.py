@@ -27,20 +27,20 @@ LDA_VWN_AR_INFO_OUT = """
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + Starting initialization                                                      +
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 
+
  Lattice vectors (cartesian) :
      15.0000000000      0.0000000000      0.0000000000
       0.0000000000     15.0000000000      0.0000000000
       0.0000000000      0.0000000000     15.0000000000
- 
+
  Reciprocal lattice vectors (cartesian) :
       0.4188790205      0.0000000000      0.0000000000
       0.0000000000      0.4188790205      0.0000000000
       0.0000000000      0.0000000000      0.4188790205
- 
+
  Unit cell volume                           :    3375.0000000000
  Brillouin zone volume                      :       0.0734963595
- 
+
  Species :    1 (Ar)
      parameters loaded from                 :    Ar.xml
      name                                   :    argon
@@ -49,62 +49,62 @@ LDA_VWN_AR_INFO_OUT = """
      atomic mass                            :   72820.74920000
      muffin-tin radius                      :       6.00000000
      # of radial points in muffin-tin       :    1000
- 
+
      atomic positions (lattice) :
        1 :   0.00000000  0.00000000  0.00000000
- 
+
  Total number of atoms per unit cell        :       1
- 
+
  Spin treatment                             :    spin-unpolarised
- 
+
  Number of Bravais lattice symmetries       :      48
  Number of crystal symmetries               :      48
- 
+
  k-point grid                               :       1    1    1
  Total number of k-points                   :       1
  k-point set is reduced with crystal symmetries
- 
+
  R^MT_min * |G+k|_max (rgkmax)              :      10.00000000
  Species with R^MT_min                      :       1 (Ar)
  Maximum |G+k| for APW functions            :       1.66666667
  Maximum |G| for potential and density      :       7.50000000
  Polynomial order for pseudochg. density    :       9
- 
+
  G-vector grid sizes                        :      36    36    36
  Total number of G-vectors                  :   23871
- 
+
  Maximum angular momentum used for
      APW functions                          :       8
      computing H and O matrix elements      :       4
      potential and density                  :       4
      inner part of muffin-tin               :       2
- 
+
  Total nuclear charge                       :     -18.00000000
  Total electronic charge                    :      18.00000000
  Total core charge                          :      10.00000000
  Total valence charge                       :       8.00000000
- 
+
  Effective Wigner radius, r_s               :       3.55062021
- 
+
  Number of empty states                     :       5
  Total number of valence states             :      10
- 
+
  Maximum Hamiltonian size                   :     263
  Maximum number of plane-waves              :     251
  Total number of local-orbitals             :      12
- 
+
  Exchange-correlation type                  :     100
      libxc; exchange: Slater exchange; correlation: Vosko, Wilk & Nusair (VWN5) (see libxc for references)
- 
+
  Smearing scheme                            :    Gaussian
  Smearing width                             :       0.00100000
- 
+
  Using multisecant Broyden potential mixing
- 
+
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + Ending initialization                                                        +
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 
+
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + SCF iteration number :    1                                                  +
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -124,9 +124,9 @@ LDA_VWN_AR_INFO_OUT = """
  Nuclear-nuclear energy                     :       -26.55163980
  Madelung energy                            :      -630.61506441
  Core-electron kinetic energy               :         0.00000000
- 
+
  DOS at Fermi energy (states/Ha/cell)       :         0.00000000
- 
+
  Electron charges :
      core                                   :        10.00000000
      core leakage                           :         0.00000000
@@ -136,11 +136,11 @@ LDA_VWN_AR_INFO_OUT = """
                   atom     1    Ar          :        17.99816103
      total charge in muffin-tins            :        17.99816103
      total charge                           :        18.00000000
- 
+
  Estimated fundamental gap                  :         0.36071248
         valence-band maximum at    1      0.0000  0.0000  0.0000
      conduction-band minimum at    1      0.0000  0.0000  0.0000
-                                                          
+                                                     
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 | Convergency criteria checked for the last 2 iterations                       +
 | Convergence targets achieved. Performing final SCF iteration                 +
@@ -161,9 +161,9 @@ LDA_VWN_AR_INFO_OUT = """
  Nuclear-nuclear energy                     :       -26.55163980
  Madelung energy                            :      -630.61630310
  Core-electron kinetic energy               :         0.00000000
- 
+
  DOS at Fermi energy (states/Ha/cell)       :         0.00000000
- 
+
  Electron charges :
      core                                   :        10.00000000
      core leakage                           :         0.00000000
@@ -173,15 +173,16 @@ LDA_VWN_AR_INFO_OUT = """
                   atom     1    Ar          :        17.99815963
      total charge in muffin-tins            :        17.99815963
      total charge                           :        18.00000000
- 
+
  Estimated fundamental gap                  :         0.36095838
         valence-band maximum at    1      0.0000  0.0000  0.0000
      conduction-band minimum at    1      0.0000  0.0000  0.0000
- 
+
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + Self-consistent loop stopped                                                 +
 | EXCITING NITROGEN-14 stopped                                                 =
 """
+
 
 @pytest.fixture
 def excitingtools():
@@ -234,7 +235,7 @@ def test_ground_state_template_write_input(
     assert nitrogen_trioxide_atoms.cell is not None
     gs_template_obj.write_input(
         directory=tmp_path, atoms=nitrogen_trioxide_atoms,
-        parameters = {
+        parameters={
             "title": None,
             "species_path": tmp_path,
             "ground_state_input": {
@@ -330,6 +331,6 @@ def test_ground_state_calculator_init(tmpdir, excitingtools):
         "xctype": "GGA_PBE_SOL",
         "vkloff": [0, 0, 0]}
     calc_obj = exciting.ExcitingGroundStateCalculator(
-        runner=ExcitingRunner("exciting_serial",  ['./'], 1, 600, tmpdir, ['']),
+        runner=ExcitingRunner("exciting_serial", ['./'], 1, 600, tmpdir, ['']),
         ground_state_input=ground_state_input_dict, directory=tmpdir)
     assert calc_obj.parameters["ground_state_input"]["rgkmax"] == 8.0

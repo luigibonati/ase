@@ -29,7 +29,8 @@ LOGGER = logging.getLogger(__name__)
 
 try:
     __import__('excitingtools')
-    from excitingtools.exciting_dict_parsers.groundstate_parser import parse_info_out
+    from excitingtools.exciting_dict_parsers.groundstate_parser import (
+        parse_info_out)
     from excitingtools.input.input_xml import exciting_input_xml
     from excitingtools.input.ground_state import ExcitingGroundStateInput
     from excitingtools.input.structure import ExcitingStructure
@@ -47,9 +48,10 @@ def parse_output(info_out_file_path):
         raise FileNotFoundError
     return parse_info_out(info_out_file_path)
 
+
 def write_input_xml_file(
         file_name, atoms: ase.Atoms, input_parameters: Dict,
-        species_path, title = None):
+        species_path, title=None):
     """Write input xml file for exciting calculation.
 
     Args:
@@ -67,5 +69,5 @@ def write_input_xml_file(
     input_xml = exciting_input_xml(
         structure=structure, title=title, groundstate=ground_state)
     input_xml = ET.ElementTree(input_xml)
-    with open (file_name, "wb") as file_handle:
+    with open(file_name, "wb") as file_handle:
         input_xml.write(file_handle)

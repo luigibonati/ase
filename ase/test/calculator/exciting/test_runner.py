@@ -8,7 +8,8 @@ LOGGER = logging.getLogger(__name__)
 
 try:
     __import__('excitingtools')
-    from ase.calculators.exciting.runner import SimpleBinaryRunner, ExcitingRunner
+    from ase.calculators.exciting.runner import (
+        SimpleBinaryRunner, ExcitingRunner)
 
 except ModuleNotFoundError:
     MESSAGE = "exciting tests are skipped if excitingtools not installed."
@@ -44,12 +45,14 @@ def test_class_simple_binary_runner(tmpdir, excitingtools):
 
 
 @pytest.mark.parametrize(
-    ("binary_name, expected_run_cmd, expected_omp_num_threads,"
-     "expected_directory, expected_timeout, expected_args"),
-        [("exciting_serial",  ['./'],                 1, './', 600, ['']),
-        ("exciting_purempi", ['mpirun', '-np', '2'], 1, './', 600, ['']),
-        ("exciting_smp",     ['./'],                 4, './', 600, ['']),
-        ("exciting_mpismp",  ['mpirun', '-np', '2'], 2, './', 600, [''])
+    (
+        "binary_name, expected_run_cmd, expected_omp_num_threads,"
+        "expected_directory, expected_timeout, expected_args"),
+        [
+            ("exciting_serial", ['./'], 1, './', 600, ['']),
+            ("exciting_purempi", ['mpirun', '-np', '2'], 1, './', 600, ['']),
+            ("exciting_smp", ['./'], 4, './', 600, ['']),
+            ("exciting_mpismp", ['mpirun', '-np', '2'], 2, './', 600, [''])
      ])
 def test_class_exciting_runner_binary_defaults(
         tmpdir,

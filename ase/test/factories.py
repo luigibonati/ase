@@ -292,7 +292,8 @@ class ExcitingFactory:
 
     def calc(self, **kwargs):
         """Get instance of Exciting Ground state calculator."""
-        from ase.calculators.exciting.exciting import ExcitingGroundStateCalculator
+        from ase.calculators.exciting.exciting import (
+            ExcitingGroundStateCalculator)
         return ExcitingGroundStateCalculator(
             ground_state_input=kwargs, species_path=self.species_path)
 

@@ -66,7 +66,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
     # Use frozenset since the CalculatorTemplate enforces it.
     implemented_properties = frozenset(['energy', 'tforce'])
 
-    def __init__(self, binary_runner = None):
+    def __init__(self, binary_runner=None):
         """Initialise with constant class attributes.
 
         :param program_name: The DFT program, should always be exciting.
@@ -77,11 +77,12 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
         self.binary_runner = binary_runner
 
     @staticmethod
-    def _require_forces(input_parameters: Union[dict, ExcitingGroundStateInput]):
+    def _require_forces(
+            input_parameters: Union[dict, ExcitingGroundStateInput]):
         """Expect ASE always wants forces, enforce setting in input_parameters.
 
-        :param input_parameters: exciting ground state input parameters, either as
-                a dictionary or ExcitingGroundStateInput.
+        :param input_parameters: exciting ground state input parameters, either
+            as a dictionary or ExcitingGroundStateInput.
         :return: Ground state input parameters, with "compute
                 forces" set to true.
         """
@@ -148,7 +149,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
 
     def read_results(self, directory: PathLike) -> Mapping[str, str]:
         """Parse results from each ground state output file.
-        
+
         Note we allow for the ability for there to be multiple output files.
 
         :param directory: Directory path to output file from exciting simulation.
