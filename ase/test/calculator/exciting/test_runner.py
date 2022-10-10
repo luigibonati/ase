@@ -52,7 +52,7 @@ def test_class_simple_binary_runner(tmpdir, excitingtools):
             ("exciting_purempi", ['mpirun', '-np', '2'], 1, './', 600, ['']),
             ("exciting_smp", ['./'], 4, './', 600, ['']),
             ("exciting_mpismp", ['mpirun', '-np', '2'], 2, './', 600, [''])
-     ])
+    ])
 def test_class_exciting_runner_binary_defaults(
         tmpdir,
         binary_name,
