@@ -6,11 +6,15 @@ to run DFT on the geometry/material defined in the Atoms object. Also gives
 access to developer to a lightweight parser (lighter weight than NOMAD or
 the exciting parser in the exciting repository) to capture ground state
 properties.
+
+Note: excitingtools must be installed using `pip install excitingtools` to
+work.
 """
 
 from abc import ABC
 import logging
 from os import PathLike
+from pathlib import Path
 from typing import Union, List, Optional, Mapping
 
 import ase.io.exciting
@@ -115,7 +119,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
         assert set(parameters.keys()) == {
             'title', 'species_path', 'ground_state_input'}, \
             'Keys should be defined by ExcitingGroundState calculator'
-        file_name = directory / 'input.xml'
+        file_name = Path(directory) / 'input.xml'
         species_path = parameters.pop('species_path')
         title = parameters.pop('title')
 
@@ -124,7 +128,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
             species_path, title)
 
     def execute(
-            self, directory,
+            self, directory: PathLike,
             profile=None) -> SubprocessRunResults:
         """Given an exciting calculation profile, execute the calculation.
 
@@ -160,7 +164,7 @@ class ExcitingGroundStateTemplate(CalculatorTemplate, ABC):
         """
         results = {}
         for file_name in self.output_names:
-            full_file_path = directory / file_name
+            full_file_path = Path(directory) / file_name
             result: dict = self.parser[file_name](full_file_path)
             results.update(result)
         return results

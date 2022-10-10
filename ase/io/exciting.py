@@ -13,6 +13,9 @@ See the correpsonding test file in ase/test/io/test_exciting.py.
 
 Plan is to add parsing of eigenvalues in the next iteration using
 excitingtools.exciting_dict_parsers.groundstate_parser.parse_eigval
+
+Note: excitingtools must be installed using `pip install excitingtools` for
+the exciting io to work.
 """
 import logging
 from pathlib import Path
