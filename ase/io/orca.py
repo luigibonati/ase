@@ -46,7 +46,7 @@ def write_orca(atoms, **params):
         pcpot.write_mmcharges(label)
 
     with open(label + '.inp', 'w') as fd:
-        fd.write("! engrad %s \n" % params['orcasimpleinput'])
+        fd.write("! %s \n" % params['orcasimpleinput'])
         fd.write("%s \n" % params['orcablocks'])
 
         fd.write('*xyz')
