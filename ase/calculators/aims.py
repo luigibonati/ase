@@ -174,7 +174,7 @@ class Aims(GenericFileIOCalculator):
         """
 
         if profile is None:
-            profile = AimsProfile(["aims"])
+            profile = AimsProfile(kwargs.pop("run_command", os.getenv("ASE_AIMS_COMMAND", "aims.x")))
 
         super().__init__(template=AimsTemplate(),
                          profile=profile,
