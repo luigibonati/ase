@@ -24,6 +24,9 @@ def get_aims_version(string):
 
 class AimsProfile:
     def __init__(self, argv):
+        if isinstance(argv, str):
+            argv = argv.split()
+
         self.argv = argv
 
     def run(self, directory, outputname):
