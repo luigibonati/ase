@@ -2,13 +2,14 @@
 import numpy as np
 from ase import Atoms
 
+
 def ptable(spacing=2.5):
     '''Generates the periodic table as an Atoms oobject to help with visualizing rendering and color palette settings.'''
     # generates column, row positions for each element
     zmax = 118
     x, y = 1, 1  # column, row , initial coordinates for Hydrogen
     positions = np.zeros((zmax + 1, 3))
-    for z in range(1, zmax + 1): # z is atomic number not, position
+    for z in range(1, zmax + 1):  # z is atomic number not, position
         if z == 2:
             x += 16
         if z == 5:
@@ -29,6 +30,3 @@ def ptable(spacing=2.5):
                   positions[1:] * spacing)
 
     return atoms
-
-
-
