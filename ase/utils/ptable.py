@@ -4,7 +4,8 @@ from ase import Atoms
 
 
 def ptable(spacing=2.5):
-    '''Generates the periodic table as an Atoms oobject to help with visualizing rendering and color palette settings.'''
+    '''Generates the periodic table as an Atoms oobject to help with visualizing
+    rendering and color palette settings.'''
     # generates column, row positions for each element
     zmax = 118
     x, y = 1, 1  # column, row , initial coordinates for Hydrogen
