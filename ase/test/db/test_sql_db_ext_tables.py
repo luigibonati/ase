@@ -18,12 +18,16 @@ def test_sql_db_ext_tables(psycopg2, testdir):
                 name = os.environ.get('ASE_TEST_POSTGRES_URL')
         elif name == "mysql":
             if os.environ.get('CI_PROJECT_DIR'):  # gitlab-ci
-                name = 'mysql://root:ase@mysql:3306/testase_mysql'
+                # Note: testing of non-standard port by changing from default
+                # of 3306 to 3307
+                name = 'mysql://root:ase@mysql:3307/testase_mysql'
             else:
                 name = os.environ.get('MYSQL_DB_URL')
         elif name == 'mariadb':
             if os.environ.get('CI_PROJECT_DIR'):  # gitlab-ci
-                name = 'mariadb://root:ase@mariadb:3306/testase_mysql'
+                # Note: testing of non-standard port by changing from default
+                # of 3306 to 3307
+                name = 'mariadb://root:ase@mariadb:3307/testase_mysql'
             else:
                 name = os.environ.get('MYSQL_DB_URL')
         return name
