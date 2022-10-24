@@ -40,17 +40,17 @@ def test_db(dbname, cli, testdir):
     elif dbname == 'mysql':
         pytest.importorskip('pymysql')
         if os.environ.get('CI_PROJECT_DIR'):  # gitlab-ci
-            # Note: testing of non-standard port by changing from default 
-            # of 3306 to 3307 
+            # Note: testing of non-standard port by changing from default
+            # of 3306 to 3307
             name = 'mysql://root:ase@mysql:3307/testase_mysql'
         else:
             name = os.environ.get('MYSQL_DB_URL')
     elif dbname == 'mariadb':
         pytest.importorskip('pymysql')
         if os.environ.get('CI_PROJECT_DIR'):  # gitlab-ci
-            # Note: testing of non-standard port by changing from default 
-            # of 3306 to 3307 
-            name = 'mariadb://root:ase@mariadb:3307/testase_mysql' 
+            # Note: testing of non-standard port by changing from default
+            # of 3306 to 3307
+            name = 'mariadb://root:ase@mariadb:3307/testase_mysql'
         else:
             name = os.environ.get('MYSQL_DB_URL')
     elif dbname == 'json':
