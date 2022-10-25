@@ -59,4 +59,3 @@ def get_db_name():
         return name
 
     return _func
-

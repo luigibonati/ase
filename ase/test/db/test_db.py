@@ -1,5 +1,4 @@
 import pytest
-import os
 from ase.db import connect
 
 cmd = """
@@ -12,7 +11,6 @@ ase -T build -x fcc Cu | ase -T run emt -E 5,1 -o testase.json &&
 ase -T db -v testase.json natoms=1,Cu=1 --delete --yes &&
 ase -T db -v testase.json "H>0" -k hydro=1,abc=42,foo=bar &&
 ase -T db -v testase.json "H>0" --delete-keys foo"""
-
 
 dbtypes = ['json', 'db', 'postgresql', 'mysql', 'mariadb']
 
