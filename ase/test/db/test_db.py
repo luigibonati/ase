@@ -14,58 +14,17 @@ ase -T db -v testase.json "H>0" -k hydro=1,abc=42,foo=bar &&
 ase -T db -v testase.json "H>0" --delete-keys foo"""
 
 
-dbnames = [
-    'json',
-    'db',
-    'postgresql',
-    'mysql',
-    'mariadb']
+dbtypes = ['json', 'db', 'postgresql', 'mysql', 'mariadb']
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize('dbname', dbnames)
-def test_db(dbname, cli, testdir):
+@pytest.mark.parametrize('dbtype', dbtypes)
+def test_db(dbtype, cli, testdir, get_db_name):
     def count(n, *args, **kwargs):
         m = len(list(con.select(columns=['id'], *args, **kwargs)))
         assert m == n, (m, n)
 
-    name = None
-
-    if dbname == 'postgresql':
-        pytest.importorskip('psycopg2')
-        if os.environ.get('POSTGRES_DB'):  # gitlab-ci
-            name = 'postgresql://ase:ase@postgres:5432/testase'
-        else:
-            name = os.environ.get('ASE_TEST_POSTGRES_URL')
-    elif dbname == 'mysql':
-        pytest.importorskip('pymysql')
-        if os.environ.get('CI_PROJECT_DIR'):  # gitlab-ci
-            # Note: testing of non-standard port by changing from default
-            # of 3306 to 3307
-            name = 'mysql://root:ase@mysql:3307/testase_mysql'
-        else:
-            name = os.environ.get('MYSQL_DB_URL')
-    elif dbname == 'mariadb':
-        pytest.importorskip('pymysql')
-        if os.environ.get('CI_PROJECT_DIR'):  # gitlab-ci
-            # Note: testing of non-standard port by changing from default
-            # of 3306 to 3307
-            name = 'mariadb://root:ase@mariadb:3307/testase_mysql'
-        else:
-            name = os.environ.get('MYSQL_DB_URL')
-    elif dbname == 'json':
-        name = 'testase.json'
-    elif dbname == 'db':
-        name = 'testase.db'
-    else:
-        raise ValueError(f'Bad dbname: {dbname}')
-
-    if name is None:
-        pytest.skip('Test requires environment variables')
-
-    if 'postgres' in name or 'mysql' in name or 'mariadb' in name:
-        con = connect(name)
-        con.delete([row.id for row in con.select()])
+    name = get_db_name(dbtype)
 
     cli.shell(cmd.replace('testase.json', name))
 
