@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Test Periodic Table."""
-import pytest
 from ase.utils.ptable import ptable
 spacing = 1.0
 
