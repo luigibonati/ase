@@ -27,7 +27,7 @@ def read_abinit_in(fd):
 
     index = tokens.index("acell")
     unit = 1.0
-    if(tokens[index + 4].lower()[:3] != 'ang'):
+    if tokens[index + 4].lower()[:3] != 'ang':
         unit = Bohr
     acell = [unit * float(tokens[index + 1]),
              unit * float(tokens[index + 2]),

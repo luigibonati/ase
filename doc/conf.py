@@ -28,8 +28,6 @@ autoclass_content = 'both'
 modindex_common_prefix = ['ase.']
 nitpick_ignore = [('envvar', 'VASP_PP_PATH'),
                   ('envvar', 'ASE_ABC_COMMAND'),
-                  ('envvar', 'FLEUR_INPGEN'),
-                  ('envvar', 'FLEUR'),
                   ('envvar', 'LAMMPS_COMMAND'),
                   ('envvar', 'ASE_NWCHEM_COMMAND'),
                   ('envvar', 'SIESTA_COMMAND'),

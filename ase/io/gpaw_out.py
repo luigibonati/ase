@@ -150,7 +150,7 @@ def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
             ii += 1
             words = lines[ii].split()
             vals = []
-            while(len(words) > 2):
+            while len(words) > 2:
                 vals.append([float(w) for w in words])
                 ii += 1
                 words = lines[ii].split()

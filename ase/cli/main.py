@@ -1,5 +1,4 @@
 import argparse
-import sys
 import textwrap
 from importlib import import_module
 
@@ -20,13 +19,13 @@ commands = [
     # ('show', 'ase.cli.show'),
     ('test', 'ase.test'),
     ('gui', 'ase.gui.ag'),
-    ('db', 'ase.db.cli'),
+    ('db', 'ase.cli.db'),
     ('run', 'ase.cli.run'),
     ('band-structure', 'ase.cli.band_structure'),
     ('build', 'ase.cli.build'),
     ('dimensionality', 'ase.cli.dimensionality'),
     ('eos', 'ase.eos'),
-    ('ulm', 'ase.io.ulm'),
+    ('ulm', 'ase.cli.ulm'),
     ('find', 'ase.cli.find'),
     ('nebplot', 'ase.cli.nebplot'),
     ('nomad-upload', 'ase.cli.nomad'),
@@ -140,10 +139,3 @@ class Formatter(argparse.HelpFormatter):
                 out += textwrap.fill(block, width=width) + '\n'
             out += '\n'
         return out[:-1]
-
-
-def old():
-    cmd = sys.argv[0].split('-')[-1]
-    print('Please use "ase {cmd}" instead of "ase-{cmd}"'.format(cmd=cmd))
-    sys.argv[:1] = ['ase', cmd]
-    main()

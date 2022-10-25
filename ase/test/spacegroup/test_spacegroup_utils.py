@@ -45,8 +45,8 @@ from ase.spacegroup import utils
     },
 ])
 def basis_tests(request):
-    """Fixture which returns a dictionary with some test inputs and expected values
-    for testing the `get_basis` function."""
+    """Fixture which returns a dictionary with some test inputs and
+    expected values for testing the `get_basis` function."""
     return request.param()
 
 
@@ -61,7 +61,8 @@ def test_get_basis(basis_tests):
 
 
 def test_get_basis_infer_sg(basis_tests):
-    """Test inferring spacegroup, which uses 'get_basis_spglib' under the hood"""
+    """Test inferring spacegroup, which uses 'get_basis_spglib' under the
+    hood"""
     pytest.importorskip('spglib')
 
     atoms = basis_tests['atoms']

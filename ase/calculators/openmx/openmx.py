@@ -32,7 +32,6 @@ from ase.calculators.openmx.parameters import OpenMXParameters
 from ase.calculators.openmx.default_settings import default_dictionary
 from ase.calculators.openmx.reader import read_openmx, get_file_name
 from ase.calculators.openmx.writer import write_openmx
-#from ase.calculators.openmx.dos import DOS
 
 
 def parse_omx_version(txt):
@@ -368,7 +367,7 @@ class OpenMX(FileIOCalculator):
             debug = self.debug
         if nohup is None:
             nohup = self.nohup
-        self.prind('Reading input file'+self.label)
+        self.prind('Reading input file' + self.label)
         filename = get_file_name('.dat', self.label)
         if not nohup:
             with open(filename, 'r') as fd:
@@ -478,8 +477,9 @@ class OpenMX(FileIOCalculator):
             if threads is None:
                 threads_string = ''
             command += 'mpirun -np ' + \
-                str(processes) + ' ' + self.command + ' %s ' + threads_string + ' |tee %s'
-            #str(processes) + ' openmx %s' + threads_string + ' > %s'
+                str(processes) + ' ' + self.command + \
+                ' %s ' + threads_string + ' |tee %s'
+            # str(processes) + ' openmx %s' + threads_string + ' > %s'
 
         if runfile is None:
             runfile = abs_dir + '/' + self.prefix + '.dat'
@@ -511,7 +511,7 @@ class OpenMX(FileIOCalculator):
         This is band structure function. It is compatible to
         ase dft module """
         from ase.dft import band_structure
-        if type(self['kpts']) is tuple:
+        if isinstance(self['kpts'], tuple):
             self['kpts'] = self.get_kpoints(band_kpath=self['band_kpath'])
             return band_structure.get_band_structure(self.atoms, self, )
 
@@ -548,7 +548,7 @@ class OpenMX(FileIOCalculator):
             for i, kpath in enumerate(band_kpath):
                 end = False
                 nband = int(kpath[0])
-                if(band_nkpath == i):
+                if band_nkpath == i:
                     end = True
                     nband += 1
                 ini = np.array(kpath[1:4], dtype=float)

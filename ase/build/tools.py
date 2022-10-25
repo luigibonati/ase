@@ -145,7 +145,7 @@ def cut(atoms, a=(1, 0, 0), b=(0, 1, 0), c=None, clength=None,
                 tags = np.cumsum(mask)[ikeys] - 1
                 levels = d[keys][mask]
                 if (maxatoms is None or len(at) < maxatoms or
-                    len(levels) > nlayers):
+                        len(levels) > nlayers):
                     break
                 tol *= 0.9
             if len(levels) > nlayers:
@@ -260,7 +260,7 @@ def stack(atoms1, atoms2, axis=2, cell=None, fix=0.5,
             atoms.center(vacuum=0.0, axis=axis)
 
     if (np.sign(np.linalg.det(atoms1.cell)) !=
-        np.sign(np.linalg.det(atoms2.cell))):
+            np.sign(np.linalg.det(atoms2.cell))):
         raise IncompatibleCellError('Cells of *atoms1* and *atoms2* must have '
                                     'same handedness.')
 
@@ -466,7 +466,7 @@ def reduce_lattice(atoms, eps=2e-4):
     the canonical form used for defining band paths but is otherwise
     physically equivalent.  The eps parameter is used as a tolerance
     for determining the cell's Bravais lattice."""
-    from ase.geometry.bravais_type_engine import identify_lattice
+    from ase.lattice import identify_lattice
     niggli_reduce(atoms)
     lat, op = identify_lattice(atoms.cell, eps=eps)
     update_cell_and_positions(atoms, lat.tocell(), np.linalg.inv(op))

@@ -229,17 +229,20 @@ class FileIOSocketClientLauncher:
 
     def __call__(self, atoms, properties=None, port=None, unixsocket=None):
         assert self.calc is not None
-        self.calc.write_input(atoms, properties=properties,
-                              system_changes=all_changes)
         cwd = self.calc.directory
         profile = getattr(self.calc, 'profile', None)
         if profile is not None:
+            # New GenericFileIOCalculator:
+            self.calc.write_inputfiles(atoms, properties)
             if unixsocket is not None:
                 argv = profile.socketio_argv_unix(socket=unixsocket)
             else:
                 argv = profile.socketio_argv_inet(port=port)
             return Popen(argv, cwd=cwd)
         else:
+            # Old FileIOCalculator:
+            self.calc.write_input(atoms, properties=properties,
+                                  system_changes=all_changes)
             cmd = self.calc.command.replace('PREFIX', self.calc.prefix)
             cmd = cmd.format(port=port, unixsocket=unixsocket)
             return Popen(cmd, shell=True, cwd=cwd)
@@ -308,7 +311,7 @@ class SocketServer(IOContext):
         self.clientsocket = None
         self.address = None
 
-        #if launch_client is not None:
+        # if launch_client is not None:
         #    self.proc = launch_client(port=port, unixsocket=unixsocket)
 
     def _accept(self):
@@ -613,7 +616,6 @@ class SocketIOCalculator(Calculator, IOContext):
                 raise ValueError('Cannot pass both calc and launch_client')
             launch_client = FileIOSocketClientLauncher(calc)
         self.launch_client = launch_client
-        #self.calc = calc
         self.timeout = timeout
         self.server = None
 
@@ -634,13 +636,13 @@ class SocketIOCalculator(Calculator, IOContext):
     def todict(self):
         d = {'type': 'calculator',
              'name': 'socket-driver'}
-        #if self.calc is not None:
+        # if self.calc is not None:
         #    d['calc'] = self.calc.todict()
         return d
 
     def launch_server(self):
         return self.closelater(SocketServer(
-            #launch_client=launch_client,
+            # launch_client=launch_client,
             port=self._port,
             unixsocket=self._unixsocket,
             timeout=self.timeout, log=self.log,

@@ -13,7 +13,8 @@ import re
 import numpy as np
 
 from ase.io.aims import write_aims, write_control
-from ase.calculators.genericfileio import GenericFileIOCalculator, CalculatorTemplate
+from ase.calculators.genericfileio import (GenericFileIOCalculator,
+                                           CalculatorTemplate)
 
 
 def get_aims_version(string):
@@ -23,6 +24,9 @@ def get_aims_version(string):
 
 class AimsProfile:
     def __init__(self, argv):
+        if isinstance(argv, str):
+            argv = argv.split()
+
         self.argv = argv
 
     def run(self, directory, outputname):
@@ -116,7 +120,8 @@ class AimsTemplate(CalculatorTemplate):
             geo_constrain = scaled and "relax_geometry" in parameters
 
         have_lattice_vectors = atoms.pbc.any()
-        have_k_grid = "k_grid" in parameters or "kpts" in parameters or "k_grid_density" in parameters
+        have_k_grid = ("k_grid" in parameters or "kpts" in parameters
+                       or "k_grid_density" in parameters)
         if have_lattice_vectors and not have_k_grid:
             raise RuntimeError("Found lattice vectors but no k-grid!")
         if not have_lattice_vectors and have_k_grid:
@@ -172,7 +177,12 @@ class Aims(GenericFileIOCalculator):
         """
 
         if profile is None:
-            profile = AimsProfile(["aims"])
+            profile = AimsProfile(
+                kwargs.pop(
+                    "run_command",
+                    os.getenv("ASE_AIMS_COMMAND", "aims.x")
+                )
+            )
 
         super().__init__(template=AimsTemplate(),
                          profile=profile,

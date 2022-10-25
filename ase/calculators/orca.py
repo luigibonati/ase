@@ -19,7 +19,7 @@ class ORCA(FileIOCalculator):
     default_parameters = dict(
         charge=0, mult=1,
         task='gradient',
-        orcasimpleinput='tightscf PBE def2-SVP',
+        orcasimpleinput='engrad tightscf PBE def2-SVP',
         orcablocks='%scf maxiter 200 end')
 
     def __init__(self, restart=None,
@@ -35,13 +35,26 @@ class ORCA(FileIOCalculator):
 
             orcasimpleinput: str
                 What you'd put after the "!" in an orca input file.
+                Should in most cases contain "engrad" or method that
+                writes the engrad file. If not (single point only),
+                set the "task" parameter manually.
+                Default is ``engrad tightscf PBE def2-SVP``.
 
             orcablocks: str
                 What you'd put in the "% ... end"-blocks.
+                Default is ``%scf maxiter 200 end``.
 
         are used to define the ORCA simple-inputline and the ORCA-block input.
         This allows for more flexible use of any ORCA method or keyword
         available in ORCA instead of hardcoding stuff.
+
+        Default parameters are:
+
+            charge: 0
+
+            mult: 1
+
+            task: 'gradient'
 
         Point Charge IO functionality added by A. Dohn.
         """
@@ -98,12 +111,16 @@ class ORCA(FileIOCalculator):
         # Energy:
         re_energy = re.compile(r"FINAL SINGLE POINT ENERGY.*\n")
         re_not_converged = re.compile(r"Wavefunction not fully converged")
-        found_line = re_energy.search(text)
-        if found_line and not re_not_converged.search(found_line.group()):
-            self.results['energy'] = float(found_line.group().split()[-1]) * Hartree
+        found_line = re_energy.finditer(text)
+        for match in found_line:
+            if not re_not_converged.search(match.group()):
+                self.results['energy'] = float(
+                    match.group().split()[-1]) * Hartree
 
     def read_forces(self):
         """Read Forces from ORCA output file."""
+        if not os.path.isfile(self.label + '.engrad'):
+            raise ReadError("Engrad file missing.")
         with open(f'{self.label}.engrad', 'r') as fd:
             lines = fd.readlines()
         getgrad = False

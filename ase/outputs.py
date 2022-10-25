@@ -148,15 +148,15 @@ _defineprop('charges', float, shape='natoms')
 _defineprop('magmom', float)
 _defineprop('magmoms', float, shape='natoms')  # XXX spinors?
 _defineprop('polarization', float, shape=3)
-_defineprop('born_charges', float, shape=('natoms', 3, 3))
 _defineprop('dielectric_tensor', float, shape=(3, 3))
+_defineprop('born_effective_charges', float, shape=('natoms', 3, 3))
 
 # We might want to allow properties that are part of Atoms, such as
 # positions, numbers, pbc, cell.  It would be reasonable for those
 # concepts to have a formalization outside the Atoms class.
 
 
-#def to_singlepoint(self, atoms):
+# def to_singlepoint(self, atoms):
 #    from ase.calculators.singlepoint import SinglePointDFTCalculator
 #    return SinglePointDFTCalculator(atoms,
 #                                    efermi=self.fermi_level,
