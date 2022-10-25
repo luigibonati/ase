@@ -20,7 +20,7 @@ def get_db_name():
         name = None
 
         if dbtype == 'postgresql':
-            pytest.importorskip('abcdfs')
+            pytest.importorskip('psycopg2')
             if os.environ.get('POSTGRES_DB'):  # gitlab-ci
                 name = 'postgresql://ase:ase@postgres:5432/testase'
             else:
