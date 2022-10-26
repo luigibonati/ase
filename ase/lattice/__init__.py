@@ -685,7 +685,6 @@ class MCL(BravaisLattice):
 
     @classmethod
     def check_mcl(cls, a, b, c, alpha):
-        ccosalpha = c * np.cos(alpha * _degrees)
         if not (b <= c and alpha < 90):
             raise UnconventionalLattice(
                 'Expected b <= c, alpha < 90; '
@@ -1150,13 +1149,16 @@ def get_lattice_from_canonical_cell(cell, eps=2e-4):
     return LatticeChecker(cell, eps).match()
 
 
-def identify_lattice(cell, eps=2e-4, *, pbc=True):
+def identify_lattice(cell, eps=2e-4, *, pbc=True,
+                     _niggli_op_table=None):
     """Find Bravais lattice representing this cell.
 
     Returns Bravais lattice object representing the cell along with
     an operation that, applied to the cell, yields the same lengths
     and angles as the Bravais lattice object."""
     from ase.geometry.bravais_type_engine import niggli_op_table
+    if _niggli_op_table is None:
+        _niggli_op_table = niggli_op_table
 
     pbc = cell.any(1) & pbc2pbc(pbc)
     npbc = sum(pbc)
@@ -1178,7 +1180,7 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
         # just return the first one we find so we must remember then:
         matching_lattices = []
 
-        for op_key in niggli_op_table[latname]:
+        for op_key in _niggli_op_table.get(latname, []):
             checker_and_op = memory.get(op_key)
             if checker_and_op is None:
                 normalization_op = np.array(op_key).reshape(3, 3)
@@ -1190,7 +1192,10 @@ def identify_lattice(cell, eps=2e-4, *, pbc=True):
 
             lat = checker.query(latname)
             if lat is not None:
-                op = normalization_op @ np.linalg.inv(reduction_op)
+                inv_red_op = np.linalg.inv(reduction_op)
+                inv_red_op_integer = inv_red_op.round().astype(int)
+                assert abs(inv_red_op_integer - inv_red_op).max() < 1e-12
+                op = normalization_op @ inv_red_op_integer
                 matching_lattices.append((lat, op))
 
         # Among any matching lattices, return the one with lowest
