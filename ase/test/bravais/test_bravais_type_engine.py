@@ -4,19 +4,14 @@ from ase.geometry.bravais_type_engine import (
     generate_niggli_op_table, niggli_op_table)
 
 
-# We disable the three lattices that have infinite reductions.
-# Maybe we can test those, but not today.
-#n3d_lattices = 14 - 3
-#n2d_lattices = 5
-#n1d_lattices = 1
-#assert len(ref_info) == n3d_lattices + n2d_lattices + n1d_lattices
-
-ignore_lattices = {'MCL', 'MCLC', 'TRI'}
+# Lattices with 4+ variables are expensive to test,
+# hence we exclude them.
+exclude_lattices = {'MCL', 'MCLC', 'TRI'}
 
 
 def ref_info_iter():
     for latname, ops in niggli_op_table.items():
-        if latname in ignore_lattices:
+        if latname in exclude_lattices:
             continue
         yield latname, ops
 
