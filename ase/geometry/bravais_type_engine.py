@@ -193,9 +193,11 @@ def find_niggli_ops(latcls, length_grid, angle_grid):
     # We prune the list of operations by keeping only those that
     # are accessed at least once when calling identify_lattice()
     # on the set of all sample lattices.
+
     pruned_ops = {}
     for lat in lattice_loop(latcls, length_grid, angle_grid):
-        cell = lat.tocell()
+        cell = lat.tocell().niggli_reduce()[0]
+
         try:
             _lat, op_array = identify_lattice(
                 cell, _niggli_op_table={latcls.name: niggli_ops})
