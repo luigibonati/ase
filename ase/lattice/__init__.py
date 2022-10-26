@@ -724,9 +724,9 @@ class MCL(BravaisLattice):
 
 @bravaisclass('base-centred monoclinic', 'monoclinic', 'monoclinic', 'mC',
               ('a', 'b', 'c', 'alpha'),
-              [['MCLC1', 'GNN1FF1F2F3II1LMXX1X2YY1Z',
+              [['MCLC1', 'GNN1FF1F2II1LMXX1X2YY1Z',
                 'GYFLI,I1ZF1,YX1,XGN,MG', None],
-               ['MCLC2', 'GNN1FF1F2F3II1LMXX1X2YY1Z',
+               ['MCLC2', 'GNN1FF1F2II1LMXX1X2YY1Z',
                 'GYFLI,I1ZF1,NGM', None],
                ['MCLC3', 'GFF1F2HH1H2IMNN1XYY1Y2Y3Z',
                 'GYFHZIF1,H1Y1XGN,MG', None],
@@ -735,6 +735,10 @@ class MCL(BravaisLattice):
                ['MCLC5', 'GFF1F2HH1H2II1LMNN1XYY1Y2Y3Z',
                 'GYFLI,I1ZHF1,H1Y1XGN,MG', None]])
 class MCLC(BravaisLattice):
+    # Note: We are omitting the F3 point from MCLC1 and MCLC2 due to
+    # what appears to be a typo in the AFlow paper's appendix.
+    # The point, F3=(1 - zeta, -zeta, 1 - eta), falls outside the IBZ.
+    # It is also not part of the standard band path.
     conventional_cls = 'MCL'
     conventional_cellmap = np.array([[1, -1, 0], [1, 1, 0], [0, 0, 1]])
 
@@ -810,7 +814,6 @@ class MCLC(BravaisLattice):
                       [1 - zeta, 1 - zeta, 1 - eta],
                       [zeta, zeta, eta],
                       [-zeta, -zeta, 1 - eta],
-                      [1 - zeta, -zeta, 1 - eta],
                       [phi, 1 - phi, .5],
                       [1 - phi, phi - 1, .5],
                       [.5, .5, .5],
