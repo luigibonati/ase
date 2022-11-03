@@ -39,7 +39,7 @@ default_key_descriptions = {
              '`\\text{eV/Ang}^3`'),
     'charge': ('Charge', 'Net charge in unit cell', '|e|'),
     'mass': ('Mass', 'Sum of atomic masses in unit cell', 'au'),
-    'magmom': ('Magnetic moment', '', 'Bohr magneton'),
+    'magmom': ('Magnetic moment', '', 'μ_B'),
     'unique_id': ('Unique ID', 'Random (unique) ID', ''),
     'volume': ('Volume', 'Volume of unit cell', '`\\text{Ang}^3`')}
 
