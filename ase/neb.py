@@ -77,7 +77,7 @@ class NEBState:
     @lazyproperty
     def nimages(self):
         return len(self.images)
-    
+
     @property
     def precon(self):
         return self.neb.precon
@@ -152,7 +152,8 @@ class ASENEBMethod(NEBMethod):
 
     def add_image_force(self, state, tangential_force, tangent, imgforce,
                         spring1, spring2, i):
-        tangent_mag = np.vdot(tangent, tangent)  # Magnitude for normalizing
+        # Magnitude for normalizing. Ensure it is not 0
+        tangent_mag = np.vdot(tangent, tangent) or 1
         factor = tangent / tangent_mag
         imgforce -= tangential_force * factor
         imgforce -= np.vdot(
@@ -164,7 +165,7 @@ class FullSpringMethod(NEBMethod):
     """
     Elastic band method. The full spring force is included.
     """
-    
+
     def get_tangent(self, state, spring1, spring2, i):
         # Tangents are bisections of spring-directions
         # (formula C8 of paper III)
@@ -201,6 +202,7 @@ class BaseSplineMethod(NEBMethod):
         150, 094109 (2019)
         https://dx.doi.org/10.1063/1.5064465
     """
+
     def __init__(self, neb):
         NEBMethod.__init__(self, neb)
 
@@ -217,6 +219,7 @@ class SplineMethod(BaseSplineMethod):
     """
     NEB using spline interpolation, plus optional preconditioning
     """
+
     def add_image_force(self, state, tangential_force, tangent, imgforce,
                         spring1, spring2, i):
         super().add_image_force(state, tangential_force,
@@ -229,6 +232,7 @@ class StringMethod(BaseSplineMethod):
     """
     String method using spline interpolation, plus optional preconditioning
     """
+
     def adjust_positions(self, positions):
         # fit cubic spline to positions, reinterpolate to equispace images
         # note this uses the preconditioned distance metric.
@@ -257,7 +261,7 @@ class BaseNEB:
     def __init__(self, images, k=0.1, climb=False, parallel=False,
                  remove_rotation_and_translation=False, world=None,
                  method='aseneb', allow_shared_calculator=False, precon=None):
-        
+
         self.images = images
         self.climb = climb
         self.parallel = parallel
@@ -271,9 +275,15 @@ class BaseNEB:
             if np.any(img.get_atomic_numbers() !=
                       images[0].get_atomic_numbers()):
                 raise ValueError('Images have atoms in different orders')
-            if np.any(np.abs(img.get_cell() - images[0].get_cell()) > 1e-8):
-                raise NotImplementedError("Variable cell NEB is not "
-                                          "implemented yet")
+            # check periodic cell directions
+            cell_ok = True
+            for pbc, vc, vc0 in zip(img.pbc, img.cell, images[0].cell):
+                if pbc and np.any(np.abs(vc - vc0) > 1e-8):
+                    cell_ok = False
+            if not cell_ok:
+                raise NotImplementedError(
+                    "Variable cell in periodic directions "
+                    "is not implemented yet for NEB")
 
         self.emax = np.nan
 
@@ -402,13 +412,13 @@ class BaseNEB:
         if not self.parallel:
             # Do all images - one at a time:
             for i in range(1, self.nimages - 1):
-                energies[i] = images[i].get_potential_energy()
                 forces[i - 1] = images[i].get_forces()
+                energies[i] = images[i].get_potential_energy()
 
         elif self.world.size == 1:
             def run(image, energies, forces):
-                energies[:] = image.get_potential_energy()
                 forces[:] = image.get_forces()
+                energies[:] = image.get_potential_energy()
 
             threads = [threading.Thread(target=run,
                                         args=(images[i],
@@ -423,8 +433,8 @@ class BaseNEB:
             # Parallelize over images:
             i = self.world.rank * (self.nimages - 2) // self.world.size + 1
             try:
-                energies[i] = images[i].get_potential_energy()
                 forces[i - 1] = images[i].get_forces()
+                energies[i] = images[i].get_potential_energy()
             except Exception:
                 # Make sure other images also fail:
                 error = self.world.sum(1.0)
@@ -438,12 +448,12 @@ class BaseNEB:
                 root = (i - 1) * self.world.size // (self.nimages - 2)
                 self.world.broadcast(energies[i:i + 1], root)
                 self.world.broadcast(forces[i - 1], root)
-                
+
         # if this is the first force call, we need to build the preconditioners
         if (self.precon is None or isinstance(self.precon, str) or
-            isinstance(self.precon, Precon)):
+                isinstance(self.precon, Precon)):
             self.precon = PreconImages(self.precon, images)
-            
+
         # apply preconditioners to transform forces
         # for the default IdentityPrecon this does not change their values
         precon_forces = self.precon.apply(forces, index=slice(1, -1))
@@ -452,7 +462,7 @@ class BaseNEB:
         self.energies = energies
         self.real_forces = np.zeros((self.nimages, self.natoms, 3))
         self.real_forces[1:-1] = forces
-        
+
         state = NEBState(self, images, energies)
 
         # Can we get rid of self.energies, self.imax, self.emax etc.?
@@ -468,7 +478,7 @@ class BaseNEB:
 
             # Get overlap between full PES-derived force and tangent
             tangential_force = np.vdot(forces[i - 1], tangent)
-            
+
             # from now on we use the preconditioned forces (equal for precon=ID)
             imgforce = precon_forces[i - 1]
 
@@ -491,7 +501,7 @@ class BaseNEB:
                 self.residuals.append(residual)
 
             spring1 = spring2
-                    
+
         return precon_forces.reshape((-1, 3))
 
     def get_residual(self):
@@ -560,7 +570,7 @@ class BaseNEB:
                     forces=self.real_forces[i])
 
                 yield atoms
-                
+
     def spline_fit(self, positions=None, norm='precon'):
         """
         Fit a cubic spline to this NEB
@@ -581,7 +591,7 @@ class BaseNEB:
         else:
             raise ValueError(f'unsupported norm {norm}')
         return precon.spline_fit(positions)
-    
+
     def integrate_forces(self, spline_points=1000, bc_type='not-a-knot'):
         """Use spline fit to integrate forces along MEP to approximate
         energy differences using the virtual work approach.
@@ -732,19 +742,19 @@ class NEB(DyNEB):
         Paper I:
 
             G. Henkelman and H. Jonsson, Chem. Phys, 113, 9978 (2000).
-            https://doi.org/10.1063/1.1323224
+            :doi:`10.1063/1.1323224`
 
         Paper II:
 
             G. Henkelman, B. P. Uberuaga, and H. Jonsson, Chem. Phys,
             113, 9901 (2000).
-            https://doi.org/10.1063/1.1329672
+            :doi:`10.1063/1.1329672`
 
         Paper III:
 
             E. L. Kolsbjerg, M. N. Groves, and B. Hammer, J. Chem. Phys,
             145, 094107 (2016)
-            https://doi.org/10.1063/1.4961868
+            :doi:`10.1063/1.4961868`
 
         Paper IV:
 
@@ -810,6 +820,7 @@ class NEBOptimizer(Optimizer):
 
     Details of the adaptive ODE solver are described in paper IV
     """
+
     def __init__(self,
                  neb,
                  restart=None, logfile='-', trajectory=None,
@@ -870,7 +881,7 @@ class NEBOptimizer(Optimizer):
         self.log()
         self.call_observers()
         self.nsteps += 1
-    
+
     def run_ode(self, fmax):
         try:
             ode12r(self.force_function,
@@ -886,7 +897,7 @@ class NEBOptimizer(Optimizer):
             return True
         except OptimizerConvergenceError:
             return False
-               
+
     def run_static(self, fmax):
         X = self.neb.get_positions().reshape(-1)
         for step in range(self.max_steps):

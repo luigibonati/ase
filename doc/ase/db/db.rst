@@ -325,11 +325,6 @@ If you want an :class:`~ase.Atoms` object insted of an
 
 >>> h2 = db.get_atoms(H=2)
 
-or if you want the original EMT calculator attached:
-
->>> h2 = db.get_atoms(H=2, attach_calculator=True)
-
-
 Add additional data
 -------------------
 
@@ -382,7 +377,7 @@ If you do this::
         db.write(mol, ...)
 
 the database will make sure that each molecule is written to permanent
-starage (typically a harddisk) before it moves on to the next molecule.  This
+storage (typically a harddisk) before it moves on to the next molecule.  This
 can be quite slow.  To speed this up, you can write all the molecules in a
 single transaction like this::
 

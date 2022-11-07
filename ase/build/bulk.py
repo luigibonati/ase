@@ -22,8 +22,8 @@ def bulk(name, crystalstructure=None, a=None, b=None, c=None, *, alpha=None,
     name: str
         Chemical symbol or symbols as in 'MgO' or 'NaCl'.
     crystalstructure: str
-        Must be one of sc, fcc, bcc, tetragonal, bct, hcp, rhombohedral, 
-        orthorhombic, mlc, diamond, zincblende, rocksalt, cesiumchloride, 
+        Must be one of sc, fcc, bcc, tetragonal, bct, hcp, rhombohedral,
+        orthorhombic, mcl, diamond, zincblende, rocksalt, cesiumchloride,
         fluorite or wurtzite.
     a: float
         Lattice constant.
@@ -65,7 +65,7 @@ def bulk(name, crystalstructure=None, a=None, b=None, c=None, *, alpha=None,
             # is given, and the reference state says we need one, but
             # does not have one, then we can't proceed.
             if (crystalstructure is None and basis is None
-                and 'basis' in ref and ref['basis'] is None):
+                    and 'basis' in ref and ref['basis'] is None):
                 # XXX This is getting much too complicated, we need to split
                 # this function up.  A lot.
                 raise RuntimeError('This structure requires an atomic basis')
@@ -98,6 +98,10 @@ def bulk(name, crystalstructure=None, a=None, b=None, c=None, *, alpha=None,
             raise ValueError('No suitable reference data for bulk {}.'
                              '  Reference data: {}'
                              .format(name, ref))
+
+    magmom_per_atom = None
+    if crystalstructure == xref:
+        magmom_per_atom = ref.get('magmom_per_atom')
 
     if crystalstructure not in structures:
         raise ValueError('Unknown structure: {}.'
@@ -147,15 +151,12 @@ def bulk(name, crystalstructure=None, a=None, b=None, c=None, *, alpha=None,
 
     if orthorhombic and crystalstructure not in ['sc', 'tetragonal',
                                                  'orthorhombic']:
-        return _orthorhombic_bulk(name, crystalstructure, a, covera, u)
-
-    if cubic and crystalstructure in ['bcc', 'cesiumchloride']:
-        return _orthorhombic_bulk(name, crystalstructure, a, covera)
-
-    if cubic and crystalstructure != 'sc':
-        return _cubic_bulk(name, crystalstructure, a)
-
-    if crystalstructure == 'sc':
+        atoms = _orthorhombic_bulk(name, crystalstructure, a, covera, u)
+    elif cubic and crystalstructure in ['bcc', 'cesiumchloride']:
+        atoms = _orthorhombic_bulk(name, crystalstructure, a, covera)
+    elif cubic and crystalstructure != 'sc':
+        atoms = _cubic_bulk(name, crystalstructure, a)
+    elif crystalstructure == 'sc':
         atoms = Atoms(name, cell=(a, a, a), pbc=True)
     elif crystalstructure == 'fcc':
         b = a / 2
@@ -216,12 +217,18 @@ def bulk(name, crystalstructure=None, a=None, b=None, c=None, *, alpha=None,
     elif crystalstructure == 'orthorhombic':
         atoms = Atoms(name, cell=[a, b, c], pbc=True)
     else:
-        raise ValueError('Unknown crystal structure: ' + crystalstructure)
+        raise ValueError(f'Unknown crystal structure: {crystalstructure!r}')
+
+    if magmom_per_atom is not None:
+        magmoms = [magmom_per_atom] * len(atoms)
+        atoms.set_initial_magnetic_moments(magmoms)
 
     if orthorhombic:
         assert atoms.cell.orthorhombic
+
     if cubic:
         assert abs(atoms.cell.angles() - 90).all() < 1e-10
+
     return atoms
 
 

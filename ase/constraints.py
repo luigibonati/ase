@@ -1,8 +1,6 @@
-from math import sqrt
 from warnings import warn
 
 import numpy as np
-from scipy.linalg import expm, logm
 from ase.calculators.calculator import PropertyNotImplementedError
 from ase.geometry import (find_mic, wrap_positions, get_distances_derivatives,
                           get_angles_derivatives, get_dihedrals_derivatives,
@@ -13,7 +11,7 @@ from ase.stress import (full_3x3_to_voigt_6_stress,
 
 __all__ = [
     'FixCartesian', 'FixBondLength', 'FixedMode',
-    'FixConstraintSingle', 'FixAtoms', 'UnitCellFilter', 'ExpCellFilter',
+    'FixAtoms', 'UnitCellFilter', 'ExpCellFilter',
     'FixScaled', 'StrainFilter', 'FixCom', 'FixedPlane', 'Filter',
     'FixConstraint', 'FixedLine', 'FixBondLengths', 'FixLinearTriatomic',
     'FixInternals', 'Hookean', 'ExternalForce', 'MirrorForce', 'MirrorTorque',
@@ -81,105 +79,61 @@ class FixConstraint:
         return dict2constraint(self.todict().copy())
 
 
-class FixConstraintSingle(FixConstraint):
-    """Base class for classes that fix a single atom."""
-
-    def __init__(self, a):
-        self.a = a
-
-    def index_shuffle(self, atoms, ind):
-        """The atom index must be stored as self.a."""
-        newa = None   # Signal error
-        if self.a < 0:
-            self.a += len(atoms)
-        for new, old in slice2enlist(ind, len(atoms)):
-            if old == self.a:
-                newa = new
-                break
-        if newa is None:
-            raise IndexError('Constraint not part of slice')
-        self.a = newa
-
-    def get_indices(self):
-        return [self.a]
-
-
-class FixAtoms(FixConstraint):
-    """Constraint object for fixing some chosen atoms."""
-
+class IndexedConstraint(FixConstraint):
     def __init__(self, indices=None, mask=None):
         """Constrain chosen atoms.
 
         Parameters
         ----------
-        indices : list of int
+        indices : sequence of int
            Indices for those atoms that should be constrained.
-        mask : list of bool
+        mask : sequence of bool
            One boolean per atom indicating if the atom should be
            constrained or not.
-
-        Examples
-        --------
-        Fix all Copper atoms:
-
-        >>> mask = [s == 'Cu' for s in atoms.get_chemical_symbols()]
-        >>> c = FixAtoms(mask=mask)
-        >>> atoms.set_constraint(c)
-
-        Fix all atoms with z-coordinate less than 1.0 Angstrom:
-
-        >>> c = FixAtoms(mask=atoms.positions[:, 2] < 1.0)
-        >>> atoms.set_constraint(c)
         """
 
-        if indices is None and mask is None:
-            raise ValueError('Use "indices" or "mask".')
-        if indices is not None and mask is not None:
-            raise ValueError('Use only one of "indices" and "mask".')
-
         if mask is not None:
-            indices = np.arange(len(mask))[np.asarray(mask, bool)]
-        else:
-            # Check for duplicates:
-            srt = np.sort(indices)
-            if (np.diff(srt) == 0).any():
-                raise ValueError(
-                    'FixAtoms: The indices array contained duplicates. '
-                    'Perhaps you wanted to specify a mask instead, but '
-                    'forgot the mask= keyword.')
-        self.index = np.asarray(indices, int)
+            if indices is not None:
+                raise ValueError('Use only one of "indices" and "mask".')
+            indices = mask
+        indices = np.atleast_1d(indices)
+        if np.ndim(indices) > 1:
+            raise ValueError('indices has wrong amount of dimensions. '
+                             f'Got {np.ndim(indices)}, expected ndim <= 1')
 
-        if self.index.ndim != 1:
-            raise ValueError('Wrong argument to FixAtoms class!')
+        if indices.dtype == bool:
+            indices = np.arange(len(indices))[indices]
+        elif len(indices) == 0:
+            indices = np.empty(0, dtype=int)
+        elif not np.issubdtype(indices.dtype, np.integer):
+            raise ValueError('Indices must be integers or boolean mask, '
+                             f'not dtype={indices.dtype}')
 
-    def get_removed_dof(self, atoms):
-        return 3 * len(self.index)
+        if len(set(indices)) < len(indices):
+            raise ValueError(
+                'The indices array contains duplicates. '
+                'Perhaps you want to specify a mask instead, but '
+                'forgot the mask= keyword.')
 
-    def adjust_positions(self, atoms, new):
-        new[self.index] = atoms.positions[self.index]
-
-    def adjust_forces(self, atoms, forces):
-        forces[self.index] = 0.0
+        self.index = indices
 
     def index_shuffle(self, atoms, ind):
         # See docstring of superclass
         index = []
+
+        # Resolve negative indices:
+        actual_indices = set(np.arange(len(atoms))[self.index])
+
         for new, old in slice2enlist(ind, len(atoms)):
-            if old in self.index:
+            if old in actual_indices:
                 index.append(new)
         if len(index) == 0:
             raise IndexError('All indices in FixAtoms not part of slice')
         self.index = np.asarray(index, int)
+        # XXX make immutable
 
     def get_indices(self):
-        return self.index
-
-    def __repr__(self):
-        return 'FixAtoms(indices=%s)' % ints2string(self.index)
-
-    def todict(self):
-        return {'name': 'FixAtoms',
-                'kwargs': {'indices': self.index.tolist()}}
+        return self.index.copy()
 
     def repeat(self, m, n):
         i0 = 0
@@ -195,12 +149,13 @@ class FixAtoms(FixConstraint):
                     i0 = i1
                     natoms += n
         self.index = np.asarray(index_new, int)
+        # XXX make immutable
         return self
 
     def delete_atoms(self, indices, natoms):
-        """Removes atom number ind from the index array, if present.
+        """Removes atoms from the index array, if present.
 
-        Required for removing atoms with existing FixAtoms constraints.
+        Required for removing atoms with existing constraint.
         """
 
         i = np.zeros(natoms, int) - 1
@@ -208,9 +163,46 @@ class FixAtoms(FixConstraint):
         i[new] = np.arange(len(new))
         index = i[self.index]
         self.index = index[index >= 0]
+        # XXX make immutable
         if len(self.index) == 0:
             return None
         return self
+
+
+class FixAtoms(IndexedConstraint):
+    """Fix chosen atoms.
+
+    Examples
+    --------
+    Fix all Copper atoms:
+
+    >>> mask = (atoms.symbols == 'Cu')
+    >>> c = FixAtoms(mask=mask)
+    >>> atoms.set_constraint(c)
+
+    Fix all atoms with z-coordinate less than 1.0 Angstrom:
+
+    >>> c = FixAtoms(mask=atoms.positions[:, 2] < 1.0)
+    >>> atoms.set_constraint(c)
+    """
+
+    def get_removed_dof(self, atoms):
+        return 3 * len(self.index)
+
+    def adjust_positions(self, atoms, new):
+        new[self.index] = atoms.positions[self.index]
+
+    def adjust_forces(self, atoms, forces):
+        forces[self.index] = 0.0
+
+    def __repr__(self):
+        clsname = type(self).__name__
+        indices = ints2string(self.index)
+        return f'{clsname}(indices={indices})'
+
+    def todict(self):
+        return {'name': 'FixAtoms',
+                'kwargs': {'indices': self.index.tolist()}}
 
 
 class FixCom(FixConstraint):
@@ -384,7 +376,7 @@ class FixLinearTriatomic(FixConstraint):
            References:
 
            Ciccotti et al. Molecular Physics 47 (1982)
-           https://doi.org/10.1080/00268978200100942
+           :doi:`10.1080/00268978200100942`
         """
         self.triples = np.asarray(triples)
         if self.triples.shape[1] != 3:
@@ -654,124 +646,197 @@ class FixedMode(FixConstraint):
         return 'FixedMode(%s)' % self.mode.tolist()
 
 
-class FixedPlane(FixConstraintSingle):
-    """Constrain an atom index *a* to move in a given plane only.
+def _normalize(direction):
+    if np.shape(direction) != (3,):
+        raise ValueError("len(direction) is {len(direction)}. Has to be 3")
 
-    The plane is defined by its normal vector *direction*."""
+    direction = np.asarray(direction) / np.linalg.norm(direction)
+    return direction
 
-    def __init__(self, a, direction):
-        self.a = a
-        self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
 
-    def get_removed_dof(self, atoms):
-        return 1
+class FixedPlane(IndexedConstraint):
+    """
+    Constraint object for fixing chosen atoms to only move in a plane.
+
+    The plane is defined by its normal vector *direction*
+    """
+
+    def __init__(self, indices, direction):
+        """Constrain chosen atoms.
+
+        Parameters
+        ----------
+        indices : int or list of int
+            Index or indices for atoms that should be constrained
+        direction : list of 3 int
+            Direction of the normal vector
+
+        Examples
+        --------
+        Fix all Copper atoms to only move in the yz-plane:
+
+        >>> from ase.constraints import FixedPlane
+        >>> c = FixedPlane(
+        >>>     indices=[atom.index for atom in atoms if atom.symbol == 'Cu'],
+        >>>     direction=[1, 0, 0],
+        >>> )
+        >>> atoms.set_constraint(c)
+
+        or constrain a single atom with the index 0 to move in the xy-plane:
+
+        >>> c = FixedPlane(indices=0, direction=[0, 0, 1])
+        >>> atoms.set_constraint(c)
+        """
+        super().__init__(indices=indices)
+        self.dir = _normalize(direction)
 
     def adjust_positions(self, atoms, newpositions):
-        step = newpositions[self.a] - atoms.positions[self.a]
-        newpositions[self.a] -= self.dir * np.dot(step, self.dir)
+        step = newpositions[self.index] - atoms.positions[self.index]
+        newpositions[self.index] -= _projection(step, self.dir)
 
     def adjust_forces(self, atoms, forces):
-        forces[self.a] -= self.dir * np.dot(forces[self.a], self.dir)
-
-    def todict(self):
-        return {'name': 'FixedPlane',
-                'kwargs': {'a': self.a, 'direction': self.dir.tolist()}}
-
-    def __repr__(self):
-        return 'FixedPlane(%d, %s)' % (self.a, self.dir.tolist())
-
-
-class FixedLine(FixConstraintSingle):
-    """Constrain an atom index *a* to move on a given line only.
-
-    The line is defined by its vector *direction*."""
-
-    def __init__(self, a, direction):
-        self.a = a
-        self.dir = np.asarray(direction) / sqrt(np.dot(direction, direction))
+        forces[self.index] -= _projection(forces[self.index], self.dir)
 
     def get_removed_dof(self, atoms):
-        return 2
-
-    def adjust_positions(self, atoms, newpositions):
-        step = newpositions[self.a] - atoms.positions[self.a]
-        x = np.dot(step, self.dir)
-        newpositions[self.a] = atoms.positions[self.a] + x * self.dir
-
-    def adjust_forces(self, atoms, forces):
-        forces[self.a] = self.dir * np.dot(forces[self.a], self.dir)
-
-    def __repr__(self):
-        return 'FixedLine(%d, %s)' % (self.a, self.dir.tolist())
+        return len(self.index)
 
     def todict(self):
-        return {'name': 'FixedLine',
-                'kwargs': {'a': self.a, 'direction': self.dir.tolist()}}
+        return {
+            'name': 'FixedPlane',
+            'kwargs': {'indices': self.index.tolist(),
+                       'direction': self.dir.tolist()}
+        }
+
+    def __repr__(self):
+        return f'FixedPlane(indices={self.index}, {self.dir.tolist()})'
 
 
-class FixCartesian(FixConstraintSingle):
+def _projection(vectors, direction):
+    dotprods = vectors @ direction
+    projection = direction[None, :] * dotprods[:, None]
+    return projection
+
+
+class FixedLine(IndexedConstraint):
+    """
+    Constrain an atom index or a list of atom indices to move on a line only.
+
+    The line is defined by its vector *direction*
+    """
+
+    def __init__(self, indices, direction):
+        """Constrain chosen atoms.
+
+        Parameters
+        ----------
+        indices : int or list of int
+            Index or indices for atoms that should be constrained
+        direction : list of 3 int
+            Direction of the vector defining the line
+
+        Examples
+        --------
+        Fix all Copper atoms to only move in the x-direction:
+
+        >>> from ase.constraints import FixedLine
+        >>> c = FixedLine(
+        >>>     indices=[atom.index for atom in atoms if atom.symbol == 'Cu'],
+        >>>     direction=[1, 0, 0],
+        >>> )
+        >>> atoms.set_constraint(c)
+
+        or constrain a single atom with the index 0 to move in the z-direction:
+
+        >>> c = FixedLine(indices=0, direction=[0, 0, 1])
+        >>> atoms.set_constraint(c)
+        """
+        super().__init__(indices)
+        self.dir = _normalize(direction)
+
+    def adjust_positions(self, atoms, newpositions):
+        step = newpositions[self.index] - atoms.positions[self.index]
+        projection = _projection(step, self.dir)
+        newpositions[self.index] = atoms.positions[self.index] + projection
+
+    def adjust_forces(self, atoms, forces):
+        forces[self.index] = _projection(forces[self.index], self.dir)
+
+    def get_removed_dof(self, atoms):
+        return 2 * len(self.index)
+
+    def __repr__(self):
+        return f'FixedLine(indices={self.index}, {self.dir.tolist()})'
+
+    def todict(self):
+        return {
+            'name': 'FixedLine',
+            'kwargs': {'indices': self.index.tolist(),
+                       'direction': self.dir.tolist()}
+        }
+
+
+class FixCartesian(IndexedConstraint):
     'Fix an atom index *a* in the directions of the cartesian coordinates.'
 
     def __init__(self, a, mask=(1, 1, 1)):
-        self.a = a
+        super().__init__(indices=a)
         self.mask = ~np.asarray(mask, bool)
 
     def get_removed_dof(self, atoms):
-        return 3 - self.mask.sum()
+        return (3 - self.mask.sum()) * len(self.index)
 
     def adjust_positions(self, atoms, new):
-        step = new[self.a] - atoms.positions[self.a]
-        step *= self.mask
-        new[self.a] = atoms.positions[self.a] + step
+        step = new[self.index] - atoms.positions[self.index]
+        step *= self.mask[None, :]
+        new[self.index] = atoms.positions[self.index] + step
 
     def adjust_forces(self, atoms, forces):
-        forces[self.a] *= self.mask
+        forces[self.index] *= self.mask[None, :]
 
     def __repr__(self):
-        return 'FixCartesian(a={0}, mask={1})'.format(self.a,
-                                                      list(~self.mask))
+        return 'FixCartesian(indices={}, mask={})'.format(
+            self.index.tolist(), list(~self.mask))
 
     def todict(self):
         return {'name': 'FixCartesian',
-                'kwargs': {'a': self.a, 'mask': ~self.mask.tolist()}}
+                'kwargs': {'a': self.index.tolist(),
+                           'mask': (~self.mask).tolist()}}
 
 
-class FixScaled(FixConstraintSingle):
+class FixScaled(IndexedConstraint):
     'Fix an atom index *a* in the directions of the unit vectors.'
 
-    def __init__(self, cell, a, mask=(1, 1, 1)):
-        self.cell = np.asarray(cell)
-        self.a = a
+    def __init__(self, a, mask=(1, 1, 1), cell=None):
+        # XXX The unused cell keyword is there for compatibility
+        # with old trajectory files.
+        super().__init__(a)
         self.mask = np.array(mask, bool)
 
     def get_removed_dof(self, atoms):
-        return self.mask.sum()
+        return self.mask.sum() * len(self.index)
 
     def adjust_positions(self, atoms, new):
-        scaled_old = atoms.cell.scaled_positions(atoms.positions)
-        scaled_new = atoms.cell.scaled_positions(new)
-        for n in range(3):
-            if self.mask[n]:
-                scaled_new[self.a, n] = scaled_old[self.a, n]
-        new[self.a] = atoms.cell.cartesian_positions(scaled_new)[self.a]
+        cell = atoms.cell
+        scaled_old = cell.scaled_positions(atoms.positions[self.index])
+        scaled_new = cell.scaled_positions(new[self.index])
+        scaled_new[:, self.mask] = scaled_old[:, self.mask]
+        new[self.index] = cell.cartesian_positions(scaled_new)
 
     def adjust_forces(self, atoms, forces):
-        # Forces are covarient to the coordinate transformation,
+        # Forces are covariant to the coordinate transformation,
         # use the inverse transformations
-        scaled_forces = atoms.cell.cartesian_positions(forces)
-        scaled_forces[self.a] *= -(self.mask - 1)
-        forces[self.a] = atoms.cell.scaled_positions(scaled_forces)[self.a]
+        cell = atoms.cell
+        scaled_forces = cell.cartesian_positions(forces[self.index])
+        scaled_forces *= -(self.mask - 1)
+        forces[self.index] = cell.scaled_positions(scaled_forces)
 
     def todict(self):
         return {'name': 'FixScaled',
-                'kwargs': {'a': self.a,
-                           'cell': self.cell.tolist(),
+                'kwargs': {'a': self.index.tolist(),
                            'mask': self.mask.tolist()}}
 
     def __repr__(self):
-        return 'FixScaled(%s, %d, %s)' % (repr(self.cell),
-                                          self.a,
-                                          repr(self.mask))
+        return 'FixScaled({}, {})'.format(self.index.tolist(), self.mask)
 
 
 # TODO: Better interface might be to use dictionaries in place of very
@@ -779,16 +844,50 @@ class FixScaled(FixConstraintSingle):
 class FixInternals(FixConstraint):
     """Constraint object for fixing multiple internal coordinates.
 
-    Allows fixing bonds, angles, and dihedrals.
-    Please provide angular units in degrees using angles_deg and
-    dihedrals_deg.
+    Allows fixing bonds, angles, dihedrals as well as linear combinations
+    of bonds (bondcombos).
+
+    Please provide angular units in degrees using `angles_deg` and
+    `dihedrals_deg`.
+    Fixing planar angles is not supported at the moment.
     """
+
     def __init__(self, bonds=None, angles=None, dihedrals=None,
                  angles_deg=None, dihedrals_deg=None,
-                 bondcombos=None, anglecombos=None, dihedralcombos=None,
+                 bondcombos=None,
                  mic=False, epsilon=1.e-7):
+        """
+        A constrained internal coordinate is defined as a nested list:
+        '[value, [atom indices]]'. The constraint is initialized with a list of
+        constrained internal coordinates, i.e. '[[value, [atom indices]], ...]'.
+        If 'value' is None, the current value of the coordinate is constrained.
 
-        # deprecate public API using radians; degrees is preferred
+        Parameters
+        ----------
+        bonds: nested python list, optional
+            List with targetvalue and atom indices defining the fixed bonds,
+            i.e. [[targetvalue, [index0, index1]], ...]
+
+        angles_deg: nested python list, optional
+            List with targetvalue and atom indices defining the fixedangles,
+            i.e. [[targetvalue, [index0, index1, index3]], ...]
+
+        dihedrals_deg: nested python list, optional
+            List with targetvalue and atom indices defining the fixed dihedrals,
+            i.e. [[targetvalue, [index0, index1, index3]], ...]
+
+        bondcombos: nested python list, optional
+            List with targetvalue, atom indices and linear coefficient defining
+            the fixed linear combination of bonds,
+            i.e. [[targetvalue, [[index0, index1, coefficient_for_bond],
+            [index1, index2, coefficient_for_bond]]], ...]
+
+        mic: bool, optional, default: False
+            Minimum image convention.
+
+        epsilon: float, optional, default: 1e-7
+            Convergence criterion.
+        """
         warn_msg = 'Please specify {} in degrees using the {} argument.'
         if angles:
             warn(FutureWarning(warn_msg.format('angles', 'angle_deg')))
@@ -809,14 +908,11 @@ class FixInternals(FixConstraint):
         self.angles = angles or []
         self.dihedrals = dihedrals or []
         self.bondcombos = bondcombos or []
-        self.anglecombos = anglecombos or []
-        self.dihedralcombos = dihedralcombos or []
         self.mic = mic
         self.epsilon = epsilon
 
         self.n = (len(self.bonds) + len(self.angles) + len(self.dihedrals)
-                  + len(self.bondcombos) + len(self.anglecombos)
-                  + len(self.dihedralcombos))
+                  + len(self.bondcombos))
 
         # Initialize these at run-time:
         self.constraints = []
@@ -835,16 +931,42 @@ class FixInternals(FixConstraint):
             cell = atoms.cell
             pbc = atoms.pbc
         self.constraints = []
-        for data, make_constr in [(self.bonds, self.FixBondLengthAlt),
+        for data, ConstrClass in [(self.bonds, self.FixBondLengthAlt),
                                   (self.angles, self.FixAngle),
                                   (self.dihedrals, self.FixDihedral),
-                                  (self.bondcombos, self.FixBondCombo),
-                                  (self.anglecombos, self.FixAngleCombo),
-                                  (self.dihedralcombos, self.FixDihedralCombo)]:
+                                  (self.bondcombos, self.FixBondCombo)]:
             for datum in data:
-                constr = make_constr(datum[0], datum[1], masses, cell, pbc)
+                targetvalue = datum[0]
+                if targetvalue is None:  # set to current value
+                    targetvalue = ConstrClass.get_value(atoms, datum[1],
+                                                        self.mic)
+                constr = ConstrClass(targetvalue, datum[1], masses, cell, pbc)
                 self.constraints.append(constr)
         self.initialized = True
+
+    @staticmethod
+    def get_bondcombo(atoms, indices, mic=False):
+        """Convenience function to return the value of the bondcombo coordinate
+        (linear combination of bond lengths) for the given Atoms object 'atoms'.
+        Example: Get the current value of the linear combination of two bond
+        lengths defined as `bondcombo = [[0, 1, 1.0], [2, 3, -1.0]]`."""
+        c = sum(df[2] * atoms.get_distance(*df[:2], mic=mic) for df in indices)
+        return c
+
+    def get_subconstraint(self, atoms, definition):
+        """Get pointer to a specific subconstraint.
+        Identification by its definition via indices (and coefficients)."""
+        self.initialize(atoms)
+        for subconstr in self.constraints:
+            if type(definition[0]) == list:  # identify Combo constraint
+                defin = [d + [c] for d, c in zip(subconstr.indices,
+                                                 subconstr.coefs)]
+                if defin == definition:
+                    return subconstr
+            else:  # identify primitive constraints by their indices
+                if subconstr.indices == [definition]:
+                    return subconstr
+        raise ValueError('Given `definition` not found on Atoms object.')
 
     def shuffle_definitions(self, shuffle_dic, internal_type):
         dfns = []  # definitions
@@ -863,7 +985,7 @@ class FixInternals(FixConstraint):
 
     def shuffle_combos(self, shuffle_dic, internal_type):
         dfns = []  # definitions
-        for dfn in internal_type:  # e.g. for bondcombo in self.bondcombos
+        for dfn in internal_type:  # i.e. for bondcombo in self.bondcombos
             append = True
             all_indices = [idx[0:-1] for idx in dfn[1]]
             new_dfn = [dfn[0], list(dfn[1])]
@@ -889,9 +1011,6 @@ class FixInternals(FixConstraint):
         self.angles = self.shuffle_definitions(shuffle_dic, self.angles)
         self.dihedrals = self.shuffle_definitions(shuffle_dic, self.dihedrals)
         self.bondcombos = self.shuffle_combos(shuffle_dic, self.bondcombos)
-        self.anglecombos = self.shuffle_combos(shuffle_dic, self.anglecombos)
-        self.dihedralcombos = self.shuffle_combos(shuffle_dic,
-                                                  self.dihedralcombos)
         self.initialized = False
         self.initialize(atoms)
         if len(self.constraints) == 0:
@@ -901,7 +1020,7 @@ class FixInternals(FixConstraint):
         cons = []
         for dfn in self.bonds + self.dihedrals + self.angles:
             cons.extend(dfn[1])
-        for dfn in self.bondcombos + self.anglecombos + self.dihedralcombos:
+        for dfn in self.bondcombos:
             for partial_dfn in dfn[1]:
                 cons.extend(partial_dfn[0:-1])  # last index is the coefficient
         return list(set(cons))
@@ -909,26 +1028,31 @@ class FixInternals(FixConstraint):
     def todict(self):
         return {'name': 'FixInternals',
                 'kwargs': {'bonds': self.bonds,
-                           'angles': self.angles,
-                           'dihedrals': self.dihedrals,
+                           'angles_deg': self.angles,
+                           'dihedrals_deg': self.dihedrals,
                            'bondcombos': self.bondcombos,
-                           'anglecombos': self.anglecombos,
-                           'dihedralcombos': self.dihedralcombos,
                            'mic': self.mic,
                            'epsilon': self.epsilon}}
 
-    def adjust_positions(self, atoms, new):
+    def adjust_positions(self, atoms, newpos):
         self.initialize(atoms)
         for constraint in self.constraints:
-            constraint.prepare_jacobian(atoms.positions)
+            constraint.setup_jacobian(atoms.positions)
         for j in range(50):
             maxerr = 0.0
             for constraint in self.constraints:
-                constraint.adjust_positions(atoms.positions, new)
+                constraint.adjust_positions(atoms.positions, newpos)
                 maxerr = max(abs(constraint.sigma), maxerr)
             if maxerr < self.epsilon:
                 return
-        raise ValueError('Shake did not converge.')
+        msg = 'FixInternals.adjust_positions did not converge.'
+        if any([constr.targetvalue > 175. or constr.targetvalue < 5. for constr
+                in self.constraints if isinstance(constr, self.FixAngle)]):
+            msg += (' This may be caused by an almost planar angle.'
+                    ' Support for planar angles would require the'
+                    ' implementation of ghost, i.e. dummy, atoms.'
+                    ' See issue #868.')
+        raise ValueError(msg)
 
     def adjust_forces(self, atoms, forces):
         """Project out translations and rotations and all other constraints"""
@@ -961,7 +1085,7 @@ class FixInternals(FixConstraint):
 
         # Add all angle, etc. constraint vectors
         for constraint in self.constraints:
-            constraint.prepare_jacobian(positions)
+            constraint.setup_jacobian(positions)
             constraint.adjust_forces(positions, forces)
             list_constraints.insert(0, constraint.jacobian)
         # QR DECOMPOSITION - GRAM SCHMIDT
@@ -987,20 +1111,17 @@ class FixInternals(FixConstraint):
         forces[:, :] -= np.dot(T, np.row_stack(ff)).reshape(-1, 3)
 
     def __repr__(self):
-        constraints = repr(self.constraints)
-        return 'FixInternals(_copy_init=%s, epsilon=%s)' % (constraints,
-                                                            repr(self.epsilon))
-
-    def __str__(self):
-        return '\n'.join([repr(c) for c in self.constraints])
+        constraints = [repr(constr) for constr in self.constraints]
+        return f'FixInternals(_copy_init={constraints}, epsilon={self.epsilon})'
 
     # Classes for internal use in FixInternals
     class FixInternalsBase:
         """Base class for subclasses of FixInternals."""
+
         def __init__(self, targetvalue, indices, masses, cell, pbc):
             self.targetvalue = targetvalue  # constant target value
             self.indices = [defin[0:-1] for defin in indices]  # indices, defs
-            self.coefs = np.asarray([defin[-1] for defin in indices])  # coefs
+            self.coefs = np.asarray([defin[-1] for defin in indices])
             self.masses = masses
             self.jacobian = []  # geometric Jacobian matrix, Wilson B-matrix
             self.sigma = 1.  # difference between current and target value
@@ -1016,16 +1137,17 @@ class FixInternals(FixConstraint):
                 for j in range(n):
                     jacobian[i, idx[j]] = derivs[i, j]
             jacobian = jacobian.reshape((n_internals, 3 * len(pos)))
-            self.jacobian = self.coefs @ jacobian
+            return self.coefs @ jacobian
 
         def finalize_positions(self, newpos):
             jacobian = self.jacobian / self.masses
-            lamda = -self.sigma / np.dot(jacobian, self.jacobian)
+            lamda = -self.sigma / (jacobian @ self.get_jacobian(newpos))
             dnewpos = lamda * jacobian
             newpos += dnewpos.reshape(newpos.shape)
 
         def adjust_forces(self, positions, forces):
-            self.projected_force = np.dot(self.jacobian, forces.ravel())
+            self.projected_forces = ((self.jacobian @ forces.ravel())
+                                     * self.jacobian)
             self.jacobian /= np.linalg.norm(self.jacobian)
 
     class FixBondCombo(FixInternalsBase):
@@ -1034,120 +1156,117 @@ class FixInternals(FixConstraint):
 
         sum_i( coef_i * bond_length_i ) = constant
         """
-        def prepare_jacobian(self, pos):
+
+        def get_jacobian(self, pos):
             bondvectors = [pos[k] - pos[h] for h, k in self.indices]
             derivs = get_distances_derivatives(bondvectors, cell=self.cell,
                                                pbc=self.pbc)
-            self.finalize_jacobian(pos, len(bondvectors), 2, derivs)
+            return self.finalize_jacobian(pos, len(bondvectors), 2, derivs)
+
+        def setup_jacobian(self, pos):
+            self.jacobian = self.get_jacobian(pos)
 
         def adjust_positions(self, oldpos, newpos):
             bondvectors = [newpos[k] - newpos[h] for h, k in self.indices]
             (_, ), (dists, ) = conditional_find_mic([bondvectors],
                                                     cell=self.cell,
                                                     pbc=self.pbc)
-            value = np.dot(self.coefs, dists)
+            value = self.coefs @ dists
             self.sigma = value - self.targetvalue
             self.finalize_positions(newpos)
 
+        @staticmethod
+        def get_value(atoms, indices, mic):
+            return FixInternals.get_bondcombo(atoms, indices, mic)
+
         def __repr__(self):
-            return 'FixBondCombo({}, {}, {})'.format(repr(self.targetvalue),
-                                                     self.indices, self.coefs)
+            return (f'FixBondCombo({self.targetvalue}, {self.indices}, '
+                    '{self.coefs})')
 
     class FixBondLengthAlt(FixBondCombo):
         """Constraint subobject for fixing bond length within FixInternals.
         Fix distance between atoms with indices a1, a2."""
+
         def __init__(self, targetvalue, indices, masses, cell, pbc):
+            if targetvalue <= 0.:
+                raise ZeroDivisionError('Invalid targetvalue for fixed bond')
             indices = [list(indices) + [1.]]  # bond definition with coef 1.
             super().__init__(targetvalue, indices, masses, cell=cell, pbc=pbc)
 
+        @staticmethod
+        def get_value(atoms, indices, mic):
+            return atoms.get_distance(*indices, mic=mic)
+
         def __repr__(self):
-            return 'FixBondLengthAlt({}, {})'.format(self.targetvalue,
-                                                     *self.indices)
+            return f'FixBondLengthAlt({self.targetvalue}, {self.indices})'
 
-    class FixAngleCombo(FixInternalsBase):
-        """Constraint subobject for fixing linear combination of angles
-        within FixInternals.
+    class FixAngle(FixInternalsBase):
+        """Constraint subobject for fixing an angle within FixInternals.
 
-        sum_i( coef_i * angle_i ) = constant
+        Convergence is potentially problematic for angles very close to
+        0 or 180 degrees as there is a singularity in the Cartesian derivative.
+        Fixing planar angles is therefore not supported at the moment.
         """
+
+        def __init__(self, targetvalue, indices, masses, cell, pbc):
+            """Fix atom movement to construct a constant angle."""
+            if targetvalue <= 0. or targetvalue >= 180.:
+                raise ZeroDivisionError('Invalid targetvalue for fixed angle')
+            indices = [list(indices) + [1.]]  # angle definition with coef 1.
+            super().__init__(targetvalue, indices, masses, cell=cell, pbc=pbc)
+
         def gather_vectors(self, pos):
             v0 = [pos[h] - pos[k] for h, k, l in self.indices]
             v1 = [pos[l] - pos[k] for h, k, l in self.indices]
             return v0, v1
 
-        def prepare_jacobian(self, pos):
+        def get_jacobian(self, pos):
             v0, v1 = self.gather_vectors(pos)
             derivs = get_angles_derivatives(v0, v1, cell=self.cell,
                                             pbc=self.pbc)
-            self.finalize_jacobian(pos, len(v0), 3, derivs)
+            return self.finalize_jacobian(pos, len(v0), 3, derivs)
+
+        def setup_jacobian(self, pos):
+            self.jacobian = self.get_jacobian(pos)
 
         def adjust_positions(self, oldpos, newpos):
             v0, v1 = self.gather_vectors(newpos)
             value = get_angles(v0, v1, cell=self.cell, pbc=self.pbc)
-            value = np.dot(self.coefs, value)
             self.sigma = value - self.targetvalue
             self.finalize_positions(newpos)
 
+        @staticmethod
+        def get_value(atoms, indices, mic):
+            return atoms.get_angle(*indices, mic=mic)
+
         def __repr__(self):
-            return 'FixAngleCombo({}, {}, {})'.format(self.targetvalue,
-                                                      self.indices, self.coefs)
+            return f'FixAngle({self.targetvalue}, {self.indices})'
 
-    class FixAngle(FixAngleCombo):
-        """Constraint object for fixing an angle within
-        FixInternals using the SHAKE algorithm.
+    class FixDihedral(FixInternalsBase):
+        """Constraint subobject for fixing a dihedral angle within FixInternals.
 
-        SHAKE convergence is potentially problematic for angles very close to
-        0 or 180 degrees as there is a singularity in the Cartesian derivative.
+        A dihedral becomes undefined when at least one of the inner two angles
+        becomes planar. Make sure to avoid this situation.
         """
+
         def __init__(self, targetvalue, indices, masses, cell, pbc):
-            """Fix atom movement to construct a constant angle."""
-            indices = [list(indices) + [1.]]  # angle definition with coef 1.
+            indices = [list(indices) + [1.]]  # dihedral def. with coef 1.
             super().__init__(targetvalue, indices, masses, cell=cell, pbc=pbc)
 
-        def __repr__(self):
-            return 'FixAngle({}, {})'.format(self.targetvalue, *self.indices)
-
-    class FixDihedralCombo(FixInternalsBase):
-        """Constraint subobject for fixing linear combination of dihedrals
-        within FixInternals.
-
-        sum_i( coef_i * dihedral_i ) = constant
-        """
         def gather_vectors(self, pos):
             v0 = [pos[k] - pos[h] for h, k, l, m in self.indices]
             v1 = [pos[l] - pos[k] for h, k, l, m in self.indices]
             v2 = [pos[m] - pos[l] for h, k, l, m in self.indices]
             return v0, v1, v2
 
-        def prepare_jacobian(self, pos):
+        def get_jacobian(self, pos):
             v0, v1, v2 = self.gather_vectors(pos)
             derivs = get_dihedrals_derivatives(v0, v1, v2, cell=self.cell,
                                                pbc=self.pbc)
-            self.finalize_jacobian(pos, len(v0), 4, derivs)
+            return self.finalize_jacobian(pos, len(v0), 4, derivs)
 
-        def adjust_positions(self, oldpos, newpos):
-            v0, v1, v2 = self.gather_vectors(newpos)
-            value = get_dihedrals(v0, v1, v2, cell=self.cell, pbc=self.pbc)
-            value = np.dot(self.coefs, value)
-            self.sigma = value - self.targetvalue
-            self.finalize_positions(newpos)
-
-        def __repr__(self):
-            return 'FixDihedralCombo({}, {}, {})'.format(self.targetvalue,
-                                                         self.indices,
-                                                         self.coefs)
-
-    class FixDihedral(FixDihedralCombo):
-        """Constraint object for fixing a dihedral angle using
-        the SHAKE algorithm. This one allows also other constraints.
-
-        SHAKE convergence is potentially problematic for near-undefined
-        dihedral angles (i.e. when one of the two angles a012 or a123
-        approaches 0 or 180 degrees).
-        """
-        def __init__(self, targetvalue, indices, masses, cell, pbc):
-            indices = [list(indices) + [1.]]  # dihedral def. with coef 1.
-            super().__init__(targetvalue, indices, masses, cell=cell, pbc=pbc)
+        def setup_jacobian(self, pos):
+            self.jacobian = self.get_jacobian(pos)
 
         def adjust_positions(self, oldpos, newpos):
             v0, v1, v2 = self.gather_vectors(newpos)
@@ -1156,8 +1275,12 @@ class FixInternals(FixConstraint):
             self.sigma = (value - self.targetvalue + 180) % 360 - 180
             self.finalize_positions(newpos)
 
+        @staticmethod
+        def get_value(atoms, indices, mic):
+            return atoms.get_dihedral(*indices, mic=mic)
+
         def __repr__(self):
-            return 'FixDihedral({}, {})'.format(self.targetvalue, *self.indices)
+            return f'FixDihedral({self.targetvalue}, {self.indices})'
 
 
 class FixParametricRelations(FixConstraint):
@@ -1171,43 +1294,54 @@ class FixParametricRelations(FixConstraint):
         eps=1e-12,
         use_cell=False,
     ):
-        """Constrains the degrees of freedom to act in a reduced parameter space defined by the Jacobian
+        """Constrains the degrees of freedom to act in a reduced parameter
+        space defined by the Jacobian
 
-        These constraints are based off the work in: https://arxiv.org/abs/1908.01610
+        These constraints are based off the work in:
+        https://arxiv.org/abs/1908.01610
 
-        The constraints linearly maps the full 3N degrees of freedom, where N is number of active
-        lattice vectors/atoms onto a reduced subset of M free parameters, where M <= 3*N. The
-        Jacobian matrix and constant shift vector map the full set of degrees of freedom onto the
-        reduced parameter space.
+        The constraints linearly maps the full 3N degrees of freedom,
+        where N is number of active lattice vectors/atoms onto a
+        reduced subset of M free parameters, where M <= 3*N. The
+        Jacobian matrix and constant shift vector map the full set of
+        degrees of freedom onto the reduced parameter space.
 
-        Currently the constraint is set up to handle either atomic positions or lattice vectors
-        at one time, but not both. To do both simply add a two constraints for each set. This is
-        done to keep the mathematics behind the operations separate.
+        Currently the constraint is set up to handle either atomic
+        positions or lattice vectors at one time, but not both. To do
+        both simply add a two constraints for each set. This is done
+        to keep the mathematics behind the operations separate.
 
-        It would be possible to extend these constraints to allow non-linear transformations
-        if functionality to update the Jacobian at each position update was included. This would
-        require passing an update function evaluate it every time adjust_positions is callled.
-        This is currently NOT supported, and there are no plans to implement it in the future.
+        It would be possible to extend these constraints to allow
+        non-linear transformations if functionality to update the
+        Jacobian at each position update was included. This would
+        require passing an update function evaluate it every time
+        adjust_positions is callled.  This is currently NOT supported,
+        and there are no plans to implement it in the future.
 
         Args:
             indices (list of int): indices of the constrained atoms
                 (if not None or empty then cell_indices must be None or Empty)
-            Jacobian (np.ndarray(shape=(3*len(indices), len(params)))): The Jacobian describing
+            Jacobian (np.ndarray(shape=(3*len(indices), len(params)))):
+                The Jacobian describing
                 the parameter space transformation
-            const_shift (np.ndarray(shape=(3*len(indices)))): A vector describing the constant term
+            const_shift (np.ndarray(shape=(3*len(indices)))):
+                A vector describing the constant term
                 in the transformation not accounted for in the Jacobian
-            params (list of str): parameters used in the parametric representation
+            params (list of str):
+                parameters used in the parametric representation
                 if None a list is generated based on the shape of the Jacobian
-            eps (float): a small number to compare the similarity of numbers and set the precision used
+            eps (float): a small number to compare the similarity of
+                numbers and set the precision used
                 to generate the constraint expressions
             use_cell (bool): if True then act on the cell object
+
         """
         self.indices = np.array(indices)
         self.Jacobian = np.array(Jacobian)
         self.const_shift = np.array(const_shift)
 
-        assert self.const_shift.shape[0] == 3*len(self.indices)
-        assert self.Jacobian.shape[0] == 3*len(self.indices)
+        assert self.const_shift.shape[0] == 3 * len(self.indices)
+        assert self.Jacobian.shape[0] == 3 * len(self.indices)
 
         self.eps = eps
         self.use_cell = use_cell
@@ -1215,7 +1349,8 @@ class FixParametricRelations(FixConstraint):
         if params is None:
             params = []
             if self.Jacobian.shape[1] > 0:
-                int_fmt_str = "{:0" + str(int(np.ceil(np.log10(self.Jacobian.shape[1])))) + "d}"
+                int_fmt_str = "{:0" + \
+                    str(int(np.ceil(np.log10(self.Jacobian.shape[1])))) + "d}"
                 for param_ind in range(self.Jacobian.shape[1]):
                     params.append("param_" + int_fmt_str.format(param_ind))
         else:
@@ -1223,24 +1358,31 @@ class FixParametricRelations(FixConstraint):
 
         self.params = params
 
-        self.Jacobian_inv = np.linalg.inv(self.Jacobian.T @ self.Jacobian) @ self.Jacobian.T
+        self.Jacobian_inv = np.linalg.inv(
+            self.Jacobian.T @ self.Jacobian) @ self.Jacobian.T
 
     @classmethod
-    def from_expressions(cls, indices, params, expressions, eps=1e-12, use_cell=False):
-        """Converts the expressions into a Jacobian Matrix/const_shift vector and constructs a FixParametricRelations constraint
+    def from_expressions(cls, indices, params, expressions,
+                         eps=1e-12, use_cell=False):
+        """Converts the expressions into a Jacobian Matrix/const_shift
+        vector and constructs a FixParametricRelations constraint
 
-        The expressions must be a list like object of size 3*N and elements must be ordered as:
+        The expressions must be a list like object of size 3*N and
+        elements must be ordered as:
         [n_0,i; n_0,j; n_0,k; n_1,i; n_1,j; .... ; n_N-1,i; n_N-1,j; n_N-1,k],
-        where i, j, and k are the first, second and third component of the atomic position/lattice
-        vector. Currently only linear operations are allowed to be included in the expressions so
+        where i, j, and k are the first, second and third
+        component of the atomic position/lattice
+        vector. Currently only linear operations are allowed to be
+        included in the expressions so
         only terms like:
             - const * param_0
             - sqrt[const] * param_1
             - const * param_0 +/- const * param_1 +/- ... +/- const * param_M
-        where const is any real number and param_0, param_1, ..., param_M are the parameters passed in
+        where const is any real number and param_0, param_1, ..., param_M are
+        the parameters passed in
         params, are allowed.
 
-        For example, the fractional atomic position constraints for wurtzite are:
+        For example, fractional atomic position constraints for wurtzite are:
         params = ["z1", "z2"]
         expressions = [
             "1.0/3.0", "2.0/3.0", "z1",
@@ -1272,10 +1414,12 @@ class FixParametricRelations(FixConstraint):
         Args:
             indices (list of int): indices of the constrained atoms
                 (if not None or empty then cell_indices must be None or Empty)
-            params (list of str): parameters used in the parametric representation
-            expressions (list of str): expressions used to convert from the parametric to the real space
-                representation
-            eps (float): a small number to compare the similarity of numbers and set the precision used
+            params (list of str): parameters used in the
+            parametric representation
+            expressions (list of str): expressions used to convert from the
+            parametric to the real space representation
+            eps (float): a small number to compare the similarity of
+                numbers and set the precision used
                 to generate the constraint expressions
             use_cell (bool): if True then act on the cell object
 
@@ -1289,8 +1433,8 @@ class FixParametricRelations(FixConstraint):
                 use_cell,
             )
         """
-        Jacobian = np.zeros((3*len(indices), len(params)))
-        const_shift = np.zeros(3*len(indices))
+        Jacobian = np.zeros((3 * len(indices), len(params)))
+        const_shift = np.zeros(3 * len(indices))
 
         for expr_ind, expression in enumerate(expressions):
             expression = expression.strip()
@@ -1302,8 +1446,10 @@ class FixParametricRelations(FixConstraint):
             elif "(+" == expression[:2]:
                 expression = "(" + expression[2:]
 
-            # Explicitly add leading zeros so when replacing param_1 with 0.0 param_11 does not become 0.01
-            int_fmt_str = "{:0" + str(int(np.ceil(np.log10(len(params)+1)))) + "d}"
+            # Explicitly add leading zeros so when replacing param_1 with 0.0
+            # param_11 does not become 0.01
+            int_fmt_str = "{:0" + \
+                str(int(np.ceil(np.log10(len(params) + 1)))) + "d}"
 
             param_dct = dict()
             param_map = dict()
@@ -1315,8 +1461,9 @@ class FixParametricRelations(FixConstraint):
                 param_dct[param_str] = 0.0
 
             # Replace the parameters according to the map
-            # Sort by string length (long to short) to prevent cases like x11 becoming f"{param_map["x1"]}1"
-            for param in sorted(params, key=lambda s: -1.0*len(s)):
+            # Sort by string length (long to short) to prevent cases like x11
+            # becoming f"{param_map["x1"]}1"
+            for param in sorted(params, key=lambda s: -1.0 * len(s)):
                 expression = expression.replace(param, param_map[param])
 
             # Partial linearity check
@@ -1324,9 +1471,11 @@ class FixParametricRelations(FixConstraint):
                 in_sec = [param in express_sec for param in param_dct]
                 n_params_in_sec = len(np.where(np.array(in_sec))[0])
                 if n_params_in_sec > 1:
-                    raise ValueError("The FixParametricRelations expressions must be linear.")
+                    raise ValueError(
+                        "FixParametricRelations expressions must be linear.")
 
-            const_shift[expr_ind] = float(eval_expression(expression, param_dct))
+            const_shift[expr_ind] = float(
+                eval_expression(expression, param_dct))
 
             for param_ind in range(len(params)):
                 param_str = "param_" + int_fmt_str.format(param_ind)
@@ -1342,7 +1491,8 @@ class FixParametricRelations(FixConstraint):
                 test_2 = float(eval_expression(expression, param_dct))
                 test_2 -= const_shift[expr_ind]
                 if abs(test_2 / test_1 - 2.0) > eps:
-                    raise ValueError("The FixParametricRelations expressions must be linear.")
+                    raise ValueError(
+                        "FixParametricRelations expressions must be linear.")
                 param_dct[param_str] = 0.0
 
         args = [
@@ -1359,13 +1509,15 @@ class FixParametricRelations(FixConstraint):
 
     @property
     def expressions(self):
-        """Generate the expressions represented by the current self.Jacobian and self.const_shift objects"""
+        """Generate the expressions represented by the current self.Jacobian
+        and self.const_shift objects"""
         expressions = []
         per = int(round(-1 * np.log10(self.eps)))
         fmt_str = "{:." + str(per + 1) + "g}"
         for index, shift_val in enumerate(self.const_shift):
             exp = ""
-            if np.all(np.abs(self.Jacobian[index]) < self.eps) or np.abs(shift_val) > self.eps:
+            if np.all(np.abs(self.Jacobian[index]) < self.eps) or np.abs(
+                    shift_val) > self.eps:
                 exp += fmt_str.format(shift_val)
 
             param_exp = ""
@@ -1376,17 +1528,19 @@ class FixParametricRelations(FixConstraint):
 
                 param = self.params[param_index]
                 if param_exp or exp:
-                    if jacob_val > -1.0*self.eps:
+                    if jacob_val > -1.0 * self.eps:
                         param_exp += " + "
                     else:
                         param_exp += " - "
-                elif (not exp) and (not param_exp) and (jacob_val < -1.0*self.eps):
+                elif (not exp) and (not param_exp) and (
+                        jacob_val < -1.0 * self.eps):
                     param_exp += "-"
 
-                if np.abs(abs_jacob_val-1.0) <= self.eps:
+                if np.abs(abs_jacob_val - 1.0) <= self.eps:
                     param_exp += "{:s}".format(param)
                 else:
-                    param_exp += (fmt_str + "*{:s}").format(abs_jacob_val, param)
+                    param_exp += (fmt_str +
+                                  "*{:s}").format(abs_jacob_val, param)
 
             exp += param_exp
 
@@ -1410,12 +1564,14 @@ class FixParametricRelations(FixConstraint):
     def __repr__(self):
         """The str representation of the constraint"""
         if len(self.indices) > 1:
-            indices_str = "[{:d}, ..., {:d}]".format(self.indices[0], self.indices[-1])
+            indices_str = "[{:d}, ..., {:d}]".format(
+                self.indices[0], self.indices[-1])
         else:
             indices_str = "[{:d}]".format(self.indices[0])
 
         if len(self.params) > 1:
-            params_str = "[{:s}, ..., {:s}]".format(self.params[0], self.params[-1])
+            params_str = "[{:s}, ..., {:s}]".format(
+                self.params[0], self.params[-1])
         elif len(self.params) == 1:
             params_str = "[{:s}]".format(self.params[0])
         else:
@@ -1441,8 +1597,8 @@ class FixScaledParametricRelations(FixParametricRelations):
     ):
         """The fractional coordinate version of FixParametricRelations
 
-        All arguments are the same, but since this is for fractional coordinates use_cell is false
-        """
+        All arguments are the same, but since this is for fractional
+        coordinates use_cell is false"""
         super(FixScaledParametricRelations, self).__init__(
             indices,
             Jacobian,
@@ -1453,7 +1609,8 @@ class FixScaledParametricRelations(FixParametricRelations):
         )
 
     def adjust_contravariant(self, cell, vecs, B):
-        """Adjust the values of a set of vectors that are contravariant with the unit transformation"""
+        """Adjust the values of a set of vectors that are contravariant
+        with the unit transformation"""
         scaled = cell.scaled_positions(vecs).flatten()
         scaled = self.Jacobian_inv @ (scaled - B)
         scaled = ((self.Jacobian @ scaled) + B).reshape((-1, 3))
@@ -1467,10 +1624,12 @@ class FixScaledParametricRelations(FixParametricRelations):
             positions[self.indices],
             self.const_shift,
         )
-        positions[self.indices] = self.adjust_B(atoms.cell, positions[self.indices])
+        positions[self.indices] = self.adjust_B(
+            atoms.cell, positions[self.indices])
 
     def adjust_B(self, cell, positions):
-        """Wraps the positions back to the unit cell and adjust B to keep track of this change"""
+        """Wraps the positions back to the unit cell and adjust B to
+        keep track of this change"""
         fractional = cell.scaled_positions(positions)
         wrapped_fractional = (fractional % 1.0) % 1.0
         self.const_shift += np.round(wrapped_fractional - fractional).flatten()
@@ -1486,10 +1645,12 @@ class FixScaledParametricRelations(FixParametricRelations):
 
     def adjust_forces(self, atoms, forces):
         """Adjust forces of the atoms to match the constraints"""
-        # Forces are coavarient to the coordinate transformation, use the inverse transformations
-        cart2frac_jacob = np.zeros(2*(3*len(atoms),))
+        # Forces are coavarient to the coordinate transformation, use the
+        # inverse transformations
+        cart2frac_jacob = np.zeros(2 * (3 * len(atoms),))
         for i_atom in range(len(atoms)):
-            cart2frac_jacob[3*i_atom:3*(i_atom+1), 3*i_atom:3*(i_atom+1)] = atoms.cell.T
+            cart2frac_jacob[3 * i_atom:3 * (i_atom + 1),
+                            3 * i_atom:3 * (i_atom + 1)] = atoms.cell.T
 
         jacobian = cart2frac_jacob @ self.Jacobian
         jacobian_inv = np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T
@@ -1500,7 +1661,7 @@ class FixScaledParametricRelations(FixParametricRelations):
     def todict(self):
         """Create a dictionary representation of the constraint"""
         dct = super(FixScaledParametricRelations, self).todict()
-        del(dct["kwargs"]["use_cell"])
+        del dct["kwargs"]["use_cell"]
         return dct
 
 
@@ -1526,7 +1687,8 @@ class FixCartesianParametricRelations(FixParametricRelations):
         )
 
     def adjust_contravariant(self, vecs, B):
-        """Adjust the values of a set of vectors that are contravariant with the unit transformation"""
+        """Adjust the values of a set of vectors that are contravariant with
+        the unit transformation"""
         vecs = self.Jacobian_inv @ (vecs.flatten() - B)
         vecs = ((self.Jacobian @ vecs) + B).reshape((-1, 3))
         return vecs
@@ -1555,7 +1717,8 @@ class FixCartesianParametricRelations(FixParametricRelations):
             return
 
         forces_reduced = self.Jacobian.T @ forces[self.indices].flatten()
-        forces[self.indices] = (self.Jacobian_inv.T @ forces_reduced).reshape(-1, 3)
+        forces[self.indices] = (self.Jacobian_inv.T @
+                                forces_reduced).reshape(-1, 3)
 
     def adjust_cell(self, atoms, cell):
         """Adjust the cell of the atoms to match the constraints"""
@@ -1573,7 +1736,8 @@ class FixCartesianParametricRelations(FixParametricRelations):
 
         stress_3x3 = voigt_6_to_full_3x3_stress(stress)
         stress_reduced = self.Jacobian.T @ stress_3x3[self.indices].flatten()
-        stress_3x3[self.indices] = (self.Jacobian_inv.T @ stress_reduced).reshape(-1, 3)
+        stress_3x3[self.indices] = (
+            self.Jacobian_inv.T @ stress_reduced).reshape(-1, 3)
 
         stress[:] = full_3x3_to_voigt_6_stress(stress_3x3)
 
@@ -1610,6 +1774,11 @@ class Hookean(FixConstraint):
         If the atom has z > 7, then a downward force would be applied of
         k * (atom.z - 7). The same plane with the normal vector pointing in
         the -z direction would be given by (A, B, C, D) = (0, 0, -1, 7).
+
+        References:
+
+           Andrew A. Peterson,  Topics in Catalysis volume 57, pages40–53 (2014)
+           https://link.springer.com/article/10.1007%2Fs11244-013-0161-8
         """
 
         if isinstance(a2, int):
@@ -2259,6 +2428,7 @@ class StrainFilter(Filter):
 
 class UnitCellFilter(Filter):
     """Modify the supercell and the atom positions. """
+
     def __init__(self, atoms, mask=None,
                  cell_factor=None,
                  hydrostatic_strain=False,
@@ -2473,6 +2643,7 @@ class UnitCellFilter(Filter):
 
 class ExpCellFilter(UnitCellFilter):
     """Modify the supercell and the atom positions."""
+
     def __init__(self, atoms, mask=None,
                  cell_factor=None,
                  hydrostatic_strain=False,
@@ -2598,16 +2769,21 @@ class ExpCellFilter(UnitCellFilter):
             warn("cell_factor is deprecated")
         self.cell_factor = 1.0
 
+        # We defer the scipy import to avoid high immediate import overhead
+        from scipy.linalg import expm, logm
+        self.expm = expm
+        self.logm = logm
+
     def get_positions(self):
         pos = UnitCellFilter.get_positions(self)
         natoms = len(self.atoms)
-        pos[natoms:] = logm(self.deform_grad())
+        pos[natoms:] = self.logm(self.deform_grad())
         return pos
 
     def set_positions(self, new, **kwargs):
         natoms = len(self.atoms)
         new2 = new.copy()
-        new2[natoms:] = expm(new[natoms:])
+        new2[natoms:] = self.expm(new[natoms:])
         UnitCellFilter.set_positions(self, new2, **kwargs)
 
     def get_forces(self, **kwargs):
@@ -2621,7 +2797,7 @@ class ExpCellFilter(UnitCellFilter):
                             np.diag([self.scalar_pressure] * 3))
 
         cur_deform_grad = self.deform_grad()
-        cur_deform_grad_log = logm(cur_deform_grad)
+        cur_deform_grad_log = self.logm(cur_deform_grad)
 
         if self.hydrostatic_strain:
             vtr = virial.trace()
@@ -2635,8 +2811,8 @@ class ExpCellFilter(UnitCellFilter):
         Y = np.zeros((6, 6))
         Y[0:3, 0:3] = cur_deform_grad_log
         Y[3:6, 3:6] = cur_deform_grad_log
-        Y[0:3, 3:6] = - virial @ expm(-cur_deform_grad_log)
-        deform_grad_log_force = -expm(Y)[0:3, 3:6]
+        Y[0:3, 3:6] = - virial @ self.expm(-cur_deform_grad_log)
+        deform_grad_log_force = -self.expm(Y)[0:3, 3:6]
         for (i1, i2) in [(0, 1), (0, 2), (1, 2)]:
             ff = 0.5 * (deform_grad_log_force[i1, i2] +
                         deform_grad_log_force[i2, i1])

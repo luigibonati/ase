@@ -51,6 +51,7 @@ class Population:
     rng: Random number generator
         By default numpy.random.
     """
+
     def __init__(self, data_connection, population_size,
                  comparator=None, logfile=None, use_extinct=False,
                  rng=np.random):
@@ -142,8 +143,8 @@ class Population:
         if self.logfile is not None:
             fd = open(self.logfile, 'r')
             gens = {}
-            for l in fd:
-                _, no, popul = l.split(':')
+            for line in fd:
+                _, no, popul = line.split(':')
                 gens[int(no)] = [int(i) for i in popul.split(',')]
             fd.close()
             return [c.copy() for c in self.all_cand[::-1]
@@ -247,13 +248,13 @@ class Population:
             nnf = True
             while nnf:
                 t = self.rng.randint(len(self.pop))
-                if fit[t] > self.rng.rand() * fmax:
+                if fit[t] > self.rng.random() * fmax:
                     c1 = self.pop[t]
                     nnf = False
             nnf = True
             while nnf:
                 t = self.rng.randint(len(self.pop))
-                if fit[t] > self.rng.rand() * fmax:
+                if fit[t] > self.rng.random() * fmax:
                     c2 = self.pop[t]
                     nnf = False
 
@@ -281,7 +282,7 @@ class Population:
         nnf = True
         while nnf:
             t = self.rng.randint(len(self.pop))
-            if fit[t] > self.rng.rand() * fmax:
+            if fit[t] > self.rng.random() * fmax:
                 c1 = self.pop[t]
                 nnf = False
 
@@ -387,7 +388,7 @@ class RandomPopulation(Population):
                         self.pop.append(c)
                     else:
                         exp_fact = exp(get_raw_score(c) / best_raw)
-                        ratings.append([c, (exp_fact - 1) * self.rng.rand()])
+                        ratings.append([c, (exp_fact - 1) * self.rng.random()])
             ratings.sort(key=itemgetter(1), reverse=True)
 
             for i in range(self.bad_candidates):
@@ -466,6 +467,7 @@ class FitnessSharingPopulation(Population):
         Default is 1, which gives a linear sharing function.
 
     """
+
     def __init__(self, data_connection, population_size,
                  comp_key, threshold, alpha_sh=1.,
                  comparator=None, logfile=None, use_extinct=False):
@@ -573,13 +575,13 @@ class FitnessSharingPopulation(Population):
             nnf = True
             while nnf:
                 t = self.rng.randint(len(self.pop))
-                if fit[t] > self.rng.rand() * fmax:
+                if fit[t] > self.rng.random() * fmax:
                     c1 = self.pop[t]
                     nnf = False
             nnf = True
             while nnf:
                 t = self.rng.randint(len(self.pop))
-                if fit[t] > self.rng.rand() * fmax:
+                if fit[t] > self.rng.random() * fmax:
                     c2 = self.pop[t]
                     nnf = False
 
@@ -605,6 +607,7 @@ class RankFitnessPopulation(Population):
             The prefactor used in the exponential fitness scaling function.
             Default 0.5
     """
+
     def __init__(self, data_connection, population_size, variable_function,
                  comparator=None, logfile=None, use_extinct=False,
                  exp_function=True, exp_prefactor=0.5):
@@ -744,13 +747,13 @@ class RankFitnessPopulation(Population):
             nnf = True
             while nnf:
                 t = self.rng.randint(len(self.pop))
-                if fit[t] > self.rng.rand() * fmax:
+                if fit[t] > self.rng.random() * fmax:
                     c1 = self.pop[t]
                     nnf = False
             nnf = True
             while nnf:
                 t = self.rng.randint(len(self.pop))
-                if fit[t] > self.rng.rand() * fmax:
+                if fit[t] > self.rng.random() * fmax:
                     c2 = self.pop[t]
                     nnf = False
 

@@ -136,6 +136,7 @@ class StartGenerator:
     rng: Random number generator
         By default numpy.random.
     """
+
     def __init__(self, slab, blocks, blmin, number_of_variable_cell_vectors=0,
                  box_to_place_in=None, box_volume=None, splits=None,
                  cellbounds=None, test_dist_to_slab=True, test_too_far=True,
@@ -177,8 +178,9 @@ class StartGenerator:
             self.blmin = blmin
         else:
             numbers = np.unique([b.get_atomic_numbers() for b in self.blocks])
-            self.blmin = closest_distances_generator(numbers,
-                                                     ratio_of_covalent_radii=blmin)
+            self.blmin = closest_distances_generator(
+                numbers,
+                ratio_of_covalent_radii=blmin)
 
         self.number_of_variable_cell_vectors = number_of_variable_cell_vectors
         assert self.number_of_variable_cell_vectors in range(4)
@@ -232,7 +234,7 @@ class StartGenerator:
         pbc = self.slab.get_pbc()
 
         # Choose cell splitting
-        r = self.rng.rand()
+        r = self.rng.random()
         cumprob = 0
         for split, prob in self.splits.items():
             cumprob += prob
@@ -306,12 +308,12 @@ class StartGenerator:
                 while maxiter is None or niter < maxiter:
                     niter += 1
                     cop = atoms.get_positions().mean(axis=0)
-                    pos = np.dot(self.rng.rand(1, 3), box)
+                    pos = np.dot(self.rng.random((1, 3)), box)
                     atoms.translate(pos - cop)
 
                     if len(atoms) > 1:
                         # Apply a random rotation to multi-atom blocks
-                        phi, theta, psi = 360 * self.rng.rand(3)
+                        phi, theta, psi = 360 * self.rng.random(3)
                         atoms.euler_rotate(phi=phi, theta=0.5 * theta, psi=psi,
                                            center=pos)
 
@@ -363,7 +365,7 @@ class StartGenerator:
             # By construction, the minimal interatomic distances
             # within the structure should already be respected
             assert not atoms_too_close(cand, blmin, use_tags=True), \
-                   'This is not supposed to happen; please report this bug'
+                'This is not supposed to happen; please report this bug'
 
             if self.test_dist_to_slab and len(self.slab) > 0:
                 if atoms_too_close_two_sets(self.slab, cand, blmin):
@@ -456,11 +458,11 @@ class StartGenerator:
 
             for i in range(self.number_of_variable_cell_vectors):
                 # on-diagonal values
-                cell[i, i] = self.rng.rand() * np.cbrt(self.box_volume)
+                cell[i, i] = self.rng.random() * np.cbrt(self.box_volume)
                 cell[i, i] *= repeat[i]
                 for j in range(i):
                     # off-diagonal values
-                    cell[i, j] = (self.rng.rand() - 0.5) * cell[i - 1, i - 1]
+                    cell[i, j] = (self.rng.random() - 0.5) * cell[i - 1, i - 1]
 
             # volume scaling
             for i in range(self.number_of_variable_cell_vectors, 3):

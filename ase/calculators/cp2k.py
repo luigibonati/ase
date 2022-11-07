@@ -206,7 +206,7 @@ class CP2K(Calculator):
         """Release force_env and terminate cp2k_shell child process"""
         if self._shell:
             self._release_force_env()
-            del(self._shell)
+            del self._shell
 
     def set(self, **kwargs):
         """Set parameters like set(key1=value1, key2=value2, ...)."""
@@ -393,9 +393,12 @@ class CP2K(Calculator):
                 # libxc input section changed over time
                 if functional.startswith("XC_") and self._shell.version < 3.0:
                     legacy_libxc += " " + functional  # handled later
-                elif functional.startswith("XC_"):
+                elif functional.startswith("XC_") and self._shell.version < 5.0:
                     s = InputSection(name='LIBXC')
                     s.keywords.append('FUNCTIONAL ' + functional)
+                    xc_sec.subsections.append(s)
+                elif functional.startswith("XC_"):
+                    s = InputSection(name=functional[3:])
                     xc_sec.subsections.append(s)
                 else:
                     s = InputSection(name=functional.upper())
@@ -467,7 +470,6 @@ class Cp2kShell:
 
         self.isready = False
         self.version = 1.0  # assume oldest possible version until verified
-        self._child = None
         self._debug = debug
 
         # launch cp2k_shell child process
@@ -500,11 +502,13 @@ class Cp2kShell:
         """Terminate cp2k_shell child process"""
         if self.isready:
             self.send('EXIT')
+            self._child.communicate()
             rtncode = self._child.wait()
             assert rtncode == 0  # child process exited properly?
         else:
             warn("CP2K-shell not ready, sending SIGTERM.", RuntimeWarning)
             self._child.terminate()
+            self._child.communicate()
         self._child = None
         self.version = None
         self.isready = False
@@ -516,7 +520,7 @@ class Cp2kShell:
             print('Sending: ' + line)
         if self.version < 2.1 and len(line) >= 80:
             raise Exception('Buffer overflow, upgrade CP2K to r16779 or later')
-        assert(len(line) < 800)  # new input buffer size
+        assert len(line) < 800  # new input buffer size
         self.isready = False
         self._child.stdin.write(line + '\n')
 
@@ -537,6 +541,7 @@ class Cp2kShell:
 
 class InputSection:
     """Represents a section of a CP2K input file"""
+
     def __init__(self, name, params=None):
         self.name = name.upper()
         self.params = params

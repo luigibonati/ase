@@ -23,6 +23,7 @@ class Positions:
     origin: int (0 or 1)
         Determines at which side of the plane the position should be.
     """
+
     def __init__(self, scaled_positions, cop, symbols, distance, origin):
         self.scaled_positions = scaled_positions
         self.cop = cop
@@ -53,19 +54,16 @@ class CutAndSplicePairing(OffspringCreator):
     The basic implementation (for fixed unit cells) is
     described in:
 
-    `L.B. Vilhelmsen and B. Hammer, PRL, 108, 126101 (2012)`__
-
-    __ https://doi.org/10.1103/PhysRevLett.108.126101
+    :doi:`L.B. Vilhelmsen and B. Hammer, PRL, 108, 126101 (2012)
+    <10.1103/PhysRevLett.108.126101`>
 
     The extension to variable unit cells is similar to:
 
-    * `Glass, Oganov, Hansen, Comp. Phys. Comm. 175 (2006) 713-720`__
+    * :doi:`Glass, Oganov, Hansen, Comp. Phys. Comm. 175 (2006) 713-720
+      <10.1016/j.cpc.2006.07.020>`
 
-      __ https://doi.org/10.1016/j.cpc.2006.07.020
-
-    * `Lonie, Zurek, Comp. Phys. Comm. 182 (2011) 372-387`__
-
-      __ https://doi.org/10.1016/j.cpc.2010.07.048
+    * :doi:`Lonie, Zurek, Comp. Phys. Comm. 182 (2011) 372-387
+      <10.1016/j.cpc.2010.07.048>`
 
     The operator can furthermore preserve molecular identity
     if desired (see the *use_tags* kwarg). Atoms with the same
@@ -139,6 +137,7 @@ class CutAndSplicePairing(OffspringCreator):
     rng: Random number generator
         By default numpy.random.
     """
+
     def __init__(self, slab, n_top, blmin, number_of_variable_cell_vectors=0,
                  p1=1, p2=0.05, minfrac=None, cellbounds=None,
                  test_dist_to_slab=True, use_tags=False, rng=np.random,
@@ -248,8 +247,8 @@ class CutAndSplicePairing(OffspringCreator):
             # Choose direction of cutting plane normal
             if self.number_of_variable_cell_vectors == 0:
                 # Will be generated entirely at random
-                theta = np.pi * self.rng.rand()
-                phi = 2. * np.pi * self.rng.rand()
+                theta = np.pi * self.rng.random()
+                phi = 2. * np.pi * self.rng.random()
                 cut_n = np.array([np.cos(phi) * np.sin(theta),
                                   np.sin(phi) * np.sin(theta), np.cos(theta)])
             else:
@@ -262,11 +261,11 @@ class CutAndSplicePairing(OffspringCreator):
 
                 cell = a_copy.get_cell()
                 for i in range(self.number_of_variable_cell_vectors):
-                    r = self.rng.rand()
+                    r = self.rng.random()
                     cond1 = i == cut_n and r < self.p1
                     cond2 = i != cut_n and r < self.p2
                     if cond1 or cond2:
-                        a_copy.positions += self.rng.rand() * cell[i]
+                        a_copy.positions += self.rng.random() * cell[i]
 
                 if self.use_tags:
                     # For correct determination of the center-
@@ -283,7 +282,7 @@ class CutAndSplicePairing(OffspringCreator):
             cut_p = np.zeros((1, 3))
             for i in range(3):
                 if i < self.number_of_variable_cell_vectors:
-                    cut_p[0, i] = self.rng.rand()
+                    cut_p[0, i] = self.rng.random()
                 else:
                     cut_p[0, i] = 0.5 * (cosp1[i] + cosp2[i])
 
@@ -323,7 +322,7 @@ class CutAndSplicePairing(OffspringCreator):
         if not self.scaling_volume:
             v1 = np.abs(np.linalg.det(cell1))
             v2 = np.abs(np.linalg.det(cell2))
-            r = self.rng.rand()
+            r = self.rng.random()
             v_ref = r * v1 + (1 - r) * v2
         else:
             v_ref = self.scaling_volume
@@ -335,7 +334,7 @@ class CutAndSplicePairing(OffspringCreator):
         else:
             count = 0
             while count < maxcount:
-                r = self.rng.rand()
+                r = self.rng.random()
                 newcell = r * cell1 + (1 - r) * cell2
 
                 vol = abs(np.linalg.det(newcell))

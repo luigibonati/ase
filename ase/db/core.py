@@ -47,7 +47,7 @@ default_key_descriptions = {
              '`\\text{eV/Ang}^3`'),
     'charge': ('Charge', 'Net charge in unit cell', '|e|'),
     'mass': ('Mass', 'Sum of atomic masses in unit cell', 'au'),
-    'magmom': ('Magnetic moment', '', 'au'),
+    'magmom': ('Magnetic moment', '', 'μ_B'),
     'unique_id': ('Unique ID', 'Random (unique) ID', ''),
     'volume': ('Volume', 'Volume of unit cell', '`\\text{Ang}^3`')}
 
@@ -414,15 +414,12 @@ class Database:
     def __delitem__(self, id):
         self.delete([id])
 
-    def get_atoms(self, selection=None, attach_calculator=False,
+    def get_atoms(self, selection=None,
                   add_additional_information=False, **kwargs):
         """Get Atoms object.
 
         selection: int, str or list
             See the select() method.
-        attach_calculator: bool
-            Attach calculator object to Atoms object (default value is
-            False).
         add_additional_information: bool
             Put key-value pairs and data into Atoms.info dictionary.
 
@@ -431,7 +428,7 @@ class Database:
         """
 
         row = self.get(selection, **kwargs)
-        return row.toatoms(attach_calculator, add_additional_information)
+        return row.toatoms(add_additional_information)
 
     def __getitem__(self, selection):
         return self.get(selection)

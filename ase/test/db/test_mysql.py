@@ -15,7 +15,11 @@ def url():
     on_ci_server = 'CI_PROJECT_DIR' in os.environ
 
     if on_ci_server:
-        db_url = 'mysql://root:ase@mysql:3306/testase_mysql'
+        # CI server configured to use non-standard port 3307
+        # instead of the default 3306 port. This is to test
+        # for proper passing of the port for creating the
+        # mysql connection
+        db_url = 'mysql://root:ase@mysql:3307/testase_mysql'
         # HOST = 'mysql'
         # USER = 'root'
         # PASSWD = 'ase'
@@ -71,13 +75,15 @@ def test_write_read_with_calculator(db, h2o):
 
     uid = db.write(h2o)
 
-    h2o_db = db.get(id=uid).toatoms(attach_calculator=True)
+    h2o_db = db.get(id=uid).toatoms()
 
-    calc_db = h2o_db.calc
-    assert calc_db.parameters['dummy_param'] == 2.4
+    # Back in the days we allowed reconstructing calculators.
+    # For security we don't anymore.
+    assert h2o_db.calc is None
 
     # Check that get_atoms function works
     db.get_atoms(H=2)
+    # XXX We should assert something should we not?
 
 
 def test_update(db, h2o):

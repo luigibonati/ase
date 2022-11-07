@@ -2,9 +2,10 @@
 import numpy as np
 from ase.units import Bohr, Hartree
 from ase.calculators.calculator import Calculator
+from ase.calculators.polarizability import StaticPolarizabilityCalculator
 from scipy.special import erfinv, erfc
 from ase.neighborlist import neighbor_list
-from ase.parallel import world
+from ase.parallel import world, myslice
 from ase.utils import IOContext
 
 
@@ -140,6 +141,7 @@ def get_logging_file_descriptor(calculator):
 
 class vdWTkatchenko09prl(Calculator, IOContext):
     """vdW correction after Tkatchenko and Scheffler PRL 102 (2009) 073005."""
+
     def __init__(self,
                  hirshfeld=None, vdwradii=None, calculator=None,
                  Rmax=10.,  # maximal radius for periodic calculations
@@ -162,10 +164,10 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         if txt is None:
             txt = get_logging_file_descriptor(self.calculator)
         if hasattr(self.calculator, 'world'):
-            myworld = self.calculator.world
+            self.comm = self.calculator.world
         else:
-            myworld = world  # the best we know
-        self.txt = self.openfile(txt, myworld)
+            self.comm = world  # the best we know
+        self.txt = self.openfile(txt, self.comm)
 
         self.vdwradii = vdwradii
         self.vdWDB_alphaC6 = vdWDB_alphaC6
@@ -207,7 +209,8 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         Calculator.calculate(self, atoms, properties, system_changes)
         self.update(atoms, properties)
 
-    def update(self, atoms=None, properties=['energy', 'forces']):
+    def update(self, atoms=None,
+               properties=['energy', 'free_energy', 'forces']):
         if not self.calculation_required(atoms, properties):
             return
 
@@ -215,7 +218,7 @@ class vdWTkatchenko09prl(Calculator, IOContext):
             atoms = self.calculator.get_atoms()
 
         properties = list(properties)
-        for name in 'energy', 'forces':
+        for name in 'energy', 'free_energy', 'forces':
             if name not in properties:
                 properties.append(name)
 
@@ -227,7 +230,7 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         if self.vdwradii is not None:
             # external vdW radii
             vdwradii = self.vdwradii
-            assert(len(atoms) == len(vdwradii))
+            assert len(atoms) == len(vdwradii)
         else:
             vdwradii = []
             for atom in atoms:
@@ -236,7 +239,7 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         if self.hirshfeld is None:
             volume_ratios = [1.] * len(atoms)
         elif hasattr(self.hirshfeld, '__len__'):  # a list
-            assert(len(atoms) == len(self.hirshfeld))
+            assert len(atoms) == len(self.hirshfeld)
             volume_ratios = self.hirshfeld
         else:  # should be an object
             self.hirshfeld.initialize()
@@ -310,10 +313,12 @@ class vdWTkatchenko09prl(Calculator, IOContext):
                                for j in range(i + 1, len(atoms))])
                 # r_list.append( [[0,0,0] for j in range(i+1, len(atoms))])
                 # No PBC means we are in the same cell
+
         # Here goes the calculation, valid with and without
         # PBC because we loop over
         # independent pairwise *interactions*
-        for i in range(len(atoms)):
+        ms = myslice(len(atoms), self.comm)
+        for i in range(len(atoms))[ms]:
             # for j, r, vect, repl in zip(atom_list[i], d_list[i],
             #                             v_list[i], r_list[i]):
             for j, r, vect in zip(atom_list[i], d_list[i], v_list[i]):
@@ -350,13 +355,17 @@ class vdWTkatchenko09prl(Calculator, IOContext):
                     # Forces go both ways for every interaction
                     forces[i] += force_ij
                     forces[j] -= force_ij
+        EvdW = self.comm.sum(EvdW)
+        self.comm.sum(forces)
+
         self.results['energy'] += EvdW
+        self.results['free_energy'] += EvdW
         self.results['forces'] += forces
 
         if self.txt:
             print(('\n' + self.__class__.__name__), file=self.txt)
-            print('vdW correction: %g' % (EvdW), file=self.txt)
-            print('Energy:         %g' % self.results['energy'],
+            print(f'vdW correction: {EvdW}', file=self.txt)
+            print(f'Energy:         {self.results["energy"]}',
                   file=self.txt)
             print('\nForces in eV/Ang:', file=self.txt)
             symbols = self.atoms.get_chemical_symbols()
@@ -377,3 +386,42 @@ class vdWTkatchenko09prl(Calculator, IOContext):
         x = RAB * scale
         chi = np.exp(-d * (x - 1.0))
         return 1.0 / (1.0 + chi), d * scale * chi / (1.0 + chi)**2
+
+
+def calculate_ts09_polarizability(atoms):
+    """Calculate polarizability tensor
+
+    atoms: Atoms object
+    The atoms object must have a vdWTkatchenko90prl calculator attached.
+
+    Returns
+    -------
+      polarizability tensor:
+      Unit (e^2 Angstrom^2 / eV).
+      Multiply with Bohr * Ha to get (Angstrom^3)
+    """
+    calc = atoms.calc
+    assert isinstance(calc, vdWTkatchenko09prl)
+    atoms.get_potential_energy()
+
+    volume_ratios = calc.hirshfeld.get_effective_volume_ratios()
+
+    na = len(atoms)
+    alpha_a = np.empty((na))
+    alpha_eff_a = np.empty((na))
+    for a, atom in enumerate(atoms):
+        # free atom values
+        alpha_a[a], _ = calc.vdWDB_alphaC6[atom.symbol]
+        # effective polarizability assuming linear combination
+        # of atomic polarizability from ts09
+        alpha_eff_a[a] = volume_ratios[a] * alpha_a[a]
+
+    alpha = np.sum(alpha_eff_a) * Bohr**2 / Hartree
+    return np.diag([alpha] * 3)
+
+
+class TS09Polarizability(StaticPolarizabilityCalculator):
+    """Class interface as expected by Displacement"""
+
+    def __call__(self, atoms):
+        return calculate_ts09_polarizability(atoms)

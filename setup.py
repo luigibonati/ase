@@ -20,9 +20,10 @@ if sys.version_info < python_min_version:
 
 
 install_requires = [
-    'numpy>=1.15.0',  # July 2018
-    'scipy>=1.1.0',  # May 2018
+    'numpy>=1.17.0',  # July 2019
+    'scipy>=1.3.1',  # August 2019
     'matplotlib>=3.1.0',  # May 2019
+    'importlib-metadata>=0.12;python_version<"3.8"'
 ]
 
 
@@ -53,9 +54,14 @@ with open('ase/__init__.py') as fd:
 package_data = {'ase': ['spacegroup/spacegroup.dat',
                         'collections/*.json',
                         'db/templates/*',
-                        'db/static/*'],
+                        'db/static/*',
+                        # make ASE a PEP 561 compliant package so that
+                        # other packages can use ASE's type hints:
+                        'py.typed'],
                 'ase.test': ['pytest.ini',
-                             'testdata/*']}
+                             'testdata/*',
+                             'testdata/*/*',
+                             'testdata/*/*/*']}
 
 
 class build_py(_build_py):
@@ -101,12 +107,7 @@ setup(name='ase',
       install_requires=install_requires,
       extras_require=extras_require,
       package_data=package_data,
-      entry_points={'console_scripts': ['ase=ase.cli.main:main',
-                                        'ase-db=ase.cli.main:old',
-                                        'ase-gui=ase.cli.main:old',
-                                        'ase-run=ase.cli.main:old',
-                                        'ase-info=ase.cli.main:old',
-                                        'ase-build=ase.cli.main:old']},
+      entry_points={'console_scripts': ['ase=ase.cli.main:main']},
       long_description=long_description,
       cmdclass={'build_py': build_py},
       classifiers=[

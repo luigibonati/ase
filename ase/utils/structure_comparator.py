@@ -464,7 +464,7 @@ class SymmetryEquivalenceCheck:
         return np.any(s[1:] == s[:-1])
 
     def _elements_match(self, s1, s2, kdtree):
-        """Check if all the elements in s1 match the corresponding position in s2
+        """Check if all the elements in s1 match corresponding position in s2
 
         NOTE: The unit cells may be in different octants
         Hence, try all cyclic permutations of x,y and z
@@ -586,8 +586,6 @@ class SymmetryEquivalenceCheck:
         # XXX What do we know about the length/shape of refined_candidate_list?
         if len(refined_candidate_list) == 0:
             return None
-        elif len(refined_candidate_list) == 1:
-            inverted_trial = 1.0 / refined_candidate_list
         else:
             inverted_trial = np.linalg.inv(refined_candidate_list)
 

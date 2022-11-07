@@ -5,7 +5,7 @@ import numpy as np
 
 from ase import Atoms
 from ase.constraints import dict2constraint
-from ase.calculators.calculator import (get_calculator_class, all_properties,
+from ase.calculators.calculator import (all_properties,
                                         PropertyNotImplementedError,
                                         kptdensity2monkhorstpack)
 from ase.calculators.singlepoint import SinglePointCalculator
@@ -66,6 +66,10 @@ def atoms2dict(atoms):
 
 
 class AtomsRow:
+    mtime: float
+    positions: np.ndarray
+    id: int
+
     def __init__(self, dct):
         if isinstance(dct, dict):
             dct = dct.copy()
@@ -219,7 +223,7 @@ class AtomsRow:
             return 0.0
         return charges.sum()
 
-    def toatoms(self, attach_calculator=False,
+    def toatoms(self,
                 add_additional_information=False):
         """Create Atoms object."""
         atoms = Atoms(self.numbers,
@@ -233,17 +237,13 @@ class AtomsRow:
                       momenta=self.get('momenta'),
                       constraint=self.constraints)
 
-        if attach_calculator:
-            params = self.get('calculator_parameters', {})
-            atoms.calc = get_calculator_class(self.calculator)(**params)
-        else:
-            results = {}
-            for prop in all_properties:
-                if prop in self:
-                    results[prop] = self[prop]
-            if results:
-                atoms.calc = SinglePointCalculator(atoms, **results)
-                atoms.calc.name = self.get('calculator', 'unknown')
+        results = {}
+        for prop in all_properties:
+            if prop in self:
+                results[prop] = self[prop]
+        if results:
+            atoms.calc = SinglePointCalculator(atoms, **results)
+            atoms.calc.name = self.get('calculator', 'unknown')
 
         if add_additional_information:
             atoms.info = {}

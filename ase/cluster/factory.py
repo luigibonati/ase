@@ -66,9 +66,9 @@ class ClusterFactory(ClusterBase):
         translations = np.zeros((size.prod(), 3))
         for h in range(size[0]):
             for k in range(size[1]):
-                for l in range(size[2]):
-                    i = h * (size[1] * size[2]) + k * size[2] + l
-                    translations[i] = np.dot([h, k, l], self.lattice_basis)
+                for l_ in range(size[2]):
+                    i = h * (size[1] * size[2]) + k * size[2] + l_
+                    translations[i] = np.dot([h, k, l_], self.lattice_basis)
 
         atomic_basis = np.dot(self.atomic_basis, self.lattice_basis)
         positions = np.zeros((len(translations) * len(atomic_basis), 3))
@@ -143,8 +143,8 @@ class ClusterFactory(ClusterBase):
         else:
             offset = np.array(center)
             if (offset > 1.0).any() or (offset < 0.0).any():
-                raise ValueError("Center offset must lie within the lattice unit \
-                                  cell.")
+                raise ValueError(
+                    "Center offset must lie within the lattice unit cell.")
 
         max = np.ones(3)
         min = -np.ones(3)

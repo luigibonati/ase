@@ -4,7 +4,7 @@ from typing import (Any, Dict, Iterable, List, Optional,
                     overload, Sequence, TypeVar, Union)
 
 import numpy as np
-from ase.spectrum.dosdata import DOSData, RawDOSData, GridDOSData, Info
+from ase.spectrum.dosdata import DOSData, RawDOSData, GridDOSData, Info, Floats
 from ase.utils.plotting import SimplePlottingAxes
 
 # This import is for the benefit of type-checking / mypy
@@ -18,7 +18,7 @@ class DOSCollection(collections.abc.Sequence):
         self._data = list(dos_series)
 
     def _sample(self,
-                energies: Sequence[float],
+                energies: Floats,
                 width: float = 0.1,
                 smearing: str = 'Gauss') -> np.ndarray:
         """Sample the DOS data at chosen points, with broadening
@@ -126,8 +126,8 @@ class DOSCollection(collections.abc.Sequence):
 
     @classmethod
     def from_data(cls,
-                  energies: Sequence[float],
-                  weights: Sequence[Sequence[float]],
+                  energies: Floats,
+                  weights: Sequence[Floats],
                   info: Sequence[Info] = None) -> 'DOSCollection':
         """Create a DOSCollection from data sharing a common set of energies
 
@@ -152,7 +152,7 @@ class DOSCollection(collections.abc.Sequence):
                    for row_weights, row_info in zip(weights, info))
 
     @staticmethod
-    def _check_weights_and_info(weights: Sequence[Sequence[float]],
+    def _check_weights_and_info(weights: Sequence[Floats],
                                 info: Union[Sequence[Info], None],
                                 ) -> Sequence[Info]:
         if info is None:
@@ -348,7 +348,7 @@ class DOSCollection(collections.abc.Sequence):
 
 
 @singledispatch
-def _add_to_collection(other: DOSCollection,
+def _add_to_collection(other: Union[DOSData, DOSCollection],
                        collection: DOSCollection) -> DOSCollection:
     if isinstance(other, type(collection)):
         return type(collection)(list(collection) + list(other))
@@ -377,7 +377,7 @@ class RawDOSCollection(DOSCollection):
 
 class GridDOSCollection(DOSCollection):
     def __init__(self, dos_series: Iterable[GridDOSData],
-                 energies: Optional[Sequence[float]] = None) -> None:
+                 energies: Optional[Floats] = None) -> None:
         dos_list = list(dos_series)
         if energies is None:
             if len(dos_list) == 0:
@@ -395,16 +395,17 @@ class GridDOSCollection(DOSCollection):
                 raise TypeError("GridDOSCollection can only store "
                                 "GridDOSData objects.")
             if (dos_data.get_energies().shape != self._energies.shape
-                or not np.allclose(dos_data.get_energies(), self._energies)):
+                    or not np.allclose(dos_data.get_energies(),
+                                       self._energies)):
                 raise ValueError("All GridDOSData objects in GridDOSCollection"
                                  " must have the same energy axis.")
             self._weights[i, :] = dos_data.get_weights()
             self._info.append(dos_data.info)
 
-    def get_energies(self) -> Sequence[float]:
+    def get_energies(self) -> Floats:
         return self._energies.copy()
 
-    def get_all_weights(self) -> Sequence[Sequence[float]]:
+    def get_all_weights(self) -> Union[Sequence[Floats], np.ndarray]:
         return self._weights.copy()
 
     def __len__(self) -> int:
@@ -430,8 +431,8 @@ class GridDOSCollection(DOSCollection):
 
     @classmethod
     def from_data(cls,
-                  energies: Sequence[float],
-                  weights: Sequence[Sequence[float]],
+                  energies: Floats,
+                  weights: Sequence[Floats],
                   info: Sequence[Info] = None) -> 'GridDOSCollection':
         """Create a GridDOSCollection from data with a common set of energies
 
@@ -587,7 +588,7 @@ class GridDOSCollection(DOSCollection):
 
     @staticmethod
     def _plot_broadened(ax: 'matplotlib.axes.Axes',
-                        energies: Sequence[float],
+                        energies: Floats,
                         all_y: np.ndarray,
                         all_labels: Sequence[str],
                         mplargs: Union[Dict, None]):

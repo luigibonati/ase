@@ -14,6 +14,7 @@ from ase.parallel import world
 from ase.dft import monkhorst_pack
 from ase.io.trajectory import Trajectory
 from ase.utils.filecache import MultiFileJSONCache
+from ase.utils import deprecated
 
 
 class Displacement:
@@ -147,6 +148,9 @@ class Displacement:
 
         self.indices = indices
 
+    def _eq_disp(self):
+        return self._disp(0, 0, 0)
+
     def _disp(self, a, i, step):
         from ase.vibrations.vibrations import Displacement as VDisplacement
         return VDisplacement(a, i, np.sign(step), abs(step), self)
@@ -171,14 +175,11 @@ class Displacement:
         atoms_N.calc = self.calc
 
         # Do calculation on equilibrium structure
-        eq_disp = self._disp(0, 0, 0)
-        # with self.cache.lock(f'{self.name}.eq') as handle:
+        eq_disp = self._eq_disp()
         with self.cache.lock(eq_disp.name) as handle:
             if handle is not None:
-                output = self(atoms_N)
-                # Write output to file
-                if world.rank == 0:
-                    handle.save(output)
+                output = self.calculate(atoms_N, eq_disp)
+                handle.save(output)
 
         # Positions of atoms to be displaced in the reference cell
         natoms = len(self.atoms)
@@ -190,7 +191,6 @@ class Displacement:
             for i in range(3):
                 for sign in [-1, 1]:
                     disp = self._disp(a, i, sign)
-                    # key = '%s.%d%s%s' % (self.name, a, 'xyz'[i], ' +-'[sign])
                     with self.cache.lock(disp.name) as handle:
                         if handle is None:
                             continue
@@ -323,17 +323,20 @@ class Phonons(Displacement):
     def check_eq_forces(self):
         """Check maximum size of forces in the equilibrium structure."""
 
-        name = f'{self.name}.eq'
-        feq_av = self.cache[name]['forces']
+        eq_disp = self._eq_disp()
+        feq_av = self.cache[eq_disp.name]['forces']
 
-        fmin = feq_av.max()
-        fmax = feq_av.min()
+        fmin = feq_av.min()
+        fmax = feq_av.max()
         i_min = np.where(feq_av == fmin)
         i_max = np.where(feq_av == fmax)
 
         return fmin, fmax, i_min, i_max
 
-    def read_born_charges(self, name=None, neutrality=True):
+    @deprecated('Current implementation of non-analytical correction is '
+                'likely incorrect, see '
+                'https://gitlab.com/ase/ase/-/issues/941')
+    def read_born_charges(self, name='born', neutrality=True):
         r"""Read Born charges and dieletric tensor from JSON file.
 
         The charge neutrality sum-rule::
@@ -349,17 +352,15 @@ class Phonons(Displacement):
         neutrality: bool
             Restore charge neutrality condition on calculated Born effective
             charges.
+        name: str
+            Key used to identify the file with Born charges for the unit cell
+            in the JSON cache.
 
         """
 
         # Load file with Born charges and dielectric tensor for atoms in the
         # unit cell
-        if name is None:
-            key = '%s.born' % self.name
-        else:
-            key = name
-
-        Z_avv, eps_vv = self.cache[key]
+        Z_avv, eps_vv = self.cache[name]
 
         # Neutrality sum-rule
         if neutrality:
@@ -791,10 +792,10 @@ class Phonons(Displacement):
         phase_N = np.exp(2.j * pi * np.dot(q_c, R_cN))
         phase_Na = phase_N.repeat(len(self.atoms))
 
-        for l in branch_l:
+        for lval in branch_l:
 
-            omega = omega_l[0, l]
-            u_av = u_l[0, l]
+            omega = omega_l[0, lval]
+            u_av = u_l[0, lval]
 
             # Mean displacement of a classical oscillator at temperature T
             u_av *= sqrt(kT) / abs(omega)
@@ -805,7 +806,8 @@ class Phonons(Displacement):
             # Repeat and multiply by Bloch phase factor
             mode_Nav = np.vstack(N * [mode_av]) * phase_Na[:, np.newaxis]
 
-            with Trajectory('%s.mode.%d.traj' % (self.name, l), 'w') as traj:
+            with Trajectory('%s.mode.%d.traj'
+                            % (self.name, lval), 'w') as traj:
                 for x in np.linspace(0, 2 * pi, nimages, endpoint=False):
                     atoms.set_positions((pos_Nav + np.exp(1.j * x) *
                                          mode_Nav).real)
