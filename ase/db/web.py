@@ -32,7 +32,7 @@ class Session:
 
         self.columns: Optional[List[str]] = None
         self.nrows: Optional[int] = None
-        self.nrows_total: int | None = None
+        self.nrows_total: Optional[int] = None
         self.page = 0
         self.limit = 25
         self.sort = ''
