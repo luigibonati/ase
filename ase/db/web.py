@@ -1,5 +1,4 @@
 """Helper functions for Flask WSGI-app."""
-from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -11,7 +10,7 @@ class Session:
     """Seesion object.
 
     Stores stuff that the jinja2 templetes (like templates/table.html)
-    needs to show.  Example from table.html::
+    need to show.  Example from table.html::
 
         Displaying rows {{ s.row1 }}-{{ s.row2 }} out of {{ s.nrows }}
 
