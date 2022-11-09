@@ -115,6 +115,8 @@ def test_paging(database):
     session.update('query', '', {'query': ''}, project)
     table = session.create_table(database, 'id', ['foo'])
     assert len(table.rows) == 2
+    assert session.nrows == 2
+    assert session.nrows_total == 2
 
     session.update('limit', '1', {}, project)
     session.update('page', '1', {}, project)
@@ -125,6 +127,8 @@ def test_paging(database):
     session.update('query', '', {'query': 'id=1'}, project)
     table = session.create_table(database, 'id', ['foo'])
     assert len(table.rows) == 1
+    assert session.nrows == 1
+    assert session.nrows_total == 2
 
 
 def test_check_jsmol():
