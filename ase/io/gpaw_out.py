@@ -34,6 +34,17 @@ def read_forces(lines: List[str],
             raise IOError('Malformed GPAW log file: %s' % m)
     return f, i
 
+def read_stresses(lines: List[str],
+                ii: int,) -> Tuple[List[Tuple[float, float, float]], int]:
+    s = []
+    for i in range(ii + 1, ii + 4):
+        try:
+            x, y, z = lines[i].split()[-3:]
+            s.append((float(x), float(y), float(z)))
+        except (ValueError, IndexError) as m:
+            raise IOError('Malformed GPAW log file: %s' % m)
+    return s, i
+
 
 def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
     """Read text output from GPAW calculation."""
@@ -196,6 +207,13 @@ def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
             f = None
         else:
             f, i = read_forces(lines, ii, atoms)
+            
+        try:
+            ii = lines.index('stress tensor:\n')
+        except ValueError:
+            stress_tensor = None
+        else:
+            stress_tensor, i = read_stresses(lines, ii)
 
         try:
             parameters = {}
@@ -229,7 +247,8 @@ def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
             calc = SinglePointDFTCalculator(atoms, energy=e, forces=f,
                                             dipole=dipole, magmoms=magmoms,
                                             efermi=eFermi,
-                                            bzkpts=bz_kpts, ibzkpts=ibz_kpts)
+                                            bzkpts=bz_kpts, ibzkpts=ibz_kpts,
+                                           stress=stress_tensor)
             calc.name = name
             calc.parameters = parameters
             if energy_contributions is not None:
