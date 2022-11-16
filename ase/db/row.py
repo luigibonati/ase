@@ -163,6 +163,11 @@ class AtomsRow:
         return Formula('', _tree=[(self.symbols, 1)]).format('metal')
 
     @property
+    def reduced_formula(self):
+        """Reduced chemical formula string."""
+        return Formula(self.formula).reduce()[0].format('metal')
+
+    @property
     def symbols(self):
         """List of chemical symbols."""
         return [chemical_symbols[Z] for Z in self.numbers]
