@@ -43,7 +43,7 @@ def read_stresses(lines: List[str],
             x, y, z = lines[i].split()[-3:]
             s.append((float(x), float(y), float(z)))
         except (ValueError, IndexError) as m:
-            raise IOError('Malformed GPAW log file: %s' % m)
+            raise IOError(f'Malformed GPAW log file: {m}')
     return s, i
 
 
