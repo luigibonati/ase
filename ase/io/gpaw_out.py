@@ -34,8 +34,9 @@ def read_forces(lines: List[str],
             raise IOError('Malformed GPAW log file: %s' % m)
     return f, i
 
+
 def read_stresses(lines: List[str],
-                ii: int,) -> Tuple[List[Tuple[float, float, float]], int]:
+                  ii: int,) -> Tuple[List[Tuple[float, float, float]], int]:
     s = []
     for i in range(ii + 1, ii + 4):
         try:
@@ -207,7 +208,7 @@ def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
             f = None
         else:
             f, i = read_forces(lines, ii, atoms)
-            
+
         try:
             ii = lines.index('stress tensor:\n')
         except ValueError:
@@ -248,7 +249,7 @@ def read_gpaw_out(fileobj, index):  # -> Union[Atoms, List[Atoms]]:
                                             dipole=dipole, magmoms=magmoms,
                                             efermi=eFermi,
                                             bzkpts=bz_kpts, ibzkpts=ibz_kpts,
-                                           stress=stress_tensor)
+                                            stress=stress_tensor)
             calc.name = name
             calc.parameters = parameters
             if energy_contributions is not None:
