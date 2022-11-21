@@ -13,6 +13,8 @@ from ase.data import (atomic_numbers as ase_atomic_numbers,
 from ase.calculators.lammps import convert
 from ase.geometry import wrap_positions
 
+import lammps
+
 # TODO
 # 1. should we make a new lammps object each time ?
 # 4. need a routine to get the model back from lammps
@@ -249,7 +251,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
 
 """
 
-    implemented_properties = ['energy', 'free_energy', 'forces', 'stress']
+    implemented_properties = ['energy', 'free_energy', 'forces', 'stress', 'energies', 'free_energies']
 
     started = False
     initialized = False
@@ -488,6 +490,16 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         )
         self.results['free_energy'] = self.results['energy']
 
+        ids = self.lmp.numpy.extract_atom("id")
+        # if ids doesn't match atoms then data is MPI distributed, which we can't handle
+        assert len(ids) == len(atoms)
+        self.results["energies"] = convert(
+            self.lmp.numpy.extract_compute('pe_peratom', lammps.LMP_STYLE_ATOM, lammps.LMP_TYPE_VECTOR),
+            "energy", self.units, "ASE"
+        )
+        self.results["energies"][ids - 1] = self.results["energies"]
+        self.results["free_energies"] = self.results["energies"]
+
         stress = np.empty(6)
         stress_vars = ['pxx', 'pyy', 'pzz', 'pyz', 'pxz', 'pxy']
 
@@ -683,7 +695,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
             self.previous_atoms_numbers = atoms.numbers.copy()
 
         # execute the user commands
-        for cmd in self.parameters.lmpcmds:
+        for cmd in self.parameters.lmpcmds + ["compute pe_peratom all pe/atom"]:
             self.lmp.command(cmd)
 
         # Set masses after user commands, e.g. to override
