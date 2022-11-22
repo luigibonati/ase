@@ -13,8 +13,6 @@ from ase.data import (atomic_numbers as ase_atomic_numbers,
 from ase.calculators.lammps import convert
 from ase.geometry import wrap_positions
 
-import lammps
-
 # TODO
 # 1. should we make a new lammps object each time ?
 # 4. need a routine to get the model back from lammps
@@ -494,7 +492,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         # if ids doesn't match atoms then data is MPI distributed, which we can't handle
         assert len(ids) == len(atoms)
         self.results["energies"] = convert(
-            self.lmp.numpy.extract_compute('pe_peratom', lammps.LMP_STYLE_ATOM, lammps.LMP_TYPE_VECTOR),
+            self.lmp.numpy.extract_compute('pe_peratom', self.LMP_STYLE_ATOM, self.LMP_TYPE_VECTOR),
             "energy", self.units, "ASE"
         )
         self.results["energies"][ids - 1] = self.results["energies"]
@@ -627,7 +625,11 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         # Only import lammps when running a calculation
         # so it is not required to use other parts of the
         # module
-        from lammps import lammps
+        from lammps import lammps, LMP_STYLE_ATOM, LMP_TYPE_VECTOR
+
+        self.LMP_STYLE_ATOM = LMP_STYLE_ATOM
+        self.LMP_TYPE_VECTOR = LMP_TYPE_VECTOR
+
         # start lammps process
         if self.parameters.log_file is None:
             cmd_args = ['-echo', 'log', '-log', 'none', '-screen', 'none',
