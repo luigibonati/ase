@@ -12,6 +12,9 @@ Git master branch
 * :func:`ase.build.bulk` now assigns initial magnetic moments
   to BCC Fe, Co, and Ni.
 
+* :func:`ase.build.make_supercell` can now control how to order the atoms in
+  the supercell via the option ``order``.
+
 * :meth:`~ase.cell.Cell.mask` returns the mask of nonzero cell vectors,
   an array of three booleans.
 
