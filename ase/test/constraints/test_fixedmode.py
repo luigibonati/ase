@@ -16,10 +16,9 @@ def test_fixedmode():
     vib = Vibrations(atoms)
     vib.run()
     mode = vib.get_mode(-1)
-    print(mode)
 
+    # Test the constraint.
     constraint = FixedMode(mode)
     dict_constraint = constraint.todict()
-
     new_constraint = dict2constraint(dict_constraint)
     assert np.isclose(new_constraint.mode, constraint.mode).all()
