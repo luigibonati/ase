@@ -3,19 +3,13 @@ def test_fixedmode():
     back to a mode."""
     import numpy as np
     from ase.build import molecule
-    from ase.calculators.emt import EMT
-    from ase.optimize import BFGS
-    from ase.vibrations import Vibrations
     from ase.constraints import FixedMode, dict2constraint
 
-    # Create a vibrational mode.
+    # Create a simple mode.
     atoms = molecule('N2')
-    atoms.calc = EMT()
-    opt = BFGS(atoms)
-    opt.run(fmax=0.01)
-    vib = Vibrations(atoms, name='fixedmodetest-vib')
-    vib.run()
-    mode = vib.get_mode(-1)
+    atoms2 = atoms.copy()
+    atoms2.positions += [(.3, .5, .1), (-.1, .2, -.1)]
+    mode = atoms2.positions - atoms.positions
 
     # Test the constraint.
     constraint = FixedMode(mode)
