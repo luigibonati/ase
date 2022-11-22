@@ -249,7 +249,8 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
 
 """
 
-    implemented_properties = ['energy', 'free_energy', 'forces', 'stress', 'energies', 'free_energies']
+    implemented_properties = ['energy', 'free_energy', 'forces', 'stress',
+                              'energies', 'free_energies']
 
     started = False
     initialized = False
@@ -489,10 +490,13 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
         self.results['free_energy'] = self.results['energy']
 
         ids = self.lmp.numpy.extract_atom("id")
-        # if ids doesn't match atoms then data is MPI distributed, which we can't handle
+        # if ids doesn't match atoms then data is MPI distributed, which
+        # we can't handle
         assert len(ids) == len(atoms)
         self.results["energies"] = convert(
-            self.lmp.numpy.extract_compute('pe_peratom', self.LMP_STYLE_ATOM, self.LMP_TYPE_VECTOR),
+            self.lmp.numpy.extract_compute('pe_peratom',
+                                           self.LMP_STYLE_ATOM,
+                                           self.LMP_TYPE_VECTOR),
             "energy", self.units, "ASE"
         )
         self.results["energies"][ids - 1] = self.results["energies"]
