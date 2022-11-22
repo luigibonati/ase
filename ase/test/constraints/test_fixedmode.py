@@ -13,7 +13,7 @@ def test_fixedmode():
     atoms.calc = EMT()
     opt = BFGS(atoms)
     opt.run(fmax=0.01)
-    vib = Vibrations(atoms)
+    vib = Vibrations(atoms, name='fixedmodetest-vib')
     vib.run()
     mode = vib.get_mode(-1)
 
