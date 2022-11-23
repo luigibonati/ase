@@ -38,10 +38,10 @@ def test_make_supercell(prim, P, order):
     sc = make_supercell(prim, P, order=order)
     assert len(sc) == expected
     if order == "cell-major":
-        assert list(sc.symbols) == list(prim.symbols) * n
+        symbols_expected = list(prim.symbols) * n
     elif order == "atom-major":
-        assert list(sc.symbols) == [s for s in prim.symbols for _ in range(n)]
-
+        symbols_expected = [s for s in prim.symbols for _ in range(n)]
+    assert list(sc.symbols) == symbols_expected
 
 def test_make_supercells_arrays(prim, P, order, rng):
     reps = int(round(np.linalg.det(P)))
