@@ -27,7 +27,7 @@ def P(request):
     return request.param
 
 
-@pytest.fixture(params=["tile", "repeat"])
+@pytest.fixture(params=["cell-major", "atom-major"])
 def order(request):
     return request.param
 
@@ -37,9 +37,9 @@ def test_make_supercell(prim, P, order):
     expected = n * len(prim)
     sc = make_supercell(prim, P, order=order)
     assert len(sc) == expected
-    if order == "tile":
+    if order == "cell-major":
         assert list(sc.symbols) == list(prim.symbols) * n
-    elif order == "repeat":
+    elif order == "atom-major":
         assert list(sc.symbols) == [s for s in prim.symbols for _ in range(n)]
 
 
@@ -54,11 +54,11 @@ def test_make_supercells_arrays(prim, P, order, rng):
     sc = make_supercell(prim, P, order=order)
 
     assert reps * len(prim) == len(sc.get_tags())
-    if order == "tile":
+    if order == "cell-major":
         assert all(sc.get_tags() == np.tile(tags, reps))
         assert np.allclose(sc[:len(prim)].get_momenta(), prim.get_momenta())
         assert np.allclose(sc.get_momenta(), np.tile(momenta, (reps, 1)))
-    elif order == "repeat":
+    elif order == "atom-major":
         assert all(sc.get_tags() == np.repeat(tags, reps))
         assert np.allclose(sc[::reps].get_momenta(), prim.get_momenta())
         assert np.allclose(sc.get_momenta(), np.repeat(momenta, reps, axis=0))

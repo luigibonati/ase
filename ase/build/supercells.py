@@ -132,7 +132,7 @@ def find_optimal_cell_shape(
     return optimal_P
 
 
-def make_supercell(prim, P, *, wrap=True, order="tile", tol=1e-5):
+def make_supercell(prim, P, *, wrap=True, order="cell-major", tol=1e-5):
     r"""Generate a supercell by applying a general transformation (*P*) to
     the input configuration (*prim*).
 
@@ -150,14 +150,14 @@ def make_supercell(prim, P, *, wrap=True, order="tile", tol=1e-5):
         Transformation matrix `\mathbf{P}`.
     wrap: bool
         wrap in the end
-    order: str (default: "tile")
+    order: str (default: "cell-major")
         how to order the atoms in the supercell
 
-        "tile":
+        "cell-major":
         [atom1_shift1, atom2_shift1, ..., atom1_shift2, atom2_shift2, ...]
         i.e. run first over all the atoms in cell1 and then move to cell2.
 
-        "repeat":
+        "atom-major":
         [atom1_shift1, atom1_shift2, ..., atom2_shift1, atom2_shift2, ...]
         i.e. run first over atom1 in all the cells and then move to atom2.
         This may be the order preferred by most VASP users.
@@ -174,9 +174,9 @@ def make_supercell(prim, P, *, wrap=True, order="tile", tol=1e-5):
     lattice_points = np.dot(lattice_points_frac, supercell)
     N = len(lattice_points)
 
-    if order == "tile":
+    if order == "cell-major":
         shifted = prim.positions[None, :, :] + lattice_points[:, None, :]
-    elif order  == "repeat":
+    elif order  == "atom-major":
         shifted = prim.positions[:, None, :] + lattice_points[None, :, :]
     else:
         raise ValueError(f"invalid order: {order}")
@@ -192,9 +192,9 @@ def make_supercell(prim, P, *, wrap=True, order="tile", tol=1e-5):
             # This was added during construction of the super cell
             continue
         shape = (N * arr.shape[0], *arr.shape[1:])
-        if order == "tile":
+        if order == "cell-major":
             new_arr = np.repeat(arr[None, :], N, axis=0).reshape(shape)
-        elif order == "repeat":
+        elif order == "atom-major":
             new_arr = np.repeat(arr[:, None], N, axis=1).reshape(shape)
         superatoms.set_array(name, new_arr)
 
