@@ -1,15 +1,15 @@
 def test_fixedmode():
-    """Test fixed mode can be set, turned into a dict, and
-    back to a mode."""
+    """Test that FixedMode can be set, turned into a dict, and
+    back to a constraint with the same mode."""
     import numpy as np
     from ase.build import molecule
     from ase.constraints import FixedMode, dict2constraint
 
     # Create a simple mode.
-    atoms = molecule('N2')
-    atoms2 = atoms.copy()
-    atoms2.positions += [(.3, .5, .1), (-.1, .2, -.1)]
-    mode = atoms2.positions - atoms.positions
+    atoms = molecule('CH3OH')
+    initial_positions = atoms.positions.copy()
+    atoms.rattle(stdev=0.5)
+    mode = atoms.positions - initial_positions
 
     # Test the constraint.
     constraint = FixedMode(mode)
