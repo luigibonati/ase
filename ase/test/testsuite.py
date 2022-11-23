@@ -166,7 +166,7 @@ class CLICommand:
         if args.nogui:
             os.environ.pop('DISPLAY')
 
-        pytest_args = ['-v']
+        pytest_args = []
 
         def add_args(*args):
             pytest_args.extend(args)
