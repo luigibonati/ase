@@ -43,6 +43,7 @@ def test_make_supercell(prim, P, order):
         symbols_expected = [s for s in prim.symbols for _ in range(n)]
     assert list(sc.symbols) == symbols_expected
 
+
 def test_make_supercells_arrays(prim, P, order, rng):
     reps = int(round(np.linalg.det(P)))
     tags = list(range(len(prim)))
