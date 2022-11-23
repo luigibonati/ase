@@ -177,7 +177,7 @@ def make_supercell(prim, P, wrap=True, tol=1e-5, order="tile"):
     elif order  == "repeat":
         shifted = prim.positions[:, None, :] + lattice_points[None, :, :]
     else:
-        raise SupercellError(f"invalid order {order}")
+        raise ValueError(f"invalid order: {order}")
     shifted_reshaped = shifted.reshape(-1, 3)
 
     superatoms = Atoms(positions=shifted_reshaped,
@@ -194,8 +194,6 @@ def make_supercell(prim, P, wrap=True, tol=1e-5, order="tile"):
             new_arr = np.repeat(arr[None, :], N, axis=0).reshape(shape)
         elif order == "repeat":
             new_arr = np.repeat(arr[:, None], N, axis=1).reshape(shape)
-        else:
-            raise SupercellError(f"invalid order {order}")
         superatoms.set_array(name, new_arr)
 
     # check number of atoms is correct
