@@ -132,7 +132,7 @@ def find_optimal_cell_shape(
     return optimal_P
 
 
-def make_supercell(prim, P, wrap=True, tol=1e-5, order="tile"):
+def make_supercell(prim, P, *, wrap=True, order="tile", tol=1e-5):
     r"""Generate a supercell by applying a general transformation (*P*) to
     the input configuration (*prim*).
 
@@ -150,8 +150,6 @@ def make_supercell(prim, P, wrap=True, tol=1e-5, order="tile"):
         Transformation matrix `\mathbf{P}`.
     wrap: bool
         wrap in the end
-    tol: float
-        tolerance for wrapping
     order: str (default: "tile")
         how to order the atoms in the supercell
 
@@ -162,6 +160,9 @@ def make_supercell(prim, P, wrap=True, tol=1e-5, order="tile"):
         "repeat":
         [atom1_shift1, atom1_shift2, ..., atom2_shift1, atom2_shift2, ...]
         i.e. running first over atom1 in all the cells and then moving to atom2
+
+    tol: float
+        tolerance for wrapping
     """
 
     supercell_matrix = P
