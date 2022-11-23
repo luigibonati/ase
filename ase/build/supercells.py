@@ -155,11 +155,12 @@ def make_supercell(prim, P, *, wrap=True, order="tile", tol=1e-5):
 
         "tile":
         [atom1_shift1, atom2_shift1, ..., atom1_shift2, atom2_shift2, ...]
-        i.e. running first over all the atoms in cell1 and then moving to cell2
+        i.e. run first over all the atoms in cell1 and then move to cell2.
 
         "repeat":
         [atom1_shift1, atom1_shift2, ..., atom2_shift1, atom2_shift2, ...]
-        i.e. running first over atom1 in all the cells and then moving to atom2
+        i.e. run first over atom1 in all the cells and then move to atom2.
+        This may be the order preferred by most VASP users.
 
     tol: float
         tolerance for wrapping
