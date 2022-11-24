@@ -7,6 +7,15 @@ from ase.db.table import Table, all_columns
 
 
 class Session:
+    """Seesion object.
+
+    Stores stuff that the jinja2 templetes (like templates/table.html)
+    need to show.  Example from table.html::
+
+        Displaying rows {{ s.row1 }}-{{ s.row2 }} out of {{ s.nrows }}
+
+    where *s* is the session object.
+    """
     next_id = 1
     sessions: Dict[int, 'Session'] = {}
 
@@ -22,6 +31,7 @@ class Session:
 
         self.columns: Optional[List[str]] = None
         self.nrows: Optional[int] = None
+        self.nrows_total: Optional[int] = None
         self.page = 0
         self.limit = 25
         self.sort = ''
@@ -121,6 +131,10 @@ class Session:
                      uid_key: str,
                      keys: List[str]) -> Table:
         query = self.query
+
+        if self.nrows_total is None:
+            self.nrows_total = db.count()
+
         if self.nrows is None:
             try:
                 self.nrows = db.count(query)

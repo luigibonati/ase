@@ -8,6 +8,7 @@
         <div class="col-xs-6">
           <b>
           Displaying rows {{ s.row1 }}-{{ s.row2 }} out of {{ s.nrows }}
+          (total # or rows: {{ s.nrows_total }})
           </b>
           {% if s.query %}
           <a href="/{{ p.name }}/?query={{ s.query }}"> (direct link) </a>
