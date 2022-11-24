@@ -7,7 +7,7 @@ ref_info = {
     'LINE': 1,
     'SQR': 1,
     'RECT': 1,
-    'CRECT': 4,
+    'CRECT': 2,
     'HEX2D': 1,
     'OBL': 5,
     'FCC': 1,
