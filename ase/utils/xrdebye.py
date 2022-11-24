@@ -1,3 +1,4 @@
+# flake8: noqa
 """Definition of the XrDebye class.
 
 This module defines the XrDebye class for calculation
@@ -7,7 +8,6 @@ Also contains routine for calculation of atomic form factors and
 X-ray wavelength dict.
 """
 
-from __future__ import print_function
 from math import exp, pi, sin, sqrt, cos, acos
 import numpy as np
 
@@ -41,7 +41,7 @@ wavelengths = {
 }
 
 
-class XrDebye(object):
+class XrDebye:
     """
     Class for calculation of XRD or SAXS patterns.
     """
@@ -175,7 +175,7 @@ class XrDebye(object):
             print('<xrdebye::get_atomic> Element', symbol, 'not available')
         return 0
 
-    def calc_pattern(self, x=None, mode='XRD'):
+    def calc_pattern(self, x=None, mode='XRD', verbose=False):
         r"""
         Calculate X-ray diffraction pattern or
         small angle X-ray scattering pattern.
@@ -206,46 +206,49 @@ class XrDebye(object):
             else:
                 self.twotheta_list = x
             self.q_list = []
-            print('#2theta\tIntensity')
+            if verbose:
+                print('#2theta\tIntensity')
             for twotheta in self.twotheta_list:
                 s = 2 * sin(twotheta * pi / 180 / 2.0) / self.wavelength
                 result.append(self.get(s))
-                print('%.3f\t%f' % (twotheta, result[-1]))
+                if verbose:
+                    print('%.3f\t%f' % (twotheta, result[-1]))
         elif mode == 'SAXS':
             if x is None:
                 self.twotheta_list = np.logspace(-3, -0.3, 100)
             else:
                 self.q_list = x
             self.twotheta_list = []
-            print('#q\tIntensity')
+            if verbose:
+                print('#q\tIntensity')
             for q in self.q_list:
                 s = q / (2 * pi)
                 result.append(self.get(s))
-                print('%.4f\t%f' % (q, result[-1]))
+                if verbose:
+                    print('%.4f\t%f' % (q, result[-1]))
         self.intensity_list = np.array(result)
         return self.intensity_list
 
     def write_pattern(self, filename):
         """ Save calculated data to file specified by ``filename`` string."""
-        f = open(filename, 'w')
-        f.write('# Wavelength = %f\n' % self.wavelength)
+        with open(filename, 'w') as fd:
+            self._write_pattern(fd)
+
+    def _write_pattern(self, fd):
+        fd.write('# Wavelength = %f\n' % self.wavelength)
         if self.mode == 'XRD':
             x, y = self.twotheta_list, self.intensity_list
-            f.write('# 2theta \t Intesity\n')
+            fd.write('# 2theta \t Intesity\n')
         elif self.mode == 'SAXS':
             x, y = self.q_list, self.intensity_list
-            f = open(filename, 'w')
-            f.write('# q(1/A)\tIntesity\n')
+            fd.write('# q(1/A)\tIntesity\n')
         else:
-            f.close()
             raise Exception('No data available, call calc_pattern() first.')
 
         for i in range(len(x)):
-            f.write('  %f\t%f\n' % (x[i], y[i]))
+            fd.write('  %f\t%f\n' % (x[i], y[i]))
 
-        f.close()
-
-    def plot_pattern(self, filename=None, show=None, ax=None):
+    def plot_pattern(self, filename=None, show=False, ax=None):
         """ Plot XRD or SAXS depending on filled data
 
         Uses Matplotlib to plot pattern. Use *show=True* to
@@ -256,9 +259,6 @@ class XrDebye(object):
             ``matplotlib.axes.Axes`` object."""
 
         import matplotlib.pyplot as plt
-
-        if filename is None and show is None:
-            show = True
 
         if ax is None:
             plt.clf()  # clear figure

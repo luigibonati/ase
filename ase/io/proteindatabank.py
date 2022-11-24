@@ -14,18 +14,16 @@ import warnings
 import numpy as np
 
 from ase.atoms import Atoms
-from ase.parallel import paropen
-from ase.geometry import cellpar_to_cell
-from ase.utils import basestring
+from ase.cell import Cell
 from ase.io.espresso import label_to_symbol
+from ase.utils import reader, writer
 
 
 def read_atom_line(line_full):
     """
     Read atom line from pdb format
-    HETATM    1  H14 ORTE    0       6.301   0.693   1.919  1.00  0.00           H
+    HETATM    1  H14 ORTE    0       6.301   0.693   1.919  1.00  0.00        H
     """
-
     line = line_full.rstrip('\n')
     type_atm = line[0:6]
     if type_atm == "ATOM  " or type_atm == "HETATM":
@@ -34,9 +32,13 @@ def read_atom_line(line_full):
 
         altloc = line[16]
         resname = line[17:21]
-        # chainid = line[21]        # Not used 
+        # chainid = line[21]        # Not used
 
-        resseq = int(line[22:26].split()[0])  # sequence identifier
+        seq = line[22:26].split()
+        if len(seq) == 0:
+            resseq = 1
+        else:
+            resseq = int(seq[0])  # sequence identifier
         # icode = line[26]          # insertion code, not used
 
         # atomic coordinates
@@ -59,7 +61,8 @@ def read_atom_line(line_full):
         try:
             bfactor = float(line[60:66])
         except ValueError:
-            bfactor = 0.0  # The PDB use a default of zero if the data is missing
+            # The PDB use a default of zero if the data is missing
+            bfactor = 0.0
 
         # segid = line[72:76] # not used
         symbol = line[76:78].strip().upper()
@@ -69,12 +72,10 @@ def read_atom_line(line_full):
 
     return symbol, name, altloc, resname, coord, occupancy, bfactor, resseq
 
+
+@reader
 def read_proteindatabank(fileobj, index=-1, read_arrays=True):
     """Read PDB files."""
-
-    if isinstance(fileobj, basestring):
-        fileobj = open(fileobj)
-
     images = []
     orig = np.identity(3)
     trans = np.zeros(3)
@@ -121,7 +122,7 @@ def read_proteindatabank(fileobj, index=-1, read_arrays=True):
                        float(line[33:40]),  # alpha
                        float(line[40:47]),  # beta
                        float(line[47:54])]  # gamma
-            cell = cellpar_to_cell(cellpar)
+            cell = Cell.new(cellpar)
             pbc = True
         for c in range(3):
             if line.startswith('ORIGX' + '123'[c]):
@@ -168,6 +169,7 @@ def read_proteindatabank(fileobj, index=-1, read_arrays=True):
             occ = []
             bfactor = []
             residuenames = []
+            residuenumbers = []
             atomtypes = []
             symbols = []
             positions = []
@@ -180,27 +182,12 @@ def read_proteindatabank(fileobj, index=-1, read_arrays=True):
     return images[index]
 
 
+@writer
 def write_proteindatabank(fileobj, images, write_arrays=True):
     """Write images to PDB-file."""
-    if isinstance(fileobj, basestring):
-        fileobj = paropen(fileobj, 'w')
-
+    rot_t = None
     if hasattr(images, 'get_positions'):
         images = [images]
-
-
-    rotation = None
-    if images[0].get_pbc().any():
-        from ase.geometry import cell_to_cellpar, cellpar_to_cell
-
-        currentcell = images[0].get_cell()
-        cellpar = cell_to_cellpar(currentcell)
-        exportedcell = cellpar_to_cell(cellpar)
-        rotation = np.linalg.solve(currentcell, exportedcell)
-        # ignoring Z-value, using P1 since we have all atoms defined explicitly
-        format = 'CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f P 1\n'
-        fileobj.write(format % (cellpar[0], cellpar[1], cellpar[2],
-                                cellpar[3], cellpar[4], cellpar[5]))
 
     #     1234567 123 6789012345678901   89   67   456789012345678901234567 890
     format = ('ATOM  %5d %4s MOL     1    %8.3f%8.3f%8.3f%6.2f%6.2f'
@@ -214,8 +201,19 @@ def write_proteindatabank(fileobj, images, write_arrays=True):
     natoms = len(symbols)
 
     for n, atoms in enumerate(images):
+        if atoms.get_pbc().any():
+            currentcell = atoms.get_cell()
+            cellpar = currentcell.cellpar()
+            _, rot_t = currentcell.standard_form()
+            # ignoring Z-value, using P1 since we have all atoms defined
+            # explicitly
+            cellformat = 'CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f P 1\n'
+            fileobj.write(cellformat % (cellpar[0], cellpar[1], cellpar[2],
+                                        cellpar[3], cellpar[4], cellpar[5]))
         fileobj.write('MODEL     ' + str(n + 1) + '\n')
         p = atoms.get_positions()
+        if rot_t is not None:
+            p = p.dot(rot_t.T)
         occupancy = np.ones(len(atoms))
         bfactor = np.zeros(len(atoms))
         if write_arrays:
@@ -223,12 +221,10 @@ def write_proteindatabank(fileobj, images, write_arrays=True):
                 occupancy = atoms.get_array('occupancy')
             if 'bfactor' in atoms.arrays:
                 bfactor = atoms.get_array('bfactor')
-        if rotation is not None:
-            p = p.dot(rotation)
         for a in range(natoms):
             x, y, z = p[a]
             occ = occupancy[a]
             bf = bfactor[a]
-            fileobj.write(format % (a % MAXNUM, symbols[a],
+            fileobj.write(format % ((a + 1) % MAXNUM, symbols[a],
                                     x, y, z, occ, bf, symbols[a].upper()))
         fileobj.write('ENDMDL\n')

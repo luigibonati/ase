@@ -23,8 +23,8 @@ atoms.set_pbc(True)
 
 # RATTLE-type constraints on O-H1, O-H2, H1-H2.
 atoms.constraints = FixBondLengths([(3 * i + j, 3 * i + (j + 1) % 3)
-                                   for i in range(3**3)
-                                   for j in [0, 1, 2]])
+                                    for i in range(3**3)
+                                    for j in [0, 1, 2]])
 
 tag = 'tip3p_27mol_equil'
 atoms.calc = TIP3P(rc=4.5)
@@ -40,8 +40,8 @@ tag = 'tip3p_216mol_equil'
 atoms.set_constraint()  # repeat not compatible with FixBondLengths currently.
 atoms = atoms.repeat((2, 2, 2))
 atoms.constraints = FixBondLengths([(3 * i + j, 3 * i + (j + 1) % 3)
-                                   for i in range(len(atoms) / 3)
-                                   for j in [0, 1, 2]])
+                                    for i in range(len(atoms) / 3)
+                                    for j in [0, 1, 2]])
 atoms.calc = TIP3P(rc=7.)
 md = Langevin(atoms, 2 * units.fs, temperature=300 * units.kB,
               friction=0.01, logfile=tag + '.log')

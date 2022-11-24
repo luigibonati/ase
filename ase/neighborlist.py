@@ -1,18 +1,130 @@
-from math import sqrt
-
 import numpy as np
+import itertools
 from scipy import sparse as sp
+from scipy.spatial import cKDTree
+import scipy.sparse.csgraph as csgraph
 
-from ase.data import atomic_numbers
-from ase.geometry import complete_cell
+from ase.data import atomic_numbers, covalent_radii
+from ase.geometry import complete_cell, find_mic, wrap_positions
+from ase.geometry import minkowski_reduce
+from ase.cell import Cell
 
 
-def mic(dr, cell, pbc=None):
+def natural_cutoffs(atoms, mult=1, **kwargs):
+    """Generate a radial cutoff for every atom based on covalent radii.
+
+    The covalent radii are a reasonable cutoff estimation for bonds in
+    many applications such as neighborlists, so function generates an
+    atoms length list of radii based on this idea.
+
+    * atoms: An atoms object
+    * mult: A multiplier for all cutoffs, useful for coarse grained adjustment
+    * kwargs: Symbol of the atom and its corresponding cutoff,
+      used to override the covalent radii
+    """
+    return [kwargs.get(atom.symbol, covalent_radii[atom.number] * mult)
+            for atom in atoms]
+
+
+def build_neighbor_list(atoms, cutoffs=None, **kwargs):
+    """Automatically build and update a NeighborList.
+
+    Parameters:
+
+    atoms : :class:`~ase.Atoms` object
+        Atoms to build Neighborlist for.
+    cutoffs: list of floats
+        Radii for each atom. If not given it will be produced by calling
+        :func:`ase.neighborlist.natural_cutoffs`
+    kwargs: arbitrary number of options
+        Will be passed to the constructor of
+        :class:`~ase.neighborlist.NeighborList`
+
+    Returns:
+
+    return: :class:`~ase.neighborlist.NeighborList`
+        A :class:`~ase.neighborlist.NeighborList` instance (updated).
+    """
+    if cutoffs is None:
+        cutoffs = natural_cutoffs(atoms)
+
+    nl = NeighborList(cutoffs, **kwargs)
+    nl.update(atoms)
+
+    return nl
+
+
+def get_distance_matrix(graph, limit=3):
+    """Get Distance Matrix from a Graph.
+
+    Parameters:
+
+    graph: array, matrix or sparse matrix, 2 dimensions (N, N)
+        Graph representation of the connectivity.
+        See `scipy doc <https://docs.scipy.org/doc/scipy/reference/generated\
+/scipy.sparse.csgraph.dijkstra.html#scipy.sparse.csgraph.dijkstra>`_
+        for reference.
+    limit: integer
+        Maximum number of steps to analyze. For most molecular information,
+        three should be enough.
+
+    Returns:
+
+    return: scipy.sparse.csr_matrix, shape (N, N)
+        A scipy.sparse.csr_matrix. All elements that are not connected within
+        *limit* steps are set to zero.
+
+    This is a potential memory bottleneck, as csgraph.dijkstra produces a
+    dense output matrix. Here we replace all np.inf values with 0 and
+    transform back to csr_matrix.
+    Why not dok_matrix like the connectivity-matrix? Because row-picking
+    is most likely and this is super fast with csr.
+    """
+    mat = csgraph.dijkstra(graph, directed=False, limit=limit)
+    mat[mat == np.inf] = 0
+    return sp.csr_matrix(mat, dtype=np.int8)
+
+
+def get_distance_indices(distanceMatrix, distance):
+    """Get indices for each node that are distance or less away.
+
+    Parameters:
+
+    distanceMatrix: any one of scipy.sparse matrices (NxN)
+        Matrix containing distance information of atoms. Get it e.g. with
+        :func:`~ase.neighborlist.get_distance_matrix`
+    distance: integer
+        Number of steps to allow.
+
+    Returns:
+
+    return: list of length N
+        List of length N. return[i] has all indices connected to item i.
+
+    The distance matrix only contains shortest paths, so when looking for
+    distances longer than one, we need to add the lower values for cases
+    where atoms are connected via a shorter path too.
+    """
+    shape = distanceMatrix.get_shape()
+    indices = []
+    # iterate over rows
+    for i in range(shape[0]):
+        row = distanceMatrix.getrow(i)[0]
+        # find all non-zero
+        found = sp.find(row)
+        # screen for smaller or equal distance
+        equal = np.where(found[-1] <= distance)[0]
+        # found[1] contains the indexes
+        indices.append([found[1][x] for x in equal])
+    return indices
+
+
+def mic(dr, cell, pbc=True):
     """
     Apply minimum image convention to an array of distance vectors.
 
-    Parameters
-    ----------
+    Parameters:
+
     dr : array_like
         Array of distance vectors.
     cell : array_like
@@ -21,21 +133,14 @@ def mic(dr, cell, pbc=None):
         Periodic boundary conditions in x-, y- and z-direction. Default is to
         assume periodic boundaries in all directions.
 
-    Returns
-    -------
+    Returns:
+
     dr : array
         Array of distance vectors, wrapped according to the minimum image
         convention.
     """
-    # Check where distance larger than 1/2 cell. Particles have crossed
-    # periodic boundaries then and need to be unwrapped.
-    icell = np.linalg.pinv(cell)
-    if pbc is not None:
-        icell *= np.array(pbc, dtype=int).reshape(3, 1)
-    cell_shift_vectors = np.round(np.dot(dr, icell))
-
-    # Unwrap
-    return dr - np.dot(cell_shift_vectors, cell)
+    dr, _ = find_mic(dr, cell, pbc)
+    return dr
 
 
 def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
@@ -83,7 +188,8 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
               Example: {(1, 6): 1.1, (1, 1): 1.0, ('C', 'C'): 1.85}
             * A list/array with a per atom value: This specifies the radius of
               an atomic sphere for each atoms. If spheres overlap, atoms are
-              within each others neighborhood. See :func:`~ase.utils.natural_cutoffs`
+              within each others neighborhood. See
+              :func:`~ase.neighborlist.natural_cutoffs`
               for an example on how to get such a list.
     self_interaction: bool
         Return the atom itself as its own neighbor if set to true.
@@ -117,11 +223,11 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
 
     # Return empty neighbor list if no atoms are passed here
     if len(positions) == 0:
-        empty_types = dict(i=(np.int, (0, )),
-                           j=(np.int, (0, )),
-                           D=(np.float, (0, 3)),
-                           d=(np.float, (0, )),
-                           S=(np.int, (0, 3)))
+        empty_types = dict(i=(int, (0, )),
+                           j=(int, (0, )),
+                           D=(float, (0, 3)),
+                           d=(float, (0, )),
+                           S=(int, (0, 3)))
         retvals = []
         for i in quantities:
             dtype, shape = empty_types[i]
@@ -149,12 +255,12 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
             max_cutoff = cutoff
         else:
             cutoff = np.asarray(cutoff)
-            max_cutoff = 2*np.max(cutoff)
+            max_cutoff = 2 * np.max(cutoff)
 
     # We use a minimum bin size of 3 A
     bin_size = max(max_cutoff, 3)
-    # Compute number of bins such that a sphere of radius cutoff fit into eight
-    # neighboring bins.
+    # Compute number of bins such that a sphere of radius cutoff fits into
+    # eight neighboring bins.
     nbins_c = np.maximum((face_dist_c / bin_size).astype(int), [1, 1, 1])
     nbins = np.prod(nbins_c)
     # Make sure we limit the amount of memory used by the explicit bins.
@@ -166,6 +272,12 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
     neigh_search_x, neigh_search_y, neigh_search_z = \
         np.ceil(bin_size * nbins_c / face_dist_c).astype(int)
 
+    # If we only have a single bin and the system is not periodic, then we
+    # do not need to search neighboring bins
+    neigh_search_x = 0 if nbins_c[0] == 1 and not pbc[0] else neigh_search_x
+    neigh_search_y = 0 if nbins_c[1] == 1 and not pbc[1] else neigh_search_y
+    neigh_search_z = 0 if nbins_c[2] == 1 and not pbc[2] else neigh_search_z
+
     # Sort atoms into bins.
     if use_scaled_positions:
         scaled_positions_ic = positions
@@ -173,7 +285,7 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
     else:
         scaled_positions_ic = np.linalg.solve(complete_cell(cell).T,
                                               positions.T).T
-    bin_index_ic = np.floor(scaled_positions_ic*nbins_c).astype(int)
+    bin_index_ic = np.floor(scaled_positions_ic * nbins_c).astype(int)
     cell_shift_ic = np.zeros_like(bin_index_ic)
 
     for c in range(3):
@@ -182,7 +294,7 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
             cell_shift_ic[:, c], bin_index_ic[:, c] = \
                 divmod(bin_index_ic[:, c], nbins_c[c])
         else:
-            bin_index_ic[:, c] = np.clip(bin_index_ic[:, c], 0, nbins_c[c]-1)
+            bin_index_ic[:, c] = np.clip(bin_index_ic[:, c], 0, nbins_c[c] - 1)
 
     # Convert Cartesian bin index to unique scalar bin index.
     bin_index_i = (bin_index_ic[:, 0] +
@@ -249,9 +361,9 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
 
     # First atoms in pair.
     _first_at_neightuple_n = atoms_in_bin_ba[:, atom_pairs_pn[0]]
-    for dz in range(-neigh_search_z, neigh_search_z+1):
-        for dy in range(-neigh_search_y, neigh_search_y+1):
-            for dx in range(-neigh_search_x, neigh_search_x+1):
+    for dz in range(-neigh_search_z, neigh_search_z + 1):
+        for dy in range(-neigh_search_y, neigh_search_y + 1):
+            for dx in range(-neigh_search_x, neigh_search_x + 1):
                 # Bin index of neighboring bin and shift vector.
                 shiftx_xyz, neighbinx_xyz = divmod(binx_xyz + dx, nbins_c[0])
                 shifty_xyz, neighbiny_xyz = divmod(biny_xyz + dy, nbins_c[1])
@@ -327,7 +439,7 @@ def primitive_neighbor_list(quantities, pbc, cell, positions, cutoff,
         positions[first_at_neightuple_n] + \
         cell_shift_vector_n.dot(cell)
     abs_distance_vector_n = \
-        np.sqrt(np.sum(distance_vector_nc*distance_vector_nc, axis=1))
+        np.sqrt(np.sum(distance_vector_nc * distance_vector_nc, axis=1))
 
     # We have still created too many pairs. Only keep those with distance
     # smaller than max_cutoff.
@@ -440,7 +552,8 @@ def neighbor_list(quantities, a, cutoff, self_interaction=False,
               Example: {(1, 6): 1.1, (1, 1): 1.0, ('C', 'C'): 1.85}
             * A list/array with a per atom value: This specifies the radius of
               an atomic sphere for each atoms. If spheres overlap, atoms are
-              within each others neighborhood. See :func:`~ase.utils.natural_cutoffs`
+              within each others neighborhood. See
+              :func:`~ase.neighborlist.natural_cutoffs`
               for an example on how to get such a list.
 
     self_interaction: bool
@@ -476,18 +589,19 @@ def neighbor_list(quantities, a, cutoff, self_interaction=False,
 
         d = neighbor_list('d', a, 10.00)
         h, bin_edges = np.histogram(d, bins=100)
-        pdf = h/(4*np.pi/3*(bin_edges[1:]**3 - bin_edges[:-1]**3)) * a.get_volume()/len(a)
+        pdf = h/(4*np.pi/3*(
+            bin_edges[1:]**3 - bin_edges[:-1]**3)) * a.get_volume()/len(a)
 
     4. Pair potential::
 
         i, j, d, D = neighbor_list('ijdD', a, 5.0)
         energy = (-C/d**6).sum()
-        pair_forces = (6*C/d**5  * (D/d).T).T
-        forces_x = np.bincount(j, weights=pair_forces[:, 0], minlength=len(a)) - \
-                   np.bincount(i, weights=pair_forces[:, 0], minlength=len(a))
-        forces_y = np.bincount(j, weights=pair_forces[:, 1], minlength=len(a)) - \
-                   np.bincount(i, weights=pair_forces[:, 1], minlength=len(a))
-        forces_z = np.bincount(j, weights=pair_forces[:, 2], minlength=len(a)) - \
+        forces = (6*C/d**5  * (D/d).T).T
+        forces_x = np.bincount(j, weights=forces[:, 0], minlength=len(a)) - \
+                   np.bincount(i, weights=forces[:, 0], minlength=len(a))
+        forces_y = np.bincount(j, weights=forces[:, 1], minlength=len(a)) - \
+                   np.bincount(i, weights=forces[:, 1], minlength=len(a))
+        forces_z = np.bincount(j, weights=forces[:, 2], minlength=len(a)) - \
                    np.bincount(i, weights=pair_forces[:, 2], minlength=len(a))
 
     5. Dynamical matrix for a pair potential stored in a block sparse format::
@@ -495,10 +609,12 @@ def neighbor_list(quantities, a, cutoff, self_interaction=False,
         from scipy.sparse import bsr_matrix
         i, j, dr, abs_dr = neighbor_list('ijDd', atoms)
         energy = (dr.T / abs_dr).T
-        dynmat = -(dde * (energy.reshape(-1, 3, 1) * energy.reshape(-1, 1, 3)).T).T \
+        dynmat = -(dde * (energy.reshape(-1, 3, 1)
+                   * energy.reshape(-1, 1, 3)).T).T \
                  -(de / abs_dr * (np.eye(3, dtype=energy.dtype) - \
                    (energy.reshape(-1, 3, 1) * energy.reshape(-1, 1, 3))).T).T
-        dynmat_bsr = bsr_matrix((dynmat, j, first_i), shape=(3*len(a), 3*len(a)))
+        dynmat_bsr = bsr_matrix((dynmat, j, first_i),
+                                shape=(3*len(a), 3*len(a)))
 
         dynmat_diag = np.empty((len(a), 3, 3))
         for x in range(3):
@@ -522,26 +638,26 @@ def first_neighbors(natoms, first_atom):
     Compute an index array pointing to the ranges within the neighbor list that
     contain the neighbors for a certain atom.
 
-    Parameters
-    ----------
+    Parameters:
+
     natoms : int
         Total number of atom.
     first_atom : array_like
         Array containing the first atom 'i' of the neighbor tuple returned
         by the neighbor list.
 
-    Returns
-    -------
+    Returns:
+
     seed : array
         Array containing pointers to the start and end location of the
         neighbors of a certain atom. Neighbors of atom k have indices from s[k]
         to s[k+1]-1.
     """
     if len(first_atom) == 0:
-        return np.zeros(natoms+1, dtype=int)
+        return np.zeros(natoms + 1, dtype=int)
     # Create a seed array (which is returned by this function) populated with
     # -1.
-    seed = -np.ones(natoms+1, dtype=int)
+    seed = -np.ones(natoms + 1, dtype=int)
 
     first_atom = np.asarray(first_atom)
 
@@ -555,16 +671,17 @@ def first_neighbors(natoms, first_atom):
     seed[-1] = len(first_atom)
     # Populate all intermediate seed with the index of where the mask array is
     # true, i.e. the index where the first_atom array changes.
-    seed[first_atom[1:][mask]] = (np.arange(len(mask))+1)[mask]
+    seed[first_atom[1:][mask]] = (np.arange(len(mask)) + 1)[mask]
 
     # Now fill all remaining -1 value with the value in the seed array right
     # behind them. (There are no neighbor so seed[i] and seed[i+1] must point)
     # to the same index.
     mask = seed == -1
     while mask.any():
-        seed[mask] = seed[np.arange(natoms+1)[mask]+1]
+        seed[mask] = seed[np.arange(natoms + 1)[mask] + 1]
         mask = seed == -1
     return seed
+
 
 def get_connectivity_matrix(nl, sparse=True):
     """Return connectivity matrix for a given NeighborList (dtype=numpy.int8).
@@ -586,27 +703,30 @@ def get_connectivity_matrix(nl, sparse=True):
 
     >>> from ase import neighborlist
     >>> from ase.build import molecule
-    >>> from ase.utils import natural_cutoffs
     >>> from scipy import sparse
     >>> mol = molecule('CH3CH2OH')
-    >>> cutOff = natural_cutoffs(mol)
-    >>> neighborList = neighborlist.NeighborList(cutOff, self_interaction=False, bothways=True)
+    >>> cutOff = neighborlist.natural_cutoffs(mol)
+    >>> neighborList = neighborlist.NeighborList(
+    ...     cutOff, self_interaction=False, bothways=True)
     >>> neighborList.update(mol)
     >>> matrix = neighborList.get_connectivity_matrix()
     >>> #or: matrix = neighborlist.get_connectivity_matrix(neighborList.nl)
-    >>> n_components, component_list = sparse.csgraph.connected_components(matrix)
+    >>> n_components, component_list = sparse.csgraph.connected_components(
+    ...    matrix)
     >>> idx = 1
     >>> molIdx = component_list[idx]
     >>> print("There are {} molecules in the system".format(n_components))
     >>> print("Atom {} is part of molecule {}".format(idx, molIdx))
-    >>> molIdxs = [ i for i in range(len(component_list)) if component_list[i] == molIdx ]
-    >>> print("The following atoms are part of molecule {}: {}".format(molIdx, molIdxs))
+    >>> molIdxs = [i for i in range(len(component_list))
+    ...            if component_list[i] == molIdx]
+    >>> print("Atoms are part of molecule {}: {}".format(molIdx, molIdxs))
     """
 
     nAtoms = len(nl.cutoffs)
 
     if nl.nupdates <= 0:
-        raise RuntimeError('Must call update(atoms) on your neighborlist first!')
+        raise RuntimeError(
+            'Must call update(atoms) on your neighborlist first!')
 
     if sparse:
         matrix = sp.dok_matrix((nAtoms, nAtoms), dtype=np.int8)
@@ -629,7 +749,8 @@ class NewPrimitiveNeighborList:
         neighbors.
     skin: float
         If no atom has moved more than the skin-distance since the
-        last call to the :meth:`~ase.neighborlist.NewPrimitiveNeighborList.update()`
+        last call to the
+        :meth:`~ase.neighborlist.NewPrimitiveNeighborList.update()`
         method, then the neighbor list can be reused. This will save
         some expensive rebuilds of the list, but extra neighbors outside
         the cutoff will be returned.
@@ -660,7 +781,7 @@ class NewPrimitiveNeighborList:
         self.nneighbors = 0
         self.npbcneighbors = 0
 
-    def update(self,  pbc, cell, positions, numbers=None):
+    def update(self, pbc, cell, positions, numbers=None):
         """Make sure the list is up to date."""
 
         if self.nupdates == 0:
@@ -668,7 +789,7 @@ class NewPrimitiveNeighborList:
             return True
 
         if ((self.pbc != pbc).any() or (self.cell != cell).any() or
-            ((self.positions - positions)**2).sum(1).max() > self.skin**2):
+                ((self.positions - positions)**2).sum(1).max() > self.skin**2):
             self.build(pbc, cell, positions, numbers=numbers)
             return True
 
@@ -681,44 +802,39 @@ class NewPrimitiveNeighborList:
         self.cell = np.array(cell, copy=True)
         self.positions = np.array(positions, copy=True)
 
-        self.pair_first, self.pair_second, self.offset_vec = \
+        pair_first, pair_second, offset_vec = \
             primitive_neighbor_list(
                 'ijS', pbc, cell, positions, self.cutoffs, numbers=numbers,
                 self_interaction=self.self_interaction,
                 use_scaled_positions=self.use_scaled_positions)
 
         if len(positions) > 0 and not self.bothways:
-            mask = np.logical_or(
-                np.logical_and(
-                    self.pair_first <= self.pair_second,
-                    (self.offset_vec == 0).all(axis=1)
-                    ),
-                np.logical_or(
-                    self.offset_vec[:, 0] > 0,
-                    np.logical_and(
-                        self.offset_vec[:, 0] == 0,
-                        np.logical_or(
-                            self.offset_vec[:, 1] > 0,
-                            np.logical_and(
-                                self.offset_vec[:, 1] == 0,
-                                self.offset_vec[:, 2] > 0)
-                            )
-                        )
-                    )
-                )
-            self.pair_first = self.pair_first[mask]
-            self.pair_second = self.pair_second[mask]
-            self.offset_vec = self.offset_vec[mask]
+            offset_x, offset_y, offset_z = offset_vec.T
+
+            mask = offset_z > 0
+            mask &= offset_y == 0
+            mask |= offset_y > 0
+            mask &= offset_x == 0
+            mask |= offset_x > 0
+            mask |= (pair_first <= pair_second) & (offset_vec == 0).all(axis=1)
+
+            pair_first = pair_first[mask]
+            pair_second = pair_second[mask]
+            offset_vec = offset_vec[mask]
 
         if len(positions) > 0 and self.sorted:
-            mask = np.argsort(self.pair_first * len(self.pair_first) +
-                              self.pair_second)
-            self.pair_first = self.pair_first[mask]
-            self.pair_second = self.pair_second[mask]
-            self.offset_vec = self.offset_vec[mask]
+            mask = np.argsort(pair_first * len(pair_first) +
+                              pair_second)
+            pair_first = pair_first[mask]
+            pair_second = pair_second[mask]
+            offset_vec = offset_vec[mask]
+
+        self.pair_first = pair_first
+        self.pair_second = pair_second
+        self.offset_vec = offset_vec
 
         # Compute the index array point to the first neighbor
-        self.first_neigh = first_neighbors(len(positions), self.pair_first)
+        self.first_neigh = first_neighbors(len(positions), pair_first)
 
         self.nupdates += 1
 
@@ -737,9 +853,8 @@ class NewPrimitiveNeighborList:
         then get_neighbors(b) will not return a as a neighbor - unless
         bothways=True was used."""
 
-        return (self.pair_second[self.first_neigh[a]:self.first_neigh[a+1]],
-                self.offset_vec[self.first_neigh[a]:self.first_neigh[a+1]])
-
+        return (self.pair_second[self.first_neigh[a]:self.first_neigh[a + 1]],
+                self.offset_vec[self.first_neigh[a]:self.first_neigh[a + 1]])
 
 
 class PrimitiveNeighborList:
@@ -749,6 +864,7 @@ class PrimitiveNeighborList:
     scaled and non-scaled coordinates which may affect cell offsets
     through rounding errors.
     """
+
     def __init__(self, cutoffs, skin=0.3, sorted=False, self_interaction=True,
                  bothways=False, use_scaled_positions=False):
         self.cutoffs = np.asarray(cutoffs) + skin
@@ -768,8 +884,9 @@ class PrimitiveNeighborList:
             self.build(pbc, cell, coordinates)
             return True
 
-        if ((self.pbc != pbc).any() or (self.cell != cell).any() or
-            ((self.coordinates - coordinates)**2).sum(1).max() > self.skin**2):
+        if ((self.pbc != pbc).any() or (self.cell != cell).any() or (
+                (self.coordinates
+                 - coordinates)**2).sum(1).max() > self.skin**2):
             self.build(pbc, cell, coordinates)
             return True
 
@@ -782,7 +899,7 @@ class PrimitiveNeighborList:
         to self.use_scaled_positions.
         """
         self.pbc = pbc = np.array(pbc, copy=True)
-        self.cell = cell = np.array(cell, copy=True)
+        self.cell = cell = Cell(cell)
         self.coordinates = coordinates = np.array(coordinates, copy=True)
 
         if len(self.cutoffs) != len(coordinates):
@@ -794,61 +911,69 @@ class PrimitiveNeighborList:
         else:
             rcmax = 0.0
 
-        icell = np.linalg.pinv(cell)
-
         if self.use_scaled_positions:
-            scaled = coordinates
-            positions = np.dot(scaled, cell)
+            positions0 = cell.cartesian_positions(coordinates)
         else:
-            positions = coordinates
-            scaled = np.dot(positions, icell)
+            positions0 = coordinates
 
-        scaled0 = scaled.copy()
+        rcell, op = minkowski_reduce(cell, pbc)
+        positions = wrap_positions(positions0, rcell, pbc=pbc, eps=0)
+
+        natoms = len(positions)
+        self.nneighbors = 0
+        self.npbcneighbors = 0
+        self.neighbors = [np.empty(0, int) for a in range(natoms)]
+        self.displacements = [np.empty((0, 3), int) for a in range(natoms)]
+        self.nupdates += 1
+        if natoms == 0:
+            return
 
         N = []
+        ircell = np.linalg.pinv(rcell)
         for i in range(3):
             if self.pbc[i]:
-                scaled0[:, i] %= 1.0
-                v = icell[:, i]
-                h = 1 / sqrt(np.dot(v, v))
+                v = ircell[:, i]
+                h = 1 / np.linalg.norm(v)
                 n = int(2 * rcmax / h) + 1
             else:
                 n = 0
             N.append(n)
 
-        offsets = (scaled0 - scaled).round().astype(int)
-        positions0 = positions + np.dot(offsets, self.cell)
-        natoms = len(positions)
-        indices = np.arange(natoms)
+        tree = cKDTree(positions, copy_data=True)
+        offsets = cell.scaled_positions(positions - positions0)
+        offsets = offsets.round().astype(int)
 
-        self.nneighbors = 0
-        self.npbcneighbors = 0
-        self.neighbors = [np.empty(0, int) for a in range(natoms)]
-        self.displacements = [np.empty((0, 3), int) for a in range(natoms)]
-        for n1 in range(0, N[0] + 1):
-            for n2 in range(-N[1], N[1] + 1):
-                for n3 in range(-N[2], N[2] + 1):
-                    if n1 == 0 and (n2 < 0 or n2 == 0 and n3 < 0):
-                        continue
-                    displacement = np.dot((n1, n2, n3), self.cell)
-                    for a in range(natoms):
-                        d = positions0 + displacement - positions0[a]
-                        i = indices[(d**2).sum(1) <
-                                    (self.cutoffs + self.cutoffs[a])**2]
-                        if n1 == 0 and n2 == 0 and n3 == 0:
-                            if self.self_interaction:
-                                i = i[i >= a]
-                            else:
-                                i = i[i > a]
-                        self.nneighbors += len(i)
-                        self.neighbors[a] = np.concatenate(
-                            (self.neighbors[a], i))
-                        disp = np.empty((len(i), 3), int)
-                        disp[:] = (n1, n2, n3)
-                        disp += offsets[i] - offsets[a]
-                        self.npbcneighbors += disp.any(1).sum()
-                        self.displacements[a] = np.concatenate(
-                            (self.displacements[a], disp))
+        for n1, n2, n3 in itertools.product(range(0, N[0] + 1),
+                                            range(-N[1], N[1] + 1),
+                                            range(-N[2], N[2] + 1)):
+            if n1 == 0 and (n2 < 0 or n2 == 0 and n3 < 0):
+                continue
+
+            displacement = (n1, n2, n3) @ rcell
+            for a in range(natoms):
+
+                indices = tree.query_ball_point(positions[a] - displacement,
+                                                r=self.cutoffs[a] + rcmax)
+                if not len(indices):
+                    continue
+
+                indices = np.array(indices)
+                delta = positions[indices] + displacement - positions[a]
+                cutoffs = self.cutoffs[indices] + self.cutoffs[a]
+                i = indices[np.linalg.norm(delta, axis=1) < cutoffs]
+                if n1 == 0 and n2 == 0 and n3 == 0:
+                    if self.self_interaction:
+                        i = i[i >= a]
+                    else:
+                        i = i[i > a]
+
+                self.nneighbors += len(i)
+                self.neighbors[a] = np.concatenate((self.neighbors[a], i))
+
+                disp = (n1, n2, n3) @ op + offsets[i] - offsets[a]
+                self.npbcneighbors += disp.any(1).sum()
+                self.displacements[a] = np.concatenate((self.displacements[a],
+                                                        disp))
 
         if self.bothways:
             neighbors2 = [[] for a in range(natoms)]
@@ -859,8 +984,7 @@ class PrimitiveNeighborList:
                     displacements2[b].append(-disp)
             for a in range(natoms):
                 nbs = np.concatenate((self.neighbors[a], neighbors2[a]))
-                disp = np.array(list(self.displacements[a]) +
-                                displacements2[a])
+                disp = np.array(list(self.displacements[a]) + displacements2[a])
                 # Force correct type and shape for case of no neighbors:
                 self.neighbors[a] = nbs.astype(int)
                 self.displacements[a] = disp.astype(int).reshape((-1, 3))
@@ -880,8 +1004,6 @@ class PrimitiveNeighborList:
                     self.neighbors[a] = self.neighbors[a][mask]
                     self.displacements[a] = self.displacements[a][mask]
 
-        self.nupdates += 1
-
     def get_neighbors(self, a):
         """Return neighbors of atom number a.
 
@@ -891,7 +1013,7 @@ class PrimitiveNeighborList:
 
           indices, offsets = nl.get_neighbors(42)
           for i, offset in zip(indices, offsets):
-              print(atoms.positions[i] + dot(offset, atoms.get_cell()))
+              print(atoms.positions[i] + offset @ atoms.get_cell())
 
         Notice that if get_neighbors(a) gives atom b as a neighbor,
         then get_neighbors(b) will not return a as a neighbor - unless
@@ -904,22 +1026,25 @@ class NeighborList:
     """Neighbor list object.
 
     cutoffs: list of float
-        List of cutoff radii - one for each atom. If the spheres (defined by
-        their cutoff radii) of two atoms overlap, they will be counted as
-        neighbors. See :func:`~ase.utils.natural_cutoffs` for an example on how to
-        get such a list.
+        List of cutoff radii - one for each atom. If the spheres
+        (defined by their cutoff radii) of two atoms overlap, they
+        will be counted as neighbors. See
+        :func:`~ase.neighborlist.natural_cutoffs` for an example on
+        how to get such a list.
 
     skin: float
         If no atom has moved more than the skin-distance since the
-        last call to the :meth:`~ase.neighborlist.NeighborList.update()` method,
-        then the neighbor list can be reused.  This will save some expensive rebuilds
-        of the list, but extra neighbors outside the cutoff will be returned.
+        last call to the
+        :meth:`~ase.neighborlist.NeighborList.update()` method, then
+        the neighbor list can be reused.  This will save some
+        expensive rebuilds of the list, but extra neighbors outside
+        the cutoff will be returned.
     self_interaction: bool
         Should an atom return itself as a neighbor?
     bothways: bool
         Return all neighbors.  Default is to return only "half" of
         the neighbors.
-    primitive: :class:`~ase.neighborlist.PrimitiveNeighborList` or :class:`~ase.neighborlist.NewPrimitiveNeighborList` class
+    primitive: class
         Define which implementation to use. Older and quadratically-scaling
         :class:`~ase.neighborlist.PrimitiveNeighborList` or newer and
         linearly-scaling :class:`~ase.neighborlist.NewPrimitiveNeighborList`.
@@ -929,6 +1054,7 @@ class NeighborList:
       nl = NeighborList([2.3, 1.7])
       nl.update(atoms)
       indices, offsets = nl.get_neighbors(0)
+
     """
 
     def __init__(self, cutoffs, skin=0.3, sorted=False, self_interaction=True,
@@ -950,6 +1076,10 @@ class NeighborList:
         See :meth:`ase.neighborlist.PrimitiveNeighborList.get_neighbors` or
         :meth:`ase.neighborlist.PrimitiveNeighborList.get_neighbors`.
         """
+        if self.nl.nupdates <= 0:
+            raise RuntimeError('Must call update(atoms) on your neighborlist '
+                               'first!')
+
         return self.nl.get_neighbors(a)
 
     def get_connectivity_matrix(self, sparse=True):

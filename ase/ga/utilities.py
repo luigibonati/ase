@@ -1,17 +1,19 @@
-""" Various utility methods used troughout the GA. """
-from ase.data import covalent_radii
-import itertools
-import numpy as np
-from ase.io import write, read
+"""Various utility methods used troughout the GA."""
 import os
 import time
-import math
+import itertools
+import numpy as np
+from scipy.spatial.distance import cdist
+from ase.io import write, read
+from ase.geometry.cell import cell_to_cellpar
+from ase.geometry.rdf import get_rdf
+from ase.data import covalent_radii
 from ase.ga import get_neighbor_list
 
 
 def closest_distances_generator(atom_numbers, ratio_of_covalent_radii):
-    """ Generates the blmin dict used across the GA.
-        The distances are based on the covalent radii of the atoms.
+    """Generates the blmin dict used across the GA.
+    The distances are based on the covalent radii of the atoms.
     """
     cr = covalent_radii
     ratio = ratio_of_covalent_radii
@@ -29,13 +31,13 @@ def closest_distances_generator(atom_numbers, ratio_of_covalent_radii):
 
 
 def get_mic_distance(p1, p2, cell, pbc):
-    """ This method calculates the shortest distance between p1 and p2
-         through the cell boundaries defined by cell and pbc.
-         This method works for reasonable unit cells, but not for extremely
-         elongated ones.
+    """This method calculates the shortest distance between p1 and p2
+    through the cell boundaries defined by cell and pbc.
+    This method works for reasonable unit cells, but not for extremely
+    elongated ones.
     """
     ct = cell.T
-    pos = np.mat((p1, p2))
+    pos = np.array((p1, p2))
     scaled = np.linalg.solve(ct, pos.T).T
     for i in range(3):
         if pbc[i]:
@@ -44,19 +46,19 @@ def get_mic_distance(p1, p2, cell, pbc):
     P = np.dot(scaled, cell)
 
     pbc_directions = [[-1, 1] * int(direction) + [0] for direction in pbc]
-    translations = np.mat(list(itertools.product(*pbc_directions))).T
+    translations = np.array(list(itertools.product(*pbc_directions))).T
     p0r = np.tile(np.reshape(P[0, :], (3, 1)), (1, translations.shape[1]))
     p1r = np.tile(np.reshape(P[1, :], (3, 1)), (1, translations.shape[1]))
-    dp_vec = p0r + ct * translations
+    dp_vec = p0r + np.dot(ct, translations)
     d = np.min(np.power(p1r - dp_vec, 2).sum(axis=0))**0.5
     return d
 
 
 def db_call_with_error_tol(db_cursor, expression, args=[]):
-    """ In case the GA is used on older versions of networking
-         filesystems there might be some delays. For this reason
-         some extra error tolerance when calling the SQLite db is
-         employed.
+    """In case the GA is used on older versions of networking
+    filesystems there might be some delays. For this reason
+    some extra error tolerance when calling the SQLite db is
+    employed.
     """
     import sqlite3
     i = 0
@@ -73,9 +75,9 @@ def db_call_with_error_tol(db_cursor, expression, args=[]):
 
 
 def save_trajectory(confid, trajectory, folder):
-    """ Saves traj files to the database folder.
-         This method should never be used directly,
-         but only through the DataConnection object.
+    """Saves traj files to the database folder.
+    This method should never be used directly,
+    but only through the DataConnection object.
     """
     fname = os.path.join(folder, 'traj%05d.traj' % confid)
     write(fname, trajectory)
@@ -83,7 +85,7 @@ def save_trajectory(confid, trajectory, folder):
 
 
 def get_trajectory(fname):
-    """ Extra error tolerance when loading traj files. """
+    """Extra error tolerance when loading traj files."""
     fname = str(fname)
     try:
         t = read(fname)
@@ -92,33 +94,122 @@ def get_trajectory(fname):
     return t
 
 
-def atoms_too_close(a, bl):
-    """ Checks if any atoms in a are too close, as defined by
-        the distances in the bl dictionary. """
-    num = a.numbers
-    for i in range(len(a)):
-        for j in range(i + 1, len(a)):
-            if a.get_distance(i, j, True) < bl[(num[i], num[j])]:
+def gather_atoms_by_tag(atoms):
+    """Translates same-tag atoms so that they lie 'together',
+    with distance vectors as in the minimum image convention."""
+    tags = atoms.get_tags()
+    pos = atoms.get_positions()
+    for tag in list(set(tags)):
+        indices = np.where(tags == tag)[0]
+        if len(indices) == 1:
+            continue
+        vectors = atoms.get_distances(indices[0], indices[1:],
+                                      mic=True, vector=True)
+        pos[indices[1:]] = pos[indices[0]] + vectors
+    atoms.set_positions(pos)
+
+
+def atoms_too_close(atoms, bl, use_tags=False):
+    """Checks if any atoms in a are too close, as defined by
+    the distances in the bl dictionary.
+
+    use_tags: whether to use the Atoms tags to disable distance
+        checking within a set of atoms with the same tag.
+
+    Note: if certain atoms are constrained and use_tags is True,
+    this method may return unexpected results in case the
+    contraints prevent same-tag atoms to be gathered together in
+    the minimum-image-convention. In such cases, one should
+    (1) release the relevant constraints,
+    (2) apply the gather_atoms_by_tag function, and
+    (3) re-apply the constraints, before using the
+        atoms_too_close function.
+    """
+    a = atoms.copy()
+    if use_tags:
+        gather_atoms_by_tag(a)
+
+    pbc = a.get_pbc()
+    cell = a.get_cell()
+    num = a.get_atomic_numbers()
+    pos = a.get_positions()
+    tags = a.get_tags()
+    unique_types = sorted(list(set(num)))
+
+    neighbours = []
+    for i in range(3):
+        if pbc[i]:
+            neighbours.append([-1, 0, 1])
+        else:
+            neighbours.append([0])
+
+    for nx, ny, nz in itertools.product(*neighbours):
+        displacement = np.dot(cell.T, np.array([nx, ny, nz]).T)
+        pos_new = pos + displacement
+        distances = cdist(pos, pos_new)
+
+        if nx == 0 and ny == 0 and nz == 0:
+            if use_tags and len(a) > 1:
+                x = np.array([tags]).T
+                distances += 1e2 * (cdist(x, x) == 0)
+            else:
+                distances += 1e2 * np.identity(len(a))
+
+        iterator = itertools.combinations_with_replacement(unique_types, 2)
+        for type1, type2 in iterator:
+            x1 = np.where(num == type1)
+            x2 = np.where(num == type2)
+            if np.min(distances[x1].T[x2]) < bl[(type1, type2)]:
                 return True
+
     return False
 
 
 def atoms_too_close_two_sets(a, b, bl):
-    """ Checks if any atoms in a are too close to an atom in b,
-        as defined by the bl dictionary. """
-    tot = a + b
-    num = tot.numbers
-    for i in range(len(a)):
-        for j in range(len(a), len(tot)):
-            if tot.get_distance(i, j, True) < bl[(num[i], num[j])]:
-                return True
+    """Checks if any atoms in a are too close to an atom in b,
+    as defined by the bl dictionary."""
+    pbc_a = a.get_pbc()
+    pbc_b = b.get_pbc()
+    cell_a = a.get_cell()
+    cell_b = a.get_cell()
+    assert np.allclose(pbc_a, pbc_b), (pbc_a, pbc_b)
+    assert np.allclose(cell_a, cell_b), (cell_a, cell_b)
+
+    pos_a = a.get_positions()
+    pos_b = b.get_positions()
+
+    num_a = a.get_atomic_numbers()
+    num_b = b.get_atomic_numbers()
+    unique_types = sorted(set(list(num_a) + list(num_b)))
+
+    neighbours = []
+    for i in range(3):
+        neighbours.append([-1, 0, 1] if pbc_a[i] else [0])
+
+    for nx, ny, nz in itertools.product(*neighbours):
+        displacement = np.dot(cell_a.T, np.array([nx, ny, nz]).T)
+        pos_b_disp = pos_b + displacement
+        distances = cdist(pos_a, pos_b_disp)
+
+        for type1 in unique_types:
+            if type1 not in num_a:
+                continue
+            x1 = np.where(num_a == type1)
+
+            for type2 in unique_types:
+                if type2 not in num_b:
+                    continue
+                x2 = np.where(num_b == type2)
+                if np.min(distances[x1].T[x2]) < bl[(type1, type2)]:
+                    return True
     return False
 
 
 def get_all_atom_types(slab, atom_numbers_to_optimize):
-    """ Utility method used to extract all unique atom types
-        from the atoms object slab and the list of atomic numbers
-        atom_numbers_to_optimize. """
+    """Utility method used to extract all unique atom types
+    from the atoms object slab and the list of atomic numbers
+    atom_numbers_to_optimize.
+    """
     from_slab = list(set(slab.numbers))
     from_top = list(set(atom_numbers_to_optimize))
     from_slab.extend(from_top)
@@ -126,12 +217,14 @@ def get_all_atom_types(slab, atom_numbers_to_optimize):
 
 
 def get_distance_matrix(atoms, self_distance=1000):
-    """ NB: This function is way slower than atoms.get_all_distances()
-        Returns a numpy matrix with the distances between the atoms
-        in the supplied atoms object, with the indices of the matrix
-        corresponding to the indices in the atoms object.
-        The parameter self_distance will be put in the diagonal
-        elements ([i][i])
+    """NB: This function is way slower than atoms.get_all_distances()
+
+    Returns a numpy matrix with the distances between the atoms
+    in the supplied atoms object, with the indices of the matrix
+    corresponding to the indices in the atoms object.
+
+    The parameter self_distance will be put in the diagonal
+    elements ([i][i])
     """
     dm = np.zeros([len(atoms), len(atoms)])
     for i in range(len(atoms)):
@@ -143,78 +236,10 @@ def get_distance_matrix(atoms, self_distance=1000):
     return dm
 
 
-def get_rdf(atoms, rmax, nbins, distance_matrix=None,
-            elements=None, no_dists=False):
-    """
-    Returns two numpy arrays; the radial distribution function
-    and the corresponding distances of the supplied atoms object.
-    If no_dists = True then only the first array is returned.
-
-    Parameters:
-
-    rmax : float
-        The maximum distance that will contribute to the rdf.
-
-    nbins : int
-        Number of bins to divide the rdf into.
-
-    distance_matrix : numpy.array
-        An array of distances between atoms, typically
-        obtained by atoms.get_all_distances().
-        Default None meaning that it will be calculated.
-
-    elements : list or tuple
-        List of two atomic numbers. If elements is not None the partial
-        rdf for the supplied elements will be returned.
-
-    no_dists : bool
-        If True then the second array with rdf distances will not be returned
-    """
-    dm = distance_matrix
-    if dm is None:
-        dm = atoms.get_all_distances()
-    rdf = np.zeros(nbins + 1)
-    dr = float(rmax / nbins)
-
-    if elements is None:
-        # Coefficients to use for normalization
-        phi = len(atoms) / atoms.get_volume()
-        norm = 2.0 * math.pi * dr * phi * len(atoms)
-
-        for i in range(len(atoms)):
-            for j in range(i + 1, len(atoms)):
-                rij = dm[i][j]
-                index = int(math.ceil(rij / dr))
-                if index <= nbins:
-                    rdf[index] += 1
-    else:
-        i_indices = np.where(atoms.numbers == elements[0])[0]
-        phi = len(i_indices) / atoms.get_volume()
-        norm = 4.0 * math.pi * dr * phi * len(atoms)
-
-        for i in i_indices:
-            for j in np.where(atoms.numbers == elements[1])[0]:
-                rij = dm[i][j]
-                index = int(math.ceil(rij / dr))
-                if index <= nbins:
-                    rdf[index] += 1
-
-    dists = []
-    for i in range(1, nbins + 1):
-        rrr = (i - 0.5) * dr
-        dists.append(rrr)
-        # Normalize
-        rdf[i] /= (norm * ((rrr**2) + (dr**2) / 12.))
-
-    if no_dists:
-        return rdf[1:]
-    return rdf[1:], np.array(dists)
-
-
 def get_nndist(atoms, distance_matrix):
-    """
-    Returns an estimate of the nearest neighbor bond distance
+    """Returns an estimate of the nearest neighbor bond distance
     in the supplied atoms object given the supplied distance_matrix.
+
     The estimate comes from the first peak in the radial distribution
     function.
     """
@@ -225,8 +250,7 @@ def get_nndist(atoms, distance_matrix):
 
 
 def get_nnmat(atoms, mic=False):
-    """
-    Calculate the nearest neighbor matrix as specified in
+    """Calculate the nearest neighbor matrix as specified in
     S. Lysgaard et al., Top. Catal., 2014, 57 (1-4), pp 33-39
 
     Returns an array of average numbers of nearest neighbors
@@ -276,8 +300,7 @@ def get_nnmat_string(atoms, decimals=2, mic=False):
 
 
 def get_connections_index(atoms, max_conn=5, no_count_types=None):
-    """
-    This method returns a dictionary where each key value are a
+    """This method returns a dictionary where each key value are a
     specific number of neighbors and list of atoms indices with
     that amount of neighbors respectively. The method utilizes the
     neighbor list and hence inherit the restrictions for
@@ -319,8 +342,7 @@ def get_connections_index(atoms, max_conn=5, no_count_types=None):
 
 
 def get_atoms_connections(atoms, max_conn=5, no_count_types=None):
-    """
-    This method returns a list of the numbers of atoms
+    """This method returns a list of the numbers of atoms
     with X number of neighbors. The method utilizes the
     neighbor list and hence inherit the restrictions for
     neighbors. Option added to remove connections between
@@ -337,8 +359,7 @@ def get_atoms_connections(atoms, max_conn=5, no_count_types=None):
 
 
 def get_angles_distribution(atoms, ang_grid=9):
-    """
-    Method to get the distribution of bond angles
+    """Method to get the distribution of bond angles
     in bins (default 9) with bonds defined from
     the get_neighbor_list().
     """
@@ -364,8 +385,7 @@ def get_angles_distribution(atoms, ang_grid=9):
 
 
 def get_neighborlist(atoms, dx=0.2, no_count_types=None):
-    """
-    Method to get the a dict with list of neighboring
+    """Method to get the a dict with list of neighboring
     atoms defined as the two covalent radii + fixed distance.
     Option added to remove neighbors between defined atom types.
     """
@@ -397,8 +417,7 @@ def get_neighborlist(atoms, dx=0.2, no_count_types=None):
 
 def get_atoms_distribution(atoms, number_of_bins=5, max_distance=8,
                            center=None, no_count_types=None):
-    """
-    Method to get the distribution of atoms in the
+    """Method to get the distribution of atoms in the
     structure in bins of distances from a defined
     center. Option added to remove counting of
     certain atom types.
@@ -431,8 +450,7 @@ def get_atoms_distribution(atoms, number_of_bins=5, max_distance=8,
 
 
 def get_rings(atoms, rings=[5, 6, 7]):
-    """
-    This method return a list of the number of atoms involved
+    """This method return a list of the number of atoms involved
     in rings in the structures. It uses the neighbor
     list hence inherit the restriction used for neighbors.
     """
@@ -471,3 +489,97 @@ def get_rings(atoms, rings=[5, 6, 7]):
         to_return.append(no_of_loops[ring])
 
     return to_return
+
+
+def get_cell_angles_lengths(cell):
+    """Returns cell vectors lengths (a,b,c) as well as different
+    angles (alpha, beta, gamma, phi, chi, psi) (in radians).
+    """
+    cellpar = cell_to_cellpar(cell)
+    cellpar[3:] *= np.pi / 180  # convert angles to radians
+    parnames = ['a', 'b', 'c', 'alpha', 'beta', 'gamma']
+    values = {n: p for n, p in zip(parnames, cellpar)}
+
+    volume = abs(np.linalg.det(cell))
+    for i, param in enumerate(['phi', 'chi', 'psi']):
+        ab = np.linalg.norm(
+            np.cross(cell[(i + 1) % 3, :], cell[(i + 2) % 3, :]))
+        c = np.linalg.norm(cell[i, :])
+        s = np.abs(volume / (ab * c))
+        if 1 + 1e-6 > s > 1:
+            s = 1.
+        values[param] = np.arcsin(s)
+
+    return values
+
+
+class CellBounds:
+    """Class for defining as well as checking limits on
+    cell vector lengths and angles.
+
+    Parameters:
+
+    bounds: dict
+        Any of the following keywords can be used, in
+        conjunction with a [low, high] list determining
+        the lower and upper bounds:
+
+        a, b, c:
+           Minimal and maximal lengths (in Angstrom)
+           for the 1st, 2nd and 3rd lattice vectors.
+
+        alpha, beta, gamma:
+           Minimal and maximal values (in degrees)
+           for the angles between the lattice vectors.
+
+        phi, chi, psi:
+           Minimal and maximal values (in degrees)
+           for the angles between each lattice vector
+           and the plane defined by the other two vectors.
+
+    Example:
+
+    >>> from ase.ga.utilities import CellBounds
+    >>> CellBounds(bounds={'phi': [20, 160],
+    ...                    'chi': [60, 120],
+    ...                    'psi': [20, 160],
+    ...                    'a': [2, 20], 'b': [2, 20], 'c': [2, 20]})
+    """
+
+    def __init__(self, bounds={}):
+        self.bounds = {'alpha': [0, np.pi], 'beta': [0, np.pi],
+                       'gamma': [0, np.pi], 'phi': [0, np.pi],
+                       'chi': [0, np.pi], 'psi': [0, np.pi],
+                       'a': [0, 1e6], 'b': [0, 1e6], 'c': [0, 1e6]}
+
+        for param, bound in bounds.items():
+            if param not in ['a', 'b', 'c']:
+                # Convert angle from degree to radians
+                bound = [b * np.pi / 180. for b in bound]
+            self.bounds[param] = bound
+
+    def is_within_bounds(self, cell):
+        values = get_cell_angles_lengths(cell)
+        verdict = True
+        for param, bound in self.bounds.items():
+            if not (bound[0] <= values[param] <= bound[1]):
+                verdict = False
+        return verdict
+
+
+def get_rotation_matrix(u, t):
+    """Returns the transformation matrix for rotation over
+    an angle t along an axis with direction u.
+    """
+    ux, uy, uz = u
+    cost, sint = np.cos(t), np.sin(t)
+    rotmat = np.array([[(ux**2) * (1 - cost) + cost,
+                        ux * uy * (1 - cost) - uz * sint,
+                        ux * uz * (1 - cost) + uy * sint],
+                       [ux * uy * (1 - cost) + uz * sint,
+                        (uy**2) * (1 - cost) + cost,
+                        uy * uz * (1 - cost) - ux * sint],
+                       [ux * uz * (1 - cost) - uy * sint,
+                        uy * uz * (1 - cost) + ux * sint,
+                        (uz**2) * (1 - cost) + cost]])
+    return rotmat

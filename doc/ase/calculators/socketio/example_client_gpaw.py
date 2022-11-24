@@ -1,4 +1,3 @@
-from __future__ import print_function
 from ase.io import read
 from ase.calculators.socketio import SocketClient
 from gpaw import GPAW, Mixer

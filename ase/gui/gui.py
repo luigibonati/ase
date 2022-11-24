@@ -1,10 +1,6 @@
-from __future__ import unicode_literals, division
-
-import os
 import pickle
 import subprocess
 import sys
-import tempfile
 import weakref
 from functools import partial
 from ase.gui.i18n import _
@@ -12,15 +8,10 @@ from time import time
 
 import numpy as np
 
-from ase import __version__
+from ase import Atoms, __version__
 import ase.gui.ui as ui
-from ase.gui.calculator import SetCalculator
-from ase.gui.crystal import SetupBulkCrystal
 from ase.gui.defaults import read_defaults
-from ase.gui.energyforces import EnergyForces
-from ase.gui.graphene import SetupGraphene
 from ase.gui.images import Images
-from ase.gui.minimize import Minimize
 from ase.gui.nanoparticle import SetupNanoparticle
 from ase.gui.nanotube import SetupNanotube
 from ase.gui.save import save_dialog
@@ -43,6 +34,7 @@ class GUI(View, Status):
             images = Images(images)
 
         self.images = images
+        self.observers = []
 
         self.config = read_defaults()
         if show_bonds:
@@ -60,8 +52,7 @@ class GUI(View, Status):
         View.__init__(self, rotations)
         Status.__init__(self)
 
-        self.graphs = []  # list of matplotlib processes
-        self.graph_wref = []  # list of weakrefs to Graph objects
+        self.subprocesses = []  # list of external processes
         self.movie_window = None
         self.vulnerable_windows = []
         self.simulation = {}  # Used by modules on Calculate menu.
@@ -84,17 +75,14 @@ class GUI(View, Status):
             expr = self.config['gui_graphs_string']
 
         if expr is not None and expr != '' and len(self.images) > 1:
-            self.plot_graphs(expr=expr)
+            self.plot_graphs(expr=expr, ignore_if_nan=True)
 
     @property
     def moving(self):
         return self.arrowkey_mode != self.ARROWKEY_SCAN
 
-    def run(self, test=None):
-        if test:
-            self.window.test(test)
-        else:
-            self.window.run()
+    def run(self):
+        self.window.run()
 
     def toggle_move_mode(self, key=None):
         self.toggle_arrowkey_mode(self.ARROWKEY_MOVE)
@@ -125,6 +113,14 @@ class GUI(View, Status):
         self.set_frame(i)
         if self.movie_window is not None:
             self.movie_window.frame_number.value = i + 1
+
+    def copy_image(self, key=None):
+        self.images._images.append(self.atoms.copy())
+        self.images.filenames.append(None)
+
+        if self.movie_window is not None:
+            self.movie_window.frame_number.scale.configure(to=len(self.images))
+        self.step('End')
 
     def _do_zoom(self, x):
         """Utility method for zooming"""
@@ -209,23 +205,22 @@ class GUI(View, Status):
     def delete_selected_atoms(self, widget=None, data=None):
         import ase.gui.ui as ui
         nselected = sum(self.images.selected)
-        if nselected and ui.ask_question('Delete atoms',
-                                         'Delete selected atoms?'):
-            mask = self.images.selected[:len(self.atoms)]
-            del self.atoms[mask]
+        if nselected and ui.ask_question(_('Delete atoms'),
+                                         _('Delete selected atoms?')):
+            self.really_delete_selected_atoms()
 
-            # Will remove selection in other images, too
-            self.images.selected[:] = False
-            self.set_frame()
-            self.draw()
+    def really_delete_selected_atoms(self):
+        mask = self.images.selected[:len(self.atoms)]
+        del self.atoms[mask]
 
-    def execute(self):
-        from ase.gui.execute import Execute
-        Execute(self)
+        # Will remove selection in other images, too
+        self.images.selected[:] = False
+        self.set_frame()
+        self.draw()
 
     def constraints_window(self):
         from ase.gui.constraints import Constraints
-        Constraints(self)
+        return Constraints(self)
 
     def select_all(self, key=None):
         self.images.selected[:] = True
@@ -251,61 +246,63 @@ class GUI(View, Status):
         from ase.gui.movie import Movie
         self.movie_window = Movie(self)
 
-    def plot_graphs(self, x=None, expr=None):
+    def plot_graphs(self, key=None, expr=None, ignore_if_nan=False):
         from ase.gui.graphs import Graphs
         g = Graphs(self)
         if expr is not None:
-            g.plot(expr=expr)
-        self.graph_wref.append(weakref.ref(g))
+            g.plot(expr=expr, ignore_if_nan=ignore_if_nan)
 
-    def plot_graphs_newatoms(self):
-        "Notify any Graph objects that they should make new plots."
-        new_wref = []
-        found = 0
-        for wref in self.graph_wref:
-            ref = wref()
-            if ref is not None:
-                ref.plot()
-                new_wref.append(wref)  # Preserve weakrefs that still work.
-                found += 1
-        self.graph_wref = new_wref
-        return found
+    def pipe(self, task, data):
+        process = subprocess.Popen([sys.executable, '-m', 'ase.gui.pipe'],
+                                   stdout=subprocess.PIPE,
+                                   stdin=subprocess.PIPE)
+        pickle.dump((task, data), process.stdin)
+        process.stdin.close()
+        # Either process writes a line, or it crashes and line becomes ''
+        line = process.stdout.readline().decode('utf8').strip()
+
+        if line != 'GUI:OK':
+            if line == '':  # Subprocess probably crashed
+                line = _('Failure in subprocess')
+            self.bad_plot(line)
+        else:
+            self.subprocesses.append(process)
+        return process
+
+    def bad_plot(self, err, msg=''):
+        ui.error(_('Plotting failed'), '\n'.join([str(err), msg]).strip())
 
     def neb(self):
-        if len(self.images) <= 1:
-            return
-        N = self.images.repeat.prod()
-        natoms = len(self.images[0]) // N
-        R = [a.positions[:natoms] for a in self.images]
-        E = [self.images.get_energy(a) for a in self.images]
-        F = [self.images.get_forces(a) for a in self.images]
-        A = self.images[0].cell
-        pbc = self.images[0].pbc
-        process = subprocess.Popen([sys.executable, '-m', 'ase.neb'],
-                                   stdin=subprocess.PIPE)
-        pickle.dump((E, F, R, A, pbc), process.stdin, protocol=0)
-        process.stdin.close()
-        self.graphs.append(process)
+        from ase.utils.forcecurve import fit_images
+        try:
+            forcefit = fit_images(self.images)
+        except Exception as err:
+            self.bad_plot(err, _('Images must have energies and forces, '
+                                 'and atoms must not be stationary.'))
+        else:
+            self.pipe('neb', forcefit)
 
     def bulk_modulus(self):
-        process = subprocess.Popen([sys.executable, '-m', 'ase', 'eos',
-                                    '--plot', '-'],
-                                   stdin=subprocess.PIPE)
-        v = [abs(np.linalg.det(atoms.cell)) for atoms in self.images]
-        e = [self.images.get_energy(a) for a in self.images]
-        pickle.dump((v, e), process.stdin, protocol=0)
-        process.stdin.close()
-        self.graphs.append(process)
+        try:
+            v = [abs(np.linalg.det(atoms.cell)) for atoms in self.images]
+            e = [self.images.get_energy(a) for a in self.images]
+            from ase.eos import EquationOfState
+            eos = EquationOfState(v, e)
+            plotdata = eos.getplotdata()
+        except Exception as err:
+            self.bad_plot(err, _('Images must have energies '
+                                 'and varying cell.'))
+        else:
+            self.pipe('eos', plotdata)
 
     def reciprocal(self):
-        fd, filename = tempfile.mkstemp('.xyz', 'ase.gui-')
-        os.close(fd)
-        self.images.write(filename)
-        os.system('(sleep 60; rm %s) &' % filename)
-        process = subprocess.Popen([sys.executable, '-m', 'ase', 'reciprocal',
-                                    filename],
-                                   stdin=subprocess.PIPE)
-        process.stdin.close()
+        if self.atoms.cell.rank != 3:
+            self.bad_plot(_('Requires 3D cell.'))
+            return
+
+        kwargs = dict(cell=self.atoms.cell.uncomplete(self.atoms.pbc),
+                      vectors=True)
+        return self.pipe('reciprocal', kwargs)
 
     def open(self, button=None, filename=None):
         chooser = ui.ASEFileChooser(self.window.win)
@@ -322,63 +319,49 @@ class GUI(View, Status):
 
     def modify_atoms(self, key=None):
         from ase.gui.modify import ModifyAtoms
-        ModifyAtoms(self)
+        return ModifyAtoms(self)
 
     def add_atoms(self, key=None):
         from ase.gui.add import AddAtoms
-        AddAtoms(self)
+        return AddAtoms(self)
 
     def cell_editor(self, key=None):
         from ase.gui.celleditor import CellEditor
-        CellEditor(self)
+        return CellEditor(self)
 
     def quick_info_window(self, key=None):
         from ase.gui.quickinfo import info
-        ui.Window(_('Quick Info')).add(info(self))
+        info_win = ui.Window(_('Quick Info'), wmtype='utility')
+        info_win.add(info(self))
 
-    def bulk_window(self):
-        SetupBulkCrystal(self)
+        # Update quickinfo window when we change frame
+        def update(window):
+            exists = window.exists
+            if exists:
+                # Only update if we exist
+                window.things[0].text = info(self)
+            return exists
+        self.attach(update, info_win)
+        return info_win
 
     def surface_window(self):
-        SetupSurfaceSlab(self)
+        return SetupSurfaceSlab(self)
 
     def nanoparticle_window(self):
         return SetupNanoparticle(self)
 
-    def graphene_window(self, menuitem):
-        SetupGraphene(self)
-
     def nanotube_window(self):
         return SetupNanotube(self)
 
-    def calculator_window(self, menuitem):
-        SetCalculator(self)
-
-    def energy_window(self, menuitem):
-        EnergyForces(self)
-
-    def energy_minimize_window(self, menuitem):
-        Minimize(self)
-
-    def new_atoms(self, atoms, init_magmom=False):
+    def new_atoms(self, atoms):
         "Set a new atoms object."
         rpt = getattr(self.images, 'repeat', None)
         self.images.repeat_images(np.ones(3, int))
-        self.images.initialize([atoms], init_magmom=init_magmom)
+        self.images.initialize([atoms])
         self.frame = 0  # Prevent crashes
         self.images.repeat_images(rpt)
         self.set_frame(frame=0, focus=True)
         self.notify_vulnerable()
-
-    def prepare_new_atoms(self):
-        "Marks that the next call to append_atoms should clear the images."
-        self.images.prepare_new_atoms()
-
-    def append_atoms(self, atoms):
-        "Set a new atoms object."
-        # self.notify_vulnerable()   # Do this manually after last frame.
-        frame = self.images.append_atoms(atoms)
-        self.set_frame(frame=frame - 1, focus=True)
 
     def notify_vulnerable(self):
         """Notify windows that would break when new_atoms is called.
@@ -404,24 +387,83 @@ class GUI(View, Status):
         self.vulnerable_windows.append(weakref.ref(obj))
 
     def exit(self, event=None):
-        for process in self.graphs:
+        for process in self.subprocesses:
             process.terminate()
         self.window.close()
 
     def new(self, key=None):
-        os.system('ase gui &')
+        subprocess.Popen([sys.executable, '-m', 'ase', 'gui'])
 
     def save(self, key=None):
         return save_dialog(self)
 
     def external_viewer(self, name):
-        command = {'xmakemol': 'xmakemol -f',
-                   'rasmol': 'rasmol -xyz'}.get(name, name)
-        fd, filename = tempfile.mkstemp('.xyz', 'ase.gui-')
-        os.close(fd)
-        self.images.write(filename)
-        os.system('(%s %s &); (sleep 60; rm %s) &' %
-                  (command, filename, filename))
+        from ase.visualize import view
+        return view(list(self.images), viewer=name)
+
+    def selected_atoms(self):
+        selection_mask = self.images.selected[:len(self.atoms)]
+        return self.atoms[selection_mask]
+
+    @property
+    def clipboard(self):
+        from ase.gui.clipboard import AtomsClipboard
+        return AtomsClipboard(self.window.win)
+
+    def cut_atoms_to_clipboard(self, event=None):
+        self.copy_atoms_to_clipboard(event)
+        self.really_delete_selected_atoms()
+
+    def copy_atoms_to_clipboard(self, event=None):
+        atoms = self.selected_atoms()
+        self.clipboard.set_atoms(atoms)
+
+    def paste_atoms_from_clipboard(self, event=None):
+        try:
+            atoms = self.clipboard.get_atoms()
+        except Exception as err:
+            ui.error(
+                'Cannot paste atoms',
+                'Pasting currently works only with the ASE JSON format.\n\n'
+                f'Original error:\n\n{err}')
+            return
+
+        if self.atoms == Atoms():
+            self.atoms.cell = atoms.cell
+            self.atoms.pbc = atoms.pbc
+        self.paste_atoms_onto_existing(atoms)
+
+    def paste_atoms_onto_existing(self, atoms):
+        selection = self.selected_atoms()
+        if len(selection):
+            paste_center = selection.positions.sum(axis=0) / len(selection)
+            # atoms.center() is a no-op in directions without a cell vector.
+            # But we actually want the thing centered nevertheless!
+            # Therefore we have to set the cell.
+            atoms = atoms.copy()
+            atoms.cell = (1, 1, 1)  # arrrgh.
+            atoms.center(about=paste_center)
+
+        self.add_atoms_and_select(atoms)
+        self.move_atoms_mask = self.images.selected.copy()
+        self.arrowkey_mode = self.ARROWKEY_MOVE
+        self.draw()
+
+    def add_atoms_and_select(self, new_atoms):
+        atoms = self.atoms
+        atoms += new_atoms
+
+        if len(atoms) > self.images.maxnatoms:
+            self.images.initialize(list(self.images),
+                                   self.images.filenames)
+
+        selected = self.images.selected
+        selected[:] = False
+        # 'selected' array may be longer than current atoms
+        selected[len(atoms) - len(new_atoms):len(atoms)] = True
+
+        self.set_frame()
+        self.draw()
 
     def get_menu_data(self):
         M = ui.MenuItem
@@ -439,8 +481,9 @@ class GUI(View, Status):
               M(_('Select _constrained atoms'), self.select_constrained_atoms),
               M(_('Select _immobile atoms'), self.select_immobile_atoms),
               # M('---'),
-              # M(_('_Copy'), self.copy_atoms, 'Ctrl+C'),
-              # M(_('_Paste'), self.paste_atoms, 'Ctrl+V'),
+              M(_('_Cut'), self.cut_atoms_to_clipboard, 'Ctrl+X'),
+              M(_('_Copy'), self.copy_atoms_to_clipboard, 'Ctrl+C'),
+              M(_('_Paste'), self.paste_atoms_from_clipboard, 'Ctrl+V'),
               M('---'),
               M(_('Hide selected atoms'), self.hide_selected),
               M(_('Show selected atoms'), self.show_selected),
@@ -454,7 +497,8 @@ class GUI(View, Status):
               M(_('_First image'), self.step, 'Home'),
               M(_('_Previous image'), self.step, 'Page-Up'),
               M(_('_Next image'), self.step, 'Page-Down'),
-              M(_('_Last image'), self.step, 'End')]),
+              M(_('_Last image'), self.step, 'End'),
+              M(_('Append image copy'), self.copy_image)]),
 
             (_('_View'),
              [M(_('Show _unit cell'), self.toggle_show_unit_cell, 'Ctrl+U',
@@ -508,29 +552,27 @@ class GUI(View, Status):
             (_('_Tools'),
              [M(_('Graphs ...'), self.plot_graphs),
               M(_('Movie ...'), self.movie),
-              M(_('Expert mode ...'), self.execute, disabled=True),
               M(_('Constraints ...'), self.constraints_window),
               M(_('Render scene ...'), self.render_window),
-              M(_('_Move atoms'), self.toggle_move_mode, 'Ctrl+M'),
-              M(_('_Rotate atoms'), self.toggle_rotate_mode, 'Ctrl+R'),
-              M(_('NE_B'), self.neb),
+              M(_('_Move selected atoms'), self.toggle_move_mode, 'Ctrl+M'),
+              M(_('_Rotate selected atoms'), self.toggle_rotate_mode,
+                'Ctrl+R'),
+              M(_('NE_B plot'), self.neb),
               M(_('B_ulk Modulus'), self.bulk_modulus),
               M(_('Reciprocal space ...'), self.reciprocal)]),
 
             # TRANSLATORS: Set up (i.e. build) surfaces, nanoparticles, ...
             (_('_Setup'),
-             [M(_('_Bulk Crystal'), self.bulk_window, disabled=True),
-              M(_('_Surface slab'), self.surface_window, disabled=False),
+             [M(_('_Surface slab'), self.surface_window, disabled=False),
               M(_('_Nanoparticle'),
                 self.nanoparticle_window),
-              M(_('Nano_tube'), self.nanotube_window),
-              M(_('Graphene'), self.graphene_window, disabled=True)]),
+              M(_('Nano_tube'), self.nanotube_window)]),
 
-            (_('_Calculate'),
-             [M(_('Set _Calculator'), self.calculator_window, disabled=True),
-              M(_('_Energy and Forces'), self.energy_window, disabled=True),
-              M(_('Energy Minimization'), self.energy_minimize_window,
-                disabled=True)]),
+            # (_('_Calculate'),
+            # [M(_('Set _Calculator'), self.calculator_window, disabled=True),
+            #  M(_('_Energy and Forces'), self.energy_window, disabled=True),
+            #  M(_('Energy Minimization'), self.energy_minimize_window,
+            #    disabled=True)]),
 
             (_('_Help'),
              [M(_('_About'), partial(ui.about, 'ASE-GUI',
@@ -538,6 +580,14 @@ class GUI(View, Status):
                                      webpage='https://wiki.fysik.dtu.dk/'
                                      'ase/ase/gui/gui.html')),
               M(_('Webpage ...'), webpage)])]
+
+    def attach(self, function, *args, **kwargs):
+        self.observers.append((function, args, kwargs))
+
+    def call_observers(self):
+        # Use function return value to determine if we keep observer
+        self.observers = [(function, args, kwargs) for (function, args, kwargs)
+                          in self.observers if function(*args, **kwargs)]
 
     def repeat_poll(self, callback, ms, ensure_update=True):
         """Invoke callback(gui=self) every ms milliseconds.
@@ -582,6 +632,7 @@ class GUI(View, Status):
                 self.draw()
 
         self.window.win.after(ms, callbackwrapper)
+
 
 def webpage():
     import webbrowser

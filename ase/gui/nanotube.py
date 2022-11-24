@@ -1,8 +1,6 @@
-# encoding: utf-8
 """Window for setting up Carbon nanotubes and similar tubes.
 """
 
-from __future__ import unicode_literals
 
 import ase.gui.ui as ui
 from ase.build import nanotube
@@ -29,6 +27,7 @@ label_template = _('{natoms} atoms, diameter: {diameter:.3f} Å, '
 
 class SetupNanotube:
     """Window for setting up a (Carbon) nanotube."""
+
     def __init__(self, gui):
         self.element = Element('C', self.make)
         self.bondlength = ui.SpinBox(1.42, 0.0, 10.0, 0.01, self.make)
@@ -37,7 +36,7 @@ class SetupNanotube:
         self.length = ui.SpinBox(1, 1, 100, 1, self.make)
         self.description = ui.Label('')
 
-        win = self.win = ui.Window(_('Nanotube'))
+        win = self.win = ui.Window(_('Nanotube'), wmtype='utility')
         win.add(ui.Text(introtext))
         win.add(self.element)
         win.add([_('Bond length: '),

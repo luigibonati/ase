@@ -1,8 +1,8 @@
 .. _lattice_constant:
 
-=========================
-Finding lattice constants
-=========================
+=========================================================
+Finding lattice constants using EOS and the stress tensor
+=========================================================
 
 .. seealso::
 
@@ -19,17 +19,20 @@ First, we make a good initial guess for `a` and `c` using the FCC nearest
 neighbor distance and the ideal `c/a` ratio:
 
 .. literalinclude:: lattice_constant.py
-   :lines: 3-5
+   :start-after: creates:
+   :end-before: literalinclude division line 1
 
 and create a trajectory for the results:
 
 .. literalinclude:: lattice_constant.py
-   :lines: 7-8
+   :start-after: literalinclude division line 1
+   :end-before: literalinclude division line 2
 
 Finally, we do the 9 calculations (three values for `a` and three for `c`):
 
 .. literalinclude:: lattice_constant.py
-   :lines: 10-18
+   :start-after: literalinclude division line 2
+   :end-before: literalinclude division line 3
 
 
 Analysis
@@ -48,7 +51,8 @@ So, we can get `a` and `c` from ``ni.cell[0, 0]`` and ``ni.cell[2,
 2]``:
 
 .. literalinclude:: lattice_constant.py
-   :lines: 20-25
+   :start-after: literalinclude division line 3
+   :end-before: literalinclude division line 4
 
 We fit the energy to this expression:
 
@@ -57,12 +61,13 @@ We fit the energy to this expression:
 The best fit is found like this:
 
 .. literalinclude:: lattice_constant.py
-   :lines: 26-27
+   :start-after: literalinclude division line 4
+   :end-before: literalinclude division line 5
 
 and we can find the minimum like this:
 
 .. literalinclude:: lattice_constant.py
-   :lines: 29-33
+   :start-after: literalinclude division line 5
 
 Results:
 
@@ -81,7 +86,7 @@ One can also use the stress tensor to optimize the unit cell. For this we cannot
     from gpaw import GPAW, PW
     ni = bulk('Ni', 'hcp', a=a0,c=c0)
     calc = GPAW(mode=PW(200),xc='LDA',txt='Ni.out')
-    ni.set_calculator(calc)
+    ni.calc = calc
     sf = StrainFilter(ni)
     opt = BFGS(sf)
     opt.run(0.005)

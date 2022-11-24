@@ -95,6 +95,38 @@ Example of use::
     indices 0 and 2 will be fixed. The constraint is for the same purpose
     as the FixBondLength class.
 
+The FixLinearTriatomic class
+============================
+
+This class is used to keep the geometry of linear triatomic molecules
+rigid in geometry optimizations or molecular dynamics runs. Rigidness
+of linear triatomic molecules is impossible to attain by constraining
+all interatomic distances using :class:`FixBondLength`, as this won't
+remove an adequate number of degrees of freedom. To overcome this,
+:class:`FixLinearTriatomic` fixes the distance between the outer atoms
+with RATTLE and applies a linear vectorial constraint to the central
+atom using the RATTLE-constrained positions of the outer atoms (read
+more about the method here: G. Ciccotti, M. Ferrario, J.-P. Ryckaert,
+Molecular Physics 47, 1253 (1982)).
+
+When setting these constraints one has to specify a list of triples
+of atomic indices, each triple representing a specific triatomic molecule.
+
+.. autoclass:: FixLinearTriatomic
+
+The example below shows how to fix the geometry of two carbon dioxide
+molecules::
+
+    >>> from ase.build import molecule
+    >>> from ase.constraints import FixLinearTriatomic
+    >>> atoms = molecule('CO2')
+    >>> dimer = atoms + atoms.copy()
+    >>> c = FixLinearTriatomic(triples=[(1, 0, 2), (4, 3, 5)])
+    >>> dimer.set_constraint(c)
+
+.. note::
+    When specifying a triple of indices, the second element must correspond
+    to the index of the central atom.
 
 The FixedLine class
 ===================
@@ -119,8 +151,21 @@ A mode is a list of vectors specifying a direction for each atom. It often
 comes from :meth:`ase.vibrations.Vibrations.get_mode`.
 
 
+The FixCom class
+===================
+
+.. autoclass:: FixCom
+
+Example of use::
+
+  >>> from ase.constraints import FixCom
+  >>> c = FixCom()
+  >>> atoms.set_constraint(c)
+
+
 The Hookean class
 =================
+
 
 This class of constraints, based on Hooke's Law, is generally used to
 conserve molecular identity in optimization schemes and can be used in three
@@ -130,6 +175,8 @@ maintain the identity of molecules in quenched molecular dynamics, without
 changing the degrees of freedom or violating conservation of energy. When the
 distance between the two atoms is less than the threshold length, this
 constraint is completely inactive.
+
+.. autoclass:: Hookean
 
 The below example tethers atoms at indices 3 and 4 together::
 
@@ -220,37 +267,50 @@ The FixInternals class
 ======================
 
 This class allows to fix an arbitrary number of bond lengths, angles
-and dihedral angles. The defined constraints are satisfied self
-consistently. To define the constraints one needs to specify the
+and dihedral angles as well as linear combinations of bond lengths
+('bondcombos').
+A fixed linear combination of bond lengths fulfils
+:math:`\sum_i \text{coef}_i \times \text{bond_length}_i 
+= \text{constant}`.
+The defined constraints are satisfied self consistently.
+To define the constraints one needs to specify the
 atoms object on which the constraint works (needed for atomic
 masses), a list of bond, angle and dihedral constraints.
 Those constraint definitions are always list objects containing
-the value to be set and a list of atomic indices. The epsilon value
-specifies the accuracy to which the constraints are fulfilled.
+the value to be set and a list of atomic indices.
+For the linear combination of bond lengths the list of atomic
+indices is a list of bond definitions with coeficients
+([[a1, a2, coef],[a3, a4, coef],]).
+The usage of mic is supported by providing the keyword argument `mic=True`.
+Using mic slows the algorithm and is probably not necessary in most cases.
+The epsilon value specifies the accuracy to which the constraints are
+fulfilled.
+Please specify angles and dihedrals in degrees using the keywords angles_deg
+and dihedrals_deg.
 
 .. autoclass:: FixInternals
 
-.. note::
+    .. automethod:: get_bondcombo
 
-    The :class:`FixInternals` class use radians for angles!  Most other
-    places in ASE degrees are used.
 
 Example of use::
 
-  >>> from math import pi
   >>> bond1 = [1.20, [1, 2]]
   >>> angle_indices1 = [2, 3, 4]
   >>> dihedral_indices1 = [2, 3, 4, 5]
-  >>> angle1 = [atoms.get_angle(*angle_indices1) * pi / 180,
-                angle_indices1]
-  >>> dihedral1 = [atoms.get_dihedral(*dihedral_indices1) * pi / 180,
-  ...              dihedral_indices1]
-  >>> c = FixInternals(bonds=[bond1], angles=[angle1],
-  ...                  dihedrals=[dihedral1])
+  >>> bondcombo_indices1 = [[6, 7, 1.0], [8, 9, -1.0]]
+  >>> angle1 = [atoms.get_angle(*angle_indices1), angle_indices1]
+  >>> dihedral1 = [atoms.get_dihedral(*dihedral_indices1), dihedral_indices1]
+  >>> bondcombo1 = [0.0, bondcombo_indices1]
+  >>> c = FixInternals(bonds=[bond1], angles_deg=[angle1],
+  ...                  dihedrals_deg=[dihedral1], bondcombos=[bondcombo1])
   >>> atoms.set_constraint(c)
 
 This example defines a bond, an angle and a dihedral angle constraint
-to be fixed at the same time.
+to be fixed at the same time
+at which also the linear combination of bond lengths
+:math:`1.0 * \text{bond}_{6-7} -1.0 * \text{bond}_{8-9}`
+is fixed to the value of 0.0 Ångstrom.
 
 
 Combining constraints
@@ -381,9 +441,48 @@ hydrogen atoms are returned.
 The UnitCellFilter class
 ========================
 
+The unit cell filter is for optimizing positions and unit cell
+simultaneously.  Note that :class:`ExpCellFilter` will probably
+perform better.
+
 .. autoclass:: UnitCellFilter
 
 The StrainFilter class
 ======================
 
+The strain filter is for optimizing the unit cell while keeping
+scaled positions fixed.
+
 .. autoclass:: StrainFilter
+
+
+The ExpCellFilter class
+=======================
+
+The exponential cell filter is an improved :class:`UnitCellFilter`
+which is parameter free.
+
+.. autoclass:: ExpCellFilter
+
+
+.. module:: ase.spacegroup.symmetrize
+
+The FixSymmetry class
+=====================
+
+.. autoclass:: ase.spacegroup.symmetrize.FixSymmetry
+
+The module also provides some utility functions to prepare
+symmetrized configurations and to check symmetry.
+
+.. autofunction:: ase.spacegroup.symmetrize.refine_symmetry
+
+.. autofunction:: ase.spacegroup.symmetrize.check_symmetry
+
+Here is an example of using these tools to demonstrate the difference between
+minimising a perturbed bcc Al cell with and without symmetry-preservation.
+Since bcc is unstable with respect to fcc with a Lennard Jones model, the
+unsymmetrised case relaxes to fcc, while the constraint keeps the original
+symmetry.
+
+-.. literalinclude:: fix_symmetry_example.py

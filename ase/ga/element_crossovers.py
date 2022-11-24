@@ -2,7 +2,6 @@
 atoms objects.
 
 """
-import random
 import numpy as np
 
 from ase.ga.offspring_creator import OffspringCreator
@@ -13,9 +12,11 @@ class ElementCrossover(OffspringCreator):
     the atoms objects cross.
 
     """
+
     def __init__(self, element_pool, max_diff_elements,
-                 min_percentage_elements, verbose):
-        OffspringCreator.__init__(self, verbose)
+                 min_percentage_elements, verbose, rng=np.random):
+        OffspringCreator.__init__(self, verbose, rng=rng)
+
         if not isinstance(element_pool[0], (list, np.ndarray)):
             self.element_pools = [element_pool]
         else:
@@ -36,7 +37,7 @@ class ElementCrossover(OffspringCreator):
         else:
             self.min_percentage_elements = min_percentage_elements
         assert len(self.min_percentage_elements) == len(self.element_pools)
-        
+
         self.min_inputs = 2
 
     def get_new_individual(self, parents):
@@ -68,12 +69,15 @@ class OnePointElementCrossover(ElementCrossover):
     Example: element_pool=[[A,B,C,D],[x,y,z]], max_diff_elements=[3,2],
         min_percentage_elements=[.25, .5]
         An individual could be "D,B,B,C,x,x,x,x,z,z,z,z"
+
+    rng: Random number generator
+        By default numpy.random.
     """
+
     def __init__(self, element_pool, max_diff_elements=None,
-                 min_percentage_elements=None, verbose=False):
-        ElementCrossover.__init__(self, element_pool,
-                                  max_diff_elements,
-                                  min_percentage_elements, verbose)
+                 min_percentage_elements=None, verbose=False, rng=np.random):
+        ElementCrossover.__init__(self, element_pool, max_diff_elements,
+                                  min_percentage_elements, verbose, rng=rng)
         self.descriptor = 'OnePointElementCrossover'
 
     def get_new_individual(self, parents):
@@ -83,7 +87,7 @@ class OnePointElementCrossover(ElementCrossover):
         indi.info['data']['parents'] = [i.info['confid'] for i in parents]
 
         cut_choices = [i for i in range(1, len(f) - 1)]
-        random.shuffle(cut_choices)
+        self.rng.shuffle(cut_choices)
         for cut in cut_choices:
             fsyms = f.get_chemical_symbols()
             msyms = m.get_chemical_symbols()
@@ -130,6 +134,7 @@ class OnePointElementCrossover(ElementCrossover):
 class TwoPointElementCrossover(ElementCrossover):
     """Crosses two individuals by choosing two cross points
     at random"""
+
     def __init__(self, element_pool, max_diff_elements=None,
                  min_percentage_elements=None, verbose=False):
         ElementCrossover.__init__(self, element_pool,

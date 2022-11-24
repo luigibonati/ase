@@ -1,7 +1,6 @@
-import pickle
-
 import numpy as np
-from ase.utils import basestring
+from ase.io.jsonio import read_json, write_json
+
 
 class STM:
     def __init__(self, atoms, symmetries=None, use_density=False):
@@ -24,9 +23,10 @@ class STM:
 
         self.use_density = use_density
 
-        if isinstance(atoms, basestring):
-            with open(atoms, 'rb') as f:
-                self.ldos, self.bias, self.cell = pickle.load(f)
+        if isinstance(atoms, str):
+            with open(atoms, 'r') as fd:
+                self.ldos, self.bias, self.cell = read_json(fd,
+                                                            always_array=False)
             self.atoms = None
         else:
             self.atoms = atoms
@@ -36,7 +36,6 @@ class STM:
             assert not self.cell[2, :2].any() and not self.cell[:2, 2].any()
 
         self.symmetries = symmetries or []
-
 
     def calculate_ldos(self, bias):
         """Calculate local density of states for given bias."""
@@ -66,7 +65,7 @@ class STM:
                           for k in range(nkpts)]
                          for s in range(nspins)])
         eigs -= calc.get_fermi_level()
-        ldos = np.zeros(calc.get_pseudo_wave_function(0,0,0).shape)
+        ldos = np.zeros(calc.get_pseudo_wave_function(0, 0, 0).shape)
 
         for s in range(nspins):
             for k in range(nkpts):
@@ -93,13 +92,9 @@ class STM:
 
         self.ldos = ldos
 
-
-    def write(self, filename='stm.pckl'):
-        """Write local density of states to pickle file."""
-        with open(filename, 'wb') as f:
-            pickle.dump((self.ldos, self.bias, self.cell), f,
-                        protocol=pickle.HIGHEST_PROTOCOL)
-
+    def write(self, filename):
+        """Write local density of states to JSON file."""
+        write_json(filename, (self.ldos, self.bias, self.cell))
 
     def get_averaged_current(self, bias, z):
         """Calculate avarage current at height z (in Angstrom).
@@ -118,7 +113,6 @@ class STM:
         return ((1 - dn) * self.ldos[:, :, n].mean() +
                 dn * self.ldos[:, :, (n + 1) % nz].mean())
 
-
     def scan(self, bias, current, z0=None, repeat=(1, 1)):
         """Constant current 2-d scan.
 
@@ -127,7 +121,6 @@ class STM:
         matplotlibs contourf() function like this:
 
         >>> import matplotlib.pyplot as plt
-        >>> plt.gca(aspect='equal')
         >>> plt.contourf(x, y, z)
         >>> plt.show()
 
@@ -154,7 +147,6 @@ class STM:
 
         return x, y, heights
 
-
     def scan2(self, bias, z, repeat=(1, 1)):
         """Constant height 2-d scan.
 
@@ -163,7 +155,6 @@ class STM:
         matplotlibs contourf() function like this:
 
         >>> import matplotlib.pyplot as plt
-        >>> plt.gca(aspect='equal')
         >>> plt.contourf(x, y, I)
         >>> plt.show()
 
@@ -174,24 +165,23 @@ class STM:
         nz = self.ldos.shape[2]
         ldos = self.ldos.reshape((-1, nz))
 
-        I = np.empty(ldos.shape[0])
+        current = np.empty(ldos.shape[0])
 
         zp = z / self.cell[2, 2] * nz
         zp = int(zp) % nz
 
         for i, a in enumerate(ldos):
-            I[i] = self.find_current(a, zp)
+            current[i] = self.find_current(a, zp)
 
-        s0 = I.shape = self.ldos.shape[:2]
-        I = np.tile(I, repeat)
-        s = I.shape
+        s0 = current.shape = self.ldos.shape[:2]
+        current = np.tile(current, repeat)
+        s = current.shape
 
         ij = np.indices(s, dtype=float).reshape((2, -1)).T
         x, y = np.dot(ij / s0, self.cell[:2, :2]).T.reshape((2,) + s)
 
         # Returing scan with axes in Angstrom.
-        return x, y, I
-
+        return x, y, current
 
     def linescan(self, bias, current, p1, p2, npoints=50, z0=None):
         """Constant current line scan.
@@ -221,7 +211,6 @@ class STM:
             line[i] = interpolate(q, heights)
         return np.linspace(0, s, npoints), line
 
-
     def pointcurrent(self, bias, x, y, z):
         """Current for a single x, y, z position for a given bias."""
 
@@ -245,29 +234,27 @@ class STM:
         zp = int(zp) % nz
 
         # 3D interpolation of the LDOS at point (x,y,z) at given bias.
-        xyzldos =  (((1 - dx) + (1 - dy) + (1 - dz)) * self.ldos[xp, yp, zp] +
+        xyzldos = (((1 - dx) + (1 - dy) + (1 - dz)) * self.ldos[xp, yp, zp] +
                    dx * self.ldos[(xp + 1) % nx, yp, zp] +
                    dy * self.ldos[xp, (yp + 1) % ny, zp] +
                    dz * self.ldos[xp, yp, (zp + 1) % nz])
 
         return dos2current(bias, xyzldos)
 
-
     def sts(self, x, y, z, bias0, bias1, biasstep):
         """Returns the dI/dV curve for position x, y at height z (in Angstrom),
         for bias from bias0 to bias1 with step biasstep."""
 
-        biases = np.arange(bias0, bias1+biasstep, biasstep)
-        I = np.zeros(biases.shape)
+        biases = np.arange(bias0, bias1 + biasstep, biasstep)
+        current = np.zeros(biases.shape)
 
         for b in np.arange(len(biases)):
             print(b, biases[b])
-            I[b] = self.pointcurrent(biases[b], x, y, z)
+            current[b] = self.pointcurrent(biases[b], x, y, z)
 
-        dIdV = np.gradient(I,biasstep)
+        dIdV = np.gradient(current, biasstep)
 
-        return biases, I, dIdV
-
+        return biases, current, dIdV
 
     def find_current(self, ldos, z):
         """ Finds current for given LDOS at height z."""

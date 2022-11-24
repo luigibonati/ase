@@ -6,10 +6,10 @@ Numeric arrays in Python
 Links to NumPy's webpage:
 
 * `Numpy and Scipy Documentation`_
-* `Numpy user guide <http://docs.scipy.org/doc/numpy/user/index.html>`_
+* `Numpy user guide <https://docs.scipy.org/doc/numpy/user/index.html>`_
 
 
-.. _Numpy and Scipy Documentation: http://docs.scipy.org/doc
+.. _Numpy and Scipy Documentation: https://docs.scipy.org/doc/
 
 ASE makes heavy use of an extension to Python called NumPy.  The
 NumPy module defines an ``ndarray`` type that can hold large arrays of
@@ -83,5 +83,5 @@ The following identities hold::
   v6 * M == v16 * M == M * v6 == M * v16 == M * v16.repeat(5, 0)
   v51 * M == M * v51 == M * v51.repeat(6, 1)
 
-The exact same rules apply for adding and subtracting 1D arrays to /
+The same rules apply for adding and subtracting 1D arrays to /
 from 2D arrays.

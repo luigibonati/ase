@@ -7,5 +7,5 @@ surfaces, nanoparticles, graphene and graphene nanoribbons, as well as
 nanotubes.
 
 Along with creating the geometry within the GUI, a button provides the
-necessary python code allowing one to recreate the exact same geometry
+necessary Python code allowing one to recreate the exact same geometry
 in ASE scripts.

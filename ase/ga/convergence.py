@@ -3,12 +3,13 @@ based on population stagnation or max raw score reached"""
 from ase.ga import get_raw_score
 
 
-class Convergence(object):
+class Convergence:
     """
     Base class for all convergence object to be based on.
     It is necessary to supply the population instance, to be
     able to obtain current and former populations.
     """
+
     def __init__(self, population_instance):
         self.pop = population_instance
         self.pops = {}
@@ -44,6 +45,7 @@ class GenerationRepetitionConvergence(Convergence):
         The maximum number of generations the GA is allowed to run.
         Default is indefinite.
     """
+
     def __init__(self, population_instance, number_of_generations,
                  number_of_individuals=-1, max_generations=100000000):
         Convergence.__init__(self, population_instance)
@@ -82,6 +84,7 @@ class GenerationRepetitionConvergence(Convergence):
 
 class RawScoreConvergence(Convergence):
     """Returns True if the supplied max_raw_score has been reached"""
+
     def __init__(self, population_instance, max_raw_score, eps=1e-3):
         Convergence.__init__(self, population_instance)
         self.max_raw_score = max_raw_score
@@ -93,11 +96,12 @@ class RawScoreConvergence(Convergence):
             return True
         return False
 
-        
-class NeverConvergence(object):
+
+class NeverConvergence:
     """Test class that never converges."""
+
     def __init__(self):
         pass
-        
+
     def converged(self):
         return False

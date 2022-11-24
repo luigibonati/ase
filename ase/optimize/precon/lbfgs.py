@@ -4,14 +4,14 @@ import warnings
 from math import sqrt
 import numpy as np
 
-from ase.utils import basestring
 from ase.optimize.optimize import Optimizer
 from ase.constraints import UnitCellFilter
 
 from ase.utils.linesearch import LineSearch
 from ase.utils.linesearcharmijo import LineSearchArmijo
 
-from ase.optimize.precon import Exp, C1, Pfrommer
+from ase.optimize.precon.precon import make_precon
+
 
 class PreconLBFGS(Optimizer):
     """Preconditioned version of the Limited memory BFGS optimizer, to
@@ -32,7 +32,7 @@ class PreconLBFGS(Optimizer):
     See this article for full details: D. Packwood, J. R. Kermode, L. Mones,
     N. Bernstein, J. Woolley, N. Gould, C. Ortner, and G. Csanyi, A universal
     preconditioner for simulating condensed phase materials
-    J. Chem. Phys. 144, 164109 (2016), DOI: http://dx.doi.org/10.1063/1.4947024
+    J. Chem. Phys. 144, 164109 (2016), DOI: https://doi.org/10.1063/1.4947024
     """
 
     # CO : added parameters rigid_units and rotation_factors
@@ -130,11 +130,11 @@ class PreconLBFGS(Optimizer):
         if precon == 'auto':
             if len(atoms) < 100:
                 precon = None
-                warnings.warn('The system is likely too small to benefit from ' +
-                             'the standard preconditioner, hence it is ' +
-                             'disabled. To re-enable preconditioning, call' +
-                             '`PreconLBFGS` by explicitly providing the ' +
-                             'kwarg `precon`')
+                warnings.warn('The system is likely too small to benefit from '
+                              'the standard preconditioner, hence it is '
+                              'disabled. To re-enable preconditioning, call '
+                              '`PreconLBFGS` by explicitly providing the '
+                              'kwarg `precon`')
             else:
                 precon = 'Exp'
 
@@ -156,18 +156,7 @@ class PreconLBFGS(Optimizer):
         self.p = None
 
         # construct preconditioner if passed as a string
-        if isinstance(precon, basestring):
-            if precon == 'C1':
-                precon = C1()
-            if precon == 'Exp':
-                precon = Exp()
-            elif precon == 'Pfrommer':
-                precon = Pfrommer()
-            elif precon == 'ID':
-                precon = None
-            else:
-                raise ValueError('Unknown preconditioner "{0}"'.format(precon))
-        self.precon = precon
+        self.precon = make_precon(precon)
         self.use_armijo = use_armijo
         self.c1 = c1
         self.c2 = c2
@@ -186,11 +175,11 @@ class PreconLBFGS(Optimizer):
         self._just_reset_hessian = True
         self.s = []
         self.y = []
-        self.rho = []  # Store also rho, to avoid calculationg the dot product
+        self.rho = []  # Store also rho, to avoid calculating the dot product
         # again and again
 
     def initialize(self):
-        """Initalize everything so no checks have to be done in step"""
+        """Initialize everything so no checks have to be done in step"""
         self.iteration = 0
         self.reset_hessian()
         self.r0 = None
@@ -206,12 +195,15 @@ class PreconLBFGS(Optimizer):
             self.r0, self.f0, self.e0, self.task = self.load()
         self.load_restart = True
 
-    def step(self, f):
+    def step(self, f=None):
         """Take a single step
 
         Use the given forces, update the history and calculate the next step --
         then take it"""
         r = self.atoms.get_positions()
+
+        if f is None:
+            f = self.atoms.get_forces()
 
         previously_reset_hessian = self._just_reset_hessian
         self.update(r, f, self.r0, self.f0)
@@ -287,7 +279,7 @@ class PreconLBFGS(Optimizer):
 
     def replay_trajectory(self, traj):
         """Initialize history from old trajectory."""
-        if isinstance(traj, basestring):
+        if isinstance(traj, str):
             from ase.io.trajectory import Trajectory
             traj = Trajectory(traj, 'r')
         r0 = None
@@ -372,7 +364,9 @@ class PreconLBFGS(Optimizer):
         self.smax = smax
         return Optimizer.run(self, fmax, steps)
 
-    def log(self, forces):
+    def log(self, forces=None):
+        if forces is None:
+            forces = self.atoms.get_forces()
         if isinstance(self.atoms, UnitCellFilter):
             natoms = len(self.atoms.atoms)
             forces, stress = forces[:natoms], self.atoms.stress

@@ -3,14 +3,12 @@ import numpy as np
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.atom import Atom
 from ase.atoms import Atoms
-from ase.utils import basestring
+from ase.utils import reader
 
 
-def read_dacapo_text(fileobj):
-    if isinstance(fileobj, basestring):
-        fileobj = open(fileobj)
-
-    lines = fileobj.readlines()
+@reader
+def read_dacapo_text(fd):
+    lines = fd.readlines()
     i = lines.index(' Structure:             A1           A2            A3\n')
     cell = np.array([[float(w) for w in line.split()[2:5]]
                      for line in lines[i + 1:i + 4]]).transpose()
@@ -43,42 +41,6 @@ def read_dacapo_text(fileobj):
                     break
                 i2 -= 1
             energy = float(lines[i2].split()[column])
-            atoms.set_calculator(SinglePointCalculator(atoms, energy=energy))
+            atoms.calc = SinglePointCalculator(atoms, energy=energy)
 
-    return atoms
-
-
-
-def read_dacapo(filename):
-    from ase.io.pupynere import NetCDFFile
-
-    nc = NetCDFFile(filename)
-    vars = nc.variables
-
-    cell = vars['UnitCell'][-1]
-    try:
-        magmoms = vars['InitialAtomicMagneticMoment'][:]
-    except KeyError:
-        magmoms = None
-    try:
-        tags = vars['AtomTags'][:]
-    except KeyError:
-        tags = None
-    atoms = Atoms(scaled_positions=vars['DynamicAtomPositions'][-1],
-                  symbols=[(a + b).strip()
-                           for a, b in vars['DynamicAtomSpecies'][:]],
-                  cell=cell,
-                  magmoms=magmoms,
-                  tags=tags,
-                  pbc=True)
-
-    try:
-        energy = vars['TotalEnergy'][-1]
-        force = vars['DynamicAtomForces'][-1]
-    except KeyError:
-        energy = None
-        force = None
-    calc = SinglePointCalculator(atoms, energy=energy, forces=force)  ### Fixme magmoms
-    atoms.set_calculator(calc)
-        
     return atoms

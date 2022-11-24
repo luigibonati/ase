@@ -30,8 +30,8 @@ class CellFigure():
         Set up a figure for visualizing a cell metric.
         """
         Axes3D  # silence pyflakes
-        self.fig = plt.figure(figsize=(5, 3))
-        self.ax = self.fig.gca(projection='3d')
+        self.fig = plt.figure(figsize=(5, 5))
+        self.ax = self.fig.add_subplot(projection='3d')
         x = sin(azim)
         y = cos(azim)
         self.view = [x * cos(elev), y * cos(elev), sin(elev)]
@@ -40,7 +40,6 @@ class CellFigure():
         self.ax.set_xlim(0, dim)
         self.ax.set_ylim(0, dim)
         self.ax.set_zlim(0, dim)
-        self.ax.set_aspect('equal')
         self.ax.view_init(azim=azim / pi * 180, elev=elev / pi * 180)
 
     def add_cell(self, cell):
@@ -97,7 +96,7 @@ class CellFigure():
         Add some annotation to the lower left corner of the plot.
         """
         self.ax.text(1.1, 0, -0.2, text, ha='left', va='center')
-    
+
 
 # extent of plotted area
 dim = 0.82

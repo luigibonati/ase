@@ -1,14 +1,15 @@
 # Copyright 2008, 2009
 # CAMd (see accompanying license files for details).
-from __future__ import print_function, unicode_literals
 import warnings
 
 
 class CLICommand:
-    short_description = "ASE's graphical user interface"
-    description = ('ASE-GUI.  See the online manual '
-                   '(https://wiki.fysik.dtu.dk/ase/ase/gui/gui.html) '
-                   'for more information.')
+    """ASE's graphical user interface.
+
+    ASE-GUI.  See the online manual
+    (https://wiki.fysik.dtu.dk/ase/ase/gui/gui.html)
+    for more information.
+    """
 
     @staticmethod
     def add_arguments(parser):

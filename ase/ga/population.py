@@ -1,6 +1,5 @@
-""" Implementaiton of a population for maintaining a GA population and
+""" Implementation of a population for maintaining a GA population and
 proposing structures to pair. """
-from random import randrange, random
 from math import tanh, sqrt, exp
 from operator import itemgetter
 import numpy as np
@@ -20,7 +19,7 @@ def count_looks_like(a, all_cand, comp):
     return n
 
 
-class Population(object):
+class Population:
     """Population class which maintains the current population
     and proposes which candidates to pair together.
 
@@ -48,9 +47,14 @@ class Population(object):
     use_extinct: boolean
         Set this to True if mass extinction and the extinct key
         are going to be used. Default is False.
+
+    rng: Random number generator
+        By default numpy.random.
     """
+
     def __init__(self, data_connection, population_size,
-                 comparator=None, logfile=None, use_extinct=False):
+                 comparator=None, logfile=None, use_extinct=False,
+                 rng=np.random):
         self.dc = data_connection
         self.pop_size = population_size
         if comparator is None:
@@ -59,13 +63,14 @@ class Population(object):
         self.comparator = comparator
         self.logfile = logfile
         self.use_extinct = use_extinct
+        self.rng = rng
         self.pop = []
         self.pairs = None
         self.all_cand = None
         self.__initialize_pop__()
 
     def __initialize_pop__(self):
-        """ Private method that initalizes the population when
+        """ Private method that initializes the population when
             the population is created. """
 
         # Get all relaxed candidates from the database
@@ -136,12 +141,12 @@ class Population(object):
         """ Returns a copy of the population as it where
         after generation gen"""
         if self.logfile is not None:
-            f = open(self.logfile, 'r')
+            fd = open(self.logfile, 'r')
             gens = {}
-            for l in f:
-                _, no, popul = l.split(':')
+            for line in fd:
+                _, no, popul = line.split(':')
                 gens[int(no)] = [int(i) for i in popul.split(',')]
-            f.close()
+            fd.close()
             return [c.copy() for c in self.all_cand[::-1]
                     if c.info['relax_id'] in gens[gen]]
 
@@ -242,14 +247,14 @@ class Population(object):
         while c1.info['confid'] == c2.info['confid'] and not used_before:
             nnf = True
             while nnf:
-                t = randrange(0, len(self.pop), 1)
-                if fit[t] > random() * fmax:
+                t = self.rng.randint(len(self.pop))
+                if fit[t] > self.rng.random() * fmax:
                     c1 = self.pop[t]
                     nnf = False
             nnf = True
             while nnf:
-                t = randrange(0, len(self.pop), 1)
-                if fit[t] > random() * fmax:
+                t = self.rng.randint(len(self.pop))
+                if fit[t] > self.rng.random() * fmax:
                     c2 = self.pop[t]
                     nnf = False
 
@@ -276,8 +281,8 @@ class Population(object):
         fmax = max(fit)
         nnf = True
         while nnf:
-            t = randrange(0, len(self.pop), 1)
-            if fit[t] > random() * fmax:
+            t = self.rng.randint(len(self.pop))
+            if fit[t] > self.rng.random() * fmax:
                 c1 = self.pop[t]
                 nnf = False
 
@@ -298,11 +303,11 @@ class Population(object):
                     max_gen = max(gen_nums)
                 except KeyError:
                     max_gen = ' '
-                f = open(self.logfile, 'a')
-                f.write('{time}: {gen}: {pop}\n'.format(time=now(),
-                                                        pop=','.join(ids),
-                                                        gen=max_gen))
-                f.close()
+                fd = open(self.logfile, 'a')
+                fd.write('{time}: {gen}: {pop}\n'.format(time=now(),
+                                                         pop=','.join(ids),
+                                                         gen=max_gen))
+                fd.close()
 
     def is_uniform(self, func, min_std, pop=None):
         """Tests whether the current population is uniform or diverse.
@@ -355,7 +360,7 @@ class RandomPopulation(Population):
                             comparator, logfile, use_extinct)
 
     def __initialize_pop__(self):
-        """ Private method that initalizes the population when
+        """ Private method that initializes the population when
             the population is created. """
 
         # Get all relaxed candidates from the database
@@ -383,7 +388,7 @@ class RandomPopulation(Population):
                         self.pop.append(c)
                     else:
                         exp_fact = exp(get_raw_score(c) / best_raw)
-                        ratings.append([c, (exp_fact - 1) * random()])
+                        ratings.append([c, (exp_fact - 1) * self.rng.random()])
             ratings.sort(key=itemgetter(1), reverse=True)
 
             for i in range(self.bad_candidates):
@@ -415,7 +420,7 @@ class RandomPopulation(Population):
         if len(self.pop) < 1:
             return None
 
-        t = randrange(0, len(self.pop), 1)
+        t = self.rng.randint(len(self.pop))
         c = self.pop[t]
 
         return c.copy()
@@ -432,9 +437,9 @@ class RandomPopulation(Population):
         c2 = self.pop[0]
         used_before = False
         while c1.info['confid'] == c2.info['confid'] and not used_before:
-            t = randrange(0, len(self.pop), 1)
+            t = self.rng.randint(len(self.pop))
             c1 = self.pop[t]
-            t = randrange(0, len(self.pop), 1)
+            t = self.rng.randint(len(self.pop))
             c2 = self.pop[t]
 
             c1id = c1.info['confid']
@@ -462,6 +467,7 @@ class FitnessSharingPopulation(Population):
         Default is 1, which gives a linear sharing function.
 
     """
+
     def __init__(self, data_connection, population_size,
                  comp_key, threshold, alpha_sh=1.,
                  comparator=None, logfile=None, use_extinct=False):
@@ -568,14 +574,14 @@ class FitnessSharingPopulation(Population):
         while c1.info['confid'] == c2.info['confid']:
             nnf = True
             while nnf:
-                t = randrange(0, len(self.pop), 1)
-                if fit[t] > random() * fmax:
+                t = self.rng.randint(len(self.pop))
+                if fit[t] > self.rng.random() * fmax:
                     c1 = self.pop[t]
                     nnf = False
             nnf = True
             while nnf:
-                t = randrange(0, len(self.pop), 1)
-                if fit[t] > random() * fmax:
+                t = self.rng.randint(len(self.pop))
+                if fit[t] > self.rng.random() * fmax:
                     c2 = self.pop[t]
                     nnf = False
 
@@ -601,6 +607,7 @@ class RankFitnessPopulation(Population):
             The prefactor used in the exponential fitness scaling function.
             Default 0.5
     """
+
     def __init__(self, data_connection, population_size, variable_function,
                  comparator=None, logfile=None, use_extinct=False,
                  exp_function=True, exp_prefactor=0.5):
@@ -739,14 +746,14 @@ class RankFitnessPopulation(Population):
         while c1.info['confid'] == c2.info['confid']:
             nnf = True
             while nnf:
-                t = randrange(0, len(self.pop), 1)
-                if fit[t] > random() * fmax:
+                t = self.rng.randint(len(self.pop))
+                if fit[t] > self.rng.random() * fmax:
                     c1 = self.pop[t]
                     nnf = False
             nnf = True
             while nnf:
-                t = randrange(0, len(self.pop), 1)
-                if fit[t] > random() * fmax:
+                t = self.rng.randint(len(self.pop))
+                if fit[t] > self.rng.random() * fmax:
                     c2 = self.pop[t]
                     nnf = False
 

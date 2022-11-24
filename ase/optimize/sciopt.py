@@ -1,9 +1,5 @@
 import numpy as np
-try:
-    import scipy.optimize as opt
-except ImportError:
-    pass
-
+import scipy.optimize as opt
 from ase.optimize.optimize import Optimizer
 
 
@@ -20,6 +16,7 @@ class SciPyOptimizer(Optimizer):
 
     Only the call to the optimizer is still needed
     """
+
     def __init__(self, atoms, logfile='-', trajectory=None,
                  callback_always=False, alpha=70.0, master=None,
                  force_consistent=None):
@@ -59,7 +56,7 @@ class SciPyOptimizer(Optimizer):
         """
         restart = None
         Optimizer.__init__(self, atoms, restart, logfile, trajectory,
-                           master, force_consistent)
+                           master, force_consistent=force_consistent)
         self.force_calls = 0
         self.callback_always = callback_always
         self.H0 = alpha
@@ -96,6 +93,10 @@ class SciPyOptimizer(Optimizer):
         This should also be called once before optimization starts, as SciPy
         optimizers only calls it after each iteration, while ase optimizers
         call something similar before as well.
+
+        :meth:`callback`() can raise a :exc:`Converged` exception to signal the
+        optimisation is complete. This will be silently ignored by
+        :meth:`run`().
         """
         f = self.atoms.get_forces()
         self.log(f)
@@ -108,9 +109,9 @@ class SciPyOptimizer(Optimizer):
         if self.force_consistent is None:
             self.set_force_consistent()
         self.fmax = fmax
-        # As SciPy does not log the zeroth iteration, we do that manually
-        self.callback(None)
         try:
+            # As SciPy does not log the zeroth iteration, we do that manually
+            self.callback(None)
             # Scale the problem as SciPy uses I as initial Hessian.
             self.call_fmin(fmax / self.H0, steps)
         except Converged:
@@ -128,6 +129,7 @@ class SciPyOptimizer(Optimizer):
 
 class SciPyFminCG(SciPyOptimizer):
     """Non-linear (Polak-Ribiere) conjugate gradient algorithm"""
+
     def call_fmin(self, fmax, steps):
         output = opt.fmin_cg(self.f,
                              self.x0(),
@@ -150,6 +152,7 @@ class SciPyFminCG(SciPyOptimizer):
 
 class SciPyFminBFGS(SciPyOptimizer):
     """Quasi-Newton method (Broydon-Fletcher-Goldfarb-Shanno)"""
+
     def call_fmin(self, fmax, steps):
         output = opt.fmin_bfgs(self.f,
                                self.x0(),
@@ -181,6 +184,7 @@ class SciPyGradientlessOptimizer(Optimizer):
 
     XXX: This is still a work in progress
     """
+
     def __init__(self, atoms, logfile='-', trajectory=None,
                  callback_always=False, master=None,
                  force_consistent=None):
@@ -220,7 +224,7 @@ class SciPyGradientlessOptimizer(Optimizer):
         """
         restart = None
         Optimizer.__init__(self, atoms, restart, logfile, trajectory,
-                           master, force_consistent)
+                           master, force_consistent=force_consistent)
         self.function_calls = 0
         self.callback_always = callback_always
 
@@ -284,6 +288,7 @@ class SciPyFmin(SciPyGradientlessOptimizer):
 
     XXX: This is still a work in progress
     """
+
     def call_fmin(self, xtol, ftol, steps):
         opt.fmin(self.f,
                  self.x0(),
@@ -305,6 +310,7 @@ class SciPyFminPowell(SciPyGradientlessOptimizer):
 
     XXX: This is still a work in progress
     """
+
     def __init__(self, *args, **kwargs):
         """Parameters:
 

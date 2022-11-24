@@ -1,23 +1,87 @@
 """Quantum ESPRESSO Calculator
 
-export ASE_ESPRESSO_COMMAND="/path/to/pw.x -in PREFIX.pwi > PREFIX.pwo"
-
 Run pw.x jobs.
 """
 
 
-from ase import io
-from ase.calculators.calculator import FileIOCalculator
+import os
+from ase.calculators.genericfileio import (
+    GenericFileIOCalculator, CalculatorTemplate, read_stdout)
+from ase.io import read, write
 
 
-class Espresso(FileIOCalculator):
-    """
-    """
-    implemented_properties = ['energy', 'forces', 'stress', 'magmoms']
-    command = 'pw.x -in PREFIX.pwi > PREFIX.pwo'
+compatibility_msg = (
+    'Espresso calculator is being restructured.  Please use e.g. '
+    'Espresso(profile=EspressoProfile(argv=[\'mpiexec\', \'pw.x\'])) '
+    'to customize command-line arguments.')
 
-    def __init__(self, restart=None, ignore_bad_restart_file=False,
-                 label='espresso', atoms=None, **kwargs):
+
+# XXX We should find a way to display this warning.
+# warn_template = 'Property "%s" is None. Typically, this is because the ' \
+#                 'required information has not been printed by Quantum ' \
+#                 'Espresso at a "low" verbosity level (the default). ' \
+#                 'Please try running Quantum Espresso with "high" verbosity.'
+
+
+class EspressoProfile:
+    def __init__(self, argv):
+        self.argv = tuple(argv)
+
+    @staticmethod
+    def parse_version(stdout):
+        import re
+        match = re.match(r'\s*Program PWSCF\s*v\.(\S+)', stdout, re.M)
+        assert match is not None
+        return match.group(1)
+
+    def version(self):
+        stdout = read_stdout(self.argv)
+        return self.parse_version(stdout)
+
+    def run(self, directory, inputfile, outputfile):
+        from subprocess import check_call
+        argv = list(self.argv) + ['-in', str(inputfile)]
+        with open(directory / outputfile, 'wb') as fd:
+            check_call(argv, stdout=fd, cwd=directory)
+
+    def socketio_argv_unix(self, socket):
+        template = EspressoTemplate()
+        # It makes sense to know the template for this kind of choices,
+        # but is there a better way?
+        return list(self.argv) + ['--ipi', f'{socket}:UNIX', '-in',
+                                  template.inputname]
+
+
+class EspressoTemplate(CalculatorTemplate):
+    def __init__(self):
+        super().__init__(
+            'espresso',
+            ['energy', 'free_energy', 'forces', 'stress', 'magmoms'])
+        self.inputname = 'espresso.pwi'
+        self.outputname = 'espresso.pwo'
+
+    def write_input(self, directory, atoms, parameters, properties):
+        dst = directory / self.inputname
+        write(dst, atoms, format='espresso-in', properties=properties,
+              **parameters)
+
+    def execute(self, directory, profile):
+        profile.run(directory,
+                    self.inputname,
+                    self.outputname)
+
+    def read_results(self, directory):
+        path = directory / self.outputname
+        atoms = read(path, format='espresso-out')
+        return dict(atoms.calc.properties())
+
+
+class Espresso(GenericFileIOCalculator):
+    def __init__(self, *, profile=None,
+                 command=GenericFileIOCalculator._deprecated,
+                 label=GenericFileIOCalculator._deprecated,
+                 directory='.',
+                 **kwargs):
         """
         All options for pw.x are copied verbatim to the input file, and put
         into the correct section. Use ``input_data`` for parameters that are
@@ -36,8 +100,19 @@ class Espresso(FileIOCalculator):
             Generate a grid of k-points with this as the minimum distance,
             in A^-1 between them in reciprocal space. If set to None, kpts
             will be used instead.
-        kpts:
-            Number of kpoints in each dimension for automatic kpoint generation.
+        kpts: (int, int, int), dict, or BandPath
+            If kpts is a tuple (or list) of 3 integers, it is interpreted
+            as the dimensions of a Monkhorst-Pack grid.
+            If ``kpts`` is set to ``None``, only the Γ-point will be included
+            and QE will use routines optimized for Γ-point-only calculations.
+            Compared to Γ-point-only calculations without this optimization
+            (i.e. with ``kpts=(1, 1, 1)``), the memory and CPU requirements
+            are typically reduced by half.
+            If kpts is a dict, it will either be interpreted as a path
+            in the Brillouin zone (*) if it contains the 'path' keyword,
+            otherwise it is converted to a Monkhorst-Pack grid (**).
+            (*) see ase.dft.kpoints.bandpath
+            (**) see ase.calculators.calculator.kpts2sizeandoffsets
         koffset: (int, int, int)
             Offset of kpoints in each direction. Must be 0 (no offset) or
             1 (half grid offset). Setting to True is equivalent to (1, 1, 1).
@@ -47,20 +122,55 @@ class Espresso(FileIOCalculator):
            Set ``tprnfor=True`` and ``tstress=True`` to calculate forces and
            stresses.
 
+        .. note::
+           Band structure plots can be made as follows:
+
+
+           1. Perform a regular self-consistent calculation,
+              saving the wave functions at the end, as well as
+              getting the Fermi energy:
+
+              >>> input_data = {<your input data>}
+              >>> calc = Espresso(input_data=input_data, ...)
+              >>> atoms.calc = calc
+              >>> atoms.get_potential_energy()
+              >>> fermi_level = calc.get_fermi_level()
+
+           2. Perform a non-self-consistent 'band structure' run
+              after updating your input_data and kpts keywords:
+
+              >>> input_data['control'].update({'calculation':'bands',
+              >>>                               'restart_mode':'restart',
+              >>>                               'verbosity':'high'})
+              >>> calc.set(kpts={<your Brillouin zone path>},
+              >>>          input_data=input_data)
+              >>> calc.calculate(atoms)
+
+           3. Make the plot using the BandStructure functionality,
+              after setting the Fermi level to that of the prior
+              self-consistent calculation:
+
+              >>> bs = calc.band_structure()
+              >>> bs.reference = fermi_energy
+              >>> bs.plot()
 
         """
-        FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
-                                  label, atoms, **kwargs)
 
-    def write_input(self, atoms, properties=None, system_changes=None):
-        FileIOCalculator.write_input(self, atoms, properties, system_changes)
-        io.write(self.label + '.pwi', atoms, **self.parameters)
+        if command is not self._deprecated:
+            raise RuntimeError(compatibility_msg)
 
-    def read_results(self):
-        output = io.read(self.label + '.pwo')
-        self.results = output.calc.results
+        if label is not self._deprecated:
+            import warnings
+            warnings.warn('Ignoring label, please use directory instead',
+                          FutureWarning)
 
-    def socket_driver(self, **kwargs):
-        from ase.calculators.socketio import SocketIOCalculator
-        calc = SocketIOCalculator(self, **kwargs)
-        return calc
+        if 'ASE_ESPRESSO_COMMAND' in os.environ and profile is None:
+            import warnings
+            warnings.warn(compatibility_msg, FutureWarning)
+
+        template = EspressoTemplate()
+        if profile is None:
+            profile = EspressoProfile(argv=['pw.x'])
+        super().__init__(profile=profile, template=template,
+                         directory=directory,
+                         parameters=kwargs)

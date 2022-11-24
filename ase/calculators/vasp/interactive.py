@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from subprocess import Popen, PIPE
 
 from ase.calculators.calculator import Calculator
@@ -12,7 +10,7 @@ import os
 import sys
 
 
-class VaspInteractive(GenerateVaspInput, Calculator):
+class VaspInteractive(GenerateVaspInput, Calculator):  # type: ignore
     name = "VaspInteractive"
     implemented_properties = ['energy', 'forces', 'stress']
 
@@ -26,7 +24,7 @@ class VaspInteractive(GenerateVaspInput, Calculator):
 
     def __init__(self, txt="interactive.log", print_log=False, process=None,
                  command=None, path="./", **kwargs):
-        
+
         GenerateVaspInput.__init__(self)
 
         for kw, val in self.mandatory_input.items():
@@ -114,7 +112,7 @@ class VaspInteractive(GenerateVaspInput, Calculator):
         # or it exited with an error. Either way, we need to raise an error.
 
         raise RuntimeError("VASP exited unexpectedly with exit code {}"
-                           "".format(self.subprocess.poll()))
+                           "".format(self.process.poll()))
 
     def close(self):
         if self.process is None:
@@ -145,10 +143,11 @@ class VaspInteractive(GenerateVaspInput, Calculator):
 
         new = read(os.path.join(self.path, 'vasprun.xml'), index=-1)
 
-        self.results = {'free_energy': new.get_potential_energy(force_consistent=True),
-                        'energy': new.get_potential_energy(),
-                        'forces': new.get_forces()[self.resort],
-                        'stress': new.get_stress()}
+        self.results = {
+            'free_energy': new.get_potential_energy(force_consistent=True),
+            'energy': new.get_potential_energy(),
+            'forces': new.get_forces()[self.resort],
+            'stress': new.get_stress()}
 
     def __del__(self):
         self.close()

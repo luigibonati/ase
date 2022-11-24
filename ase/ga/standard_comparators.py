@@ -19,7 +19,7 @@ def get_sorted_dist_list(atoms, mic=False):
     return pair_cor
 
 
-class InteratomicDistanceComparator(object):
+class InteratomicDistanceComparator:
 
     """ An implementation of the comparison criteria described in
           L.B. Vilhelmsen and B. Hammer, PRL, 108, 126101 (2012)
@@ -35,6 +35,7 @@ class InteratomicDistanceComparator(object):
         mic: Determines if distances are calculated
         using the minimum image convention
     """
+
     def __init__(self, n_top=None, pair_cor_cum_diff=0.015,
                  pair_cor_max=0.7, dE=0.02, mic=False):
         self.pair_cor_cum_diff = pair_cor_cum_diff
@@ -84,7 +85,7 @@ class InteratomicDistanceComparator(object):
         return (total_cum_diff, max_diff)
 
 
-class SequentialComparator(object):
+class SequentialComparator:
     """Use more than one comparison class and test them all in sequence.
 
     Supply a list of integers if for example two comparison tests both
@@ -95,6 +96,7 @@ class SequentialComparator(object):
     if b and c are positive -> return True
     if b and not c are positive (or vice versa) -> return False
     """
+
     def __init__(self, methods, logics=None):
         if not isinstance(methods, list):
             methods = [methods]
@@ -112,9 +114,9 @@ class SequentialComparator(object):
                 self.logics.append(l)
 
     def looks_like(self, a1, a2):
-        mdct = dict((l, []) for l in self.logics)
-        for m, l in zip(self.methods, self.logics):
-            mdct[l].append(m)
+        mdct = dict((logic, []) for logic in self.logics)
+        for m, logic in zip(self.methods, self.logics):
+            mdct[logic].append(m)
 
         for methods in mdct.values():
             for m in methods:
@@ -125,13 +127,14 @@ class SequentialComparator(object):
         return False
 
 
-class StringComparator(object):
+class StringComparator:
     """Compares the calculated hash strings. These strings should be stored
        in atoms.info['key_value_pairs'][key1] and
        atoms.info['key_value_pairs'][key2] ...
        where the keys should be supplied as parameters i.e.
        StringComparator(key1, key2, ...)
     """
+
     def __init__(self, *keys):
         self.keys = keys
 
@@ -142,7 +145,7 @@ class StringComparator(object):
         return False
 
 
-class EnergyComparator(object):
+class EnergyComparator:
     """Compares the energy of the supplied atoms objects using
        get_potential_energy().
 
@@ -151,6 +154,7 @@ class EnergyComparator(object):
        dE: the difference in energy below which two energies are
        deemed equal.
     """
+
     def __init__(self, dE=0.02):
         self.dE = dE
 
@@ -162,7 +166,7 @@ class EnergyComparator(object):
             return True
 
 
-class RawScoreComparator(object):
+class RawScoreComparator:
     """Compares the raw_score of the supplied individuals
        objects using a1.info['key_value_pairs']['raw_score'].
 
@@ -171,6 +175,7 @@ class RawScoreComparator(object):
        dist: the difference in raw_score below which two
        scores are deemed equal.
     """
+
     def __init__(self, dist=0.02):
         self.dist = dist
 
@@ -182,19 +187,22 @@ class RawScoreComparator(object):
             return True
 
 
-class NoComparator(object):
+class NoComparator:
     """Returns False always. If you don't want any comparator."""
+
     def looks_like(self, *args):
         return False
 
 
-class AtomsComparator(object):
+class AtomsComparator:
     """Compares the Atoms objects directly."""
+
     def looks_like(self, a1, a2):
         return a1 == a2
 
 
-class CompositionComparator(object):
+class CompositionComparator:
     """Compares the composition of the Atoms objects."""
+
     def looks_like(self, a1, a2):
         return a1.get_chemical_formula() == a2.get_chemical_formula()

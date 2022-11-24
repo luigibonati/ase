@@ -1,7 +1,5 @@
-from __future__ import print_function, division
 # Copyright (C) 2010, Jesper Friis
 # (see accompanying license files for details).
-
 """Definition of the Spacegroup class.
 
 This module only depends on NumPy and the space group database.
@@ -10,22 +8,9 @@ This module only depends on NumPy and the space group database.
 import os
 import warnings
 from functools import total_ordering
+from typing import Union
 
 import numpy as np
-from ase.utils import basestring
-
-# check if we have access to get_spacegroup from spglib
-# https://atztogo.github.io/spglib/
-has_spglib = False
-try:
-    import spglib                   # For version 1.9 or later
-    has_spglib = True
-except ImportError:
-    try:
-        from pyspglib import spglib  # For versions 1.8.x or before
-        has_spglib = True
-    except ImportError:
-        pass
 
 __all__ = ['Spacegroup']
 
@@ -45,8 +30,12 @@ class SpacegroupValueError(SpacegroupError):
     pass
 
 
+# Type alias
+_SPACEGROUP = Union[int, str, 'Spacegroup']
+
+
 @total_ordering
-class Spacegroup(object):
+class Spacegroup:
     """A space group class.
 
     The instances of Spacegroup describes the symmetry operations for
@@ -76,12 +65,10 @@ class Spacegroup(object):
     symbol = property(
         lambda self: self._symbol,
         doc='Hermann-Mauguin (or international) symbol for the space group.')
-    setting = property(
-        lambda self: self._setting,
-        doc='Space group setting. Either one or two.')
-    lattice = property(
-        lambda self: self._symbol[0],
-        doc="""Lattice type:
+    setting = property(lambda self: self._setting,
+                       doc='Space group setting. Either one or two.')
+    lattice = property(lambda self: self._symbol[0],
+                       doc="""Lattice type:
 
     P     primitive
     I     body centering, h+k+l=2n
@@ -89,9 +76,8 @@ class Spacegroup(object):
     A,B,C single face centering, k+l=2n, h+l=2n, h+k=2n
     R     rhombohedral centering, -h+k+l=3n (obverse); h-k+l=3n (reverse)
             """)
-    centrosymmetric = property(
-        lambda self: self._centrosymmetric,
-        doc='Whether a center of symmetry exists.')
+    centrosymmetric = property(lambda self: self._centrosymmetric,
+                               doc='Whether a center of symmetry exists.')
     scaled_primitive_cell = property(
         lambda self: self._scaled_primitive_cell,
         doc='Primitive cell in scaled coordinates as a matrix with the '
@@ -100,9 +86,8 @@ class Spacegroup(object):
         lambda self: self._reciprocal_cell,
         doc='Tree Miller indices that span all kinematically non-forbidden '
         'reflections as a matrix with the Miller indices along the rows.')
-    nsubtrans = property(
-        lambda self: len(self._subtrans),
-        doc='Number of cell-subtranslation vectors.')
+    nsubtrans = property(lambda self: len(self._subtrans),
+                         doc='Number of cell-subtranslation vectors.')
 
     def _get_nsymop(self):
         """Returns total number of symmetry operations."""
@@ -110,6 +95,7 @@ class Spacegroup(object):
             return 2 * len(self._rotations) * len(self._subtrans)
         else:
             return len(self._rotations) * len(self._subtrans)
+
     nsymop = property(_get_nsymop, doc='Total number of symmetry operations.')
     subtrans = property(
         lambda self: self._subtrans,
@@ -123,7 +109,7 @@ class Spacegroup(object):
         doc='Symmetry translations. The invertions are not included '
         'for centrosymmetrical crystals.')
 
-    def __init__(self, spacegroup, setting=1, datafile=None):
+    def __init__(self, spacegroup: _SPACEGROUP, setting=1, datafile=None):
         """Returns a new Spacegroup instance.
 
         Parameters:
@@ -145,11 +131,8 @@ class Spacegroup(object):
             return
         if not datafile:
             datafile = get_datafile()
-        f = open(datafile, 'r')
-        try:
-            _read_datafile(self, spacegroup, setting, f)
-        finally:
-            f.close()
+        with open(datafile, 'r') as fd:
+            _read_datafile(self, spacegroup, setting, fd)
 
     def __repr__(self):
         return 'Spacegroup(%d, setting=%d)' % (self.no, self.setting)
@@ -211,11 +194,13 @@ class Spacegroup(object):
         return not self.__eq__(other)
 
     def __lt__(self, other):
-        return self.no < other.no or (
-            self.no == other.no and self.setting < other.setting)
+        return self.no < other.no or (self.no == other.no
+                                      and self.setting < other.setting)
 
     def __index__(self):
         return self.no
+
+    __int__ = __index__
 
     def get_symop(self):
         """Returns all symmetry operations (including inversions and
@@ -362,17 +347,24 @@ class Spacegroup(object):
         imask = mask[iperm]
         return hkl[imask]
 
-    def equivalent_sites(self, scaled_positions, onduplicates='error',
-                         symprec=1e-3):
+    def equivalent_sites(self,
+                         scaled_positions,
+                         onduplicates='error',
+                         symprec=1e-3,
+                         occupancies=None):
         """Returns the scaled positions and all their equivalent sites.
 
         Parameters:
 
         scaled_positions: list | array
             List of non-equivalent sites given in unit cell coordinates.
+
+        occupancies: list | array, optional (default=None)
+            List of occupancies corresponding to the respective sites.
+
         onduplicates : 'keep' | 'replace' | 'warn' | 'error'
             Action if `scaled_positions` contain symmetry-equivalent
-            positions:
+            positions of full occupancy:
 
             'keep'
                ignore additional symmetry-equivalent positions
@@ -414,7 +406,9 @@ class Spacegroup(object):
         """
         kinds = []
         sites = []
+
         scaled = np.array(scaled_positions, ndmin=2)
+
         for kind, pos in enumerate(scaled):
             for rot, trans in self.get_symop():
                 site = np.mod(np.dot(rot, pos) + trans, 1.)
@@ -423,33 +417,38 @@ class Spacegroup(object):
                     kinds.append(kind)
                     continue
                 t = site - sites
-                mask = np.all((abs(t) < symprec) |
-                              (abs(abs(t) - 1.0) < symprec), axis=1)
+                mask = np.all(
+                    (abs(t) < symprec) | (abs(abs(t) - 1.0) < symprec), axis=1)
                 if np.any(mask):
-                    ind = np.argwhere(mask)[0][0]
-                    if kinds[ind] == kind:
-                        pass
-                    elif onduplicates == 'keep':
-                        pass
-                    elif onduplicates == 'replace':
-                        kinds[ind] = kind
-                    elif onduplicates == 'warn':
-                        warnings.warn('scaled_positions %d and %d '
-                                      'are equivalent' % (kinds[ind], kind))
-                    elif onduplicates == 'error':
-                        raise SpacegroupValueError(
-                            'scaled_positions %d and %d are equivalent' % (
-                                kinds[ind], kind))
-                    else:
-                        raise SpacegroupValueError(
-                            'Argument "onduplicates" must be one of: '
-                            '"keep", "replace", "warn" or "error".')
+                    inds = np.argwhere(mask).flatten()
+                    for ind in inds:
+                        # then we would just add the same thing again -> skip
+                        if kinds[ind] == kind:
+                            pass
+                        elif onduplicates == 'keep':
+                            pass
+                        elif onduplicates == 'replace':
+                            kinds[ind] = kind
+                        elif onduplicates == 'warn':
+                            warnings.warn('scaled_positions %d and %d '
+                                          'are equivalent' %
+                                          (kinds[ind], kind))
+                        elif onduplicates == 'error':
+                            raise SpacegroupValueError(
+                                'scaled_positions %d and %d are equivalent' %
+                                (kinds[ind], kind))
+                        else:
+                            raise SpacegroupValueError(
+                                'Argument "onduplicates" must be one of: '
+                                '"keep", "replace", "warn" or "error".')
                 else:
                     sites.append(site)
                     kinds.append(kind)
+
         return np.array(sites), kinds
 
-    def symmetry_normalised_sites(self, scaled_positions,
+    def symmetry_normalised_sites(self,
+                                  scaled_positions,
                                   map_to_unitcell=True):
         """Returns an array of same size as *scaled_positions*,
         containing the corresponding symmetry-equivalent sites of
@@ -468,7 +467,7 @@ class Spacegroup(object):
                [ 0.,  0.,  0.]])
         """
         scaled = np.array(scaled_positions, ndmin=2)
-        normalised = np.empty(scaled.shape, np.float)
+        normalised = np.empty(scaled.shape, float)
         rot, trans = self.get_op()
         for i, pos in enumerate(scaled):
             sympos = np.dot(rot, pos) + trans
@@ -480,7 +479,10 @@ class Spacegroup(object):
             normalised[i, :] = sympos[j]
         return normalised
 
-    def unique_sites(self, scaled_positions, symprec=1e-3, output_mask=False,
+    def unique_sites(self,
+                     scaled_positions,
+                     symprec=1e-3,
+                     output_mask=False,
                      map_to_unitcell=True):
         """Returns a subset of *scaled_positions* containing only the
         symmetry-unique positions.  If *output_mask* is True, a boolean
@@ -530,7 +532,7 @@ class Spacegroup(object):
         scaled %= 1.0
         scaled %= 1.0
         tags = -np.ones((len(scaled), ), dtype=int)
-        mask = np.ones((len(scaled), ), dtype=np.bool)
+        mask = np.ones((len(scaled), ), dtype=bool)
         rot, trans = self.get_op()
         i = 0
         while mask.any():
@@ -541,7 +543,8 @@ class Spacegroup(object):
             sympos %= 1.0
             m = ~np.all(np.any(np.abs(scaled[np.newaxis, :, :] -
                                       sympos[:, np.newaxis, :]) > symprec,
-                               axis=2), axis=0)
+                               axis=2),
+                        axis=0)
             assert not np.any((~mask) & m)
             tags[m] = i
             mask &= ~m
@@ -584,14 +587,15 @@ def format_symbol(symbol):
 # caching to avoid reading the database each time a new Spacegroup
 # instance is created.
 
+
 def _skip_to_blank(f, spacegroup, setting):
     """Read lines from f until a blank line is encountered."""
     while True:
         line = f.readline()
         if not line:
             raise SpacegroupNotFoundError(
-                'invalid spacegroup %s, setting %i not found in data base' %
-                (spacegroup, setting))
+                'invalid spacegroup `%s`, setting `%s` not found in data base'
+                % (spacegroup, setting))
         if not line.strip():
             break
 
@@ -626,36 +630,35 @@ def _read_datafile_entry(spg, no, symbol, setting, f):
     spg._centrosymmetric = bool(int(f.readline().split()[1]))
     # primitive vectors
     f.readline()
-    spg._scaled_primitive_cell = np.array([[float(floats.get(s, s))
-                                            for s in f.readline().split()]
-                                           for i in range(3)],
-                                          dtype=np.float)
+    spg._scaled_primitive_cell = np.array(
+        [[float(floats.get(s, s)) for s in f.readline().split()]
+         for i in range(3)],
+        dtype=float)
     # primitive reciprocal vectors
     f.readline()
-    spg._reciprocal_cell = np.array([[int(i)
-                                      for i in f.readline().split()]
+    spg._reciprocal_cell = np.array([[int(i) for i in f.readline().split()]
                                      for i in range(3)],
-                                    dtype=np.int)
+                                    dtype=int)
     # subtranslations
     spg._nsubtrans = int(f.readline().split()[0])
-    spg._subtrans = np.array([[float(floats.get(t, t))
-                               for t in f.readline().split()]
-                              for i in range(spg._nsubtrans)],
-                             dtype=np.float)
+    spg._subtrans = np.array(
+        [[float(floats.get(t, t)) for t in f.readline().split()]
+         for i in range(spg._nsubtrans)],
+        dtype=float)
     # symmetry operations
     nsym = int(f.readline().split()[0])
     symop = np.array([[float(floats.get(s, s)) for s in f.readline().split()]
                       for i in range(nsym)],
-                     dtype=np.float)
+                     dtype=float)
     spg._nsymop = nsym
-    spg._rotations = np.array(symop[:, :9].reshape((nsym, 3, 3)), dtype=np.int)
+    spg._rotations = np.array(symop[:, :9].reshape((nsym, 3, 3)), dtype=int)
     spg._translations = symop[:, 9:]
 
 
 def _read_datafile(spg, spacegroup, setting, f):
     if isinstance(spacegroup, int):
         pass
-    elif isinstance(spacegroup, basestring):
+    elif isinstance(spacegroup, str):
         spacegroup = ' '.join(spacegroup.strip().split())
         compact_spacegroup = ''.join(spacegroup.split())
     else:
@@ -667,16 +670,137 @@ def _read_datafile(spg, spacegroup, setting, f):
         compact_symbol = ''.join(_symbol.split())
         _setting = int(line2.strip().split()[1])
         _no = int(_no)
-        if ((isinstance(spacegroup, int) and _no == spacegroup) or
-            (isinstance(spacegroup, basestring) and
-             compact_symbol == compact_spacegroup)) and _setting == setting:
+
+        condition = (
+            (isinstance(spacegroup, int) and _no == spacegroup
+             and _setting == setting)
+            or (isinstance(spacegroup, str)
+                and compact_symbol == compact_spacegroup) and
+            (setting is None or _setting == setting))
+
+        if condition:
             _read_datafile_entry(spg, _no, _symbol, _setting, f)
             break
         else:
             _skip_to_blank(f, spacegroup, setting)
 
 
-def parse_sitesym(symlist, sep=','):
+def parse_sitesym_element(element):
+    """Parses one element from a single site symmetry in the form used
+    by the International Tables.
+
+    Examples:
+
+    >>> parse_sitesym_element("x")
+    ([(0, 1)], 0.0)
+    >>> parse_sitesym_element("-1/2-y")
+    ([(1, -1)], -0.5)
+    >>> parse_sitesym_element("z+0.25")
+    ([(2, 1)], 0.25)
+    >>> parse_sitesym_element("x-z+0.5")
+    ([(0, 1), (2, -1)], 0.5)
+
+
+
+    Parameters
+    ----------
+
+    element: str
+      Site symmetry like "x" or "-y+1/4" or "0.5+z".
+
+
+    Returns
+    -------
+
+    list[tuple[int, int]]
+      Rotation information in the form '(index, sign)' where index is
+      0 for "x", 1 for "y" and 2 for "z" and sign is '1' for a positive
+      entry and '-1' for a negative entry. E.g. "x" is '(0, 1)' and
+      "-z" is (2, -1).
+
+    float
+      Translation information in fractional space. E.g. "-1/4" is
+      '-0.25' and "1/2" is '0.5' and "0.75" is '0.75'.
+
+
+    """
+    element = element.lower()
+    is_positive = True
+    is_frac = False
+    sng_trans = None
+    fst_trans = []
+    snd_trans = []
+    rot = []
+
+    for char in element:
+        if char == "+":
+            is_positive = True
+        elif char == "-":
+            is_positive = False
+        elif char == "/":
+            is_frac = True
+        elif char in "xyz":
+            rot.append((ord(char) - ord("x"), 1 if is_positive else -1))
+        elif char.isdigit() or char == ".":
+            if sng_trans is None:
+                sng_trans = 1.0 if is_positive else -1.0
+            if is_frac:
+                snd_trans.append(char)
+            else:
+                fst_trans.append(char)
+
+    trans = 0.0 if not fst_trans else (sng_trans * float("".join(fst_trans)))
+    if is_frac:
+        trans /= float("".join(snd_trans))
+
+    return rot, trans
+
+
+def parse_sitesym_single(sym, out_rot, out_trans, sep=",",
+                         force_positive_translation=False):
+    """Parses a single site symmetry in the form used by International
+    Tables and overwrites 'out_rot' and 'out_trans' with data.
+
+    Parameters
+    ----------
+
+    sym: str
+      Site symmetry in the form used by International Tables
+      (e.g. "x,y,z", "y-1/2,x,-z").
+
+    out_rot: np.array
+      A 3x3-integer array representing rotations (changes are made inplace).
+
+    out_rot: np.array
+      A 3-float array representing translations (changes are made inplace).
+
+    sep: str
+      String separator ("," in "x,y,z").
+
+    force_positive_translation: bool
+      Forces fractional translations to be between 0 and 1 (otherwise
+      negative values might be accepted). Defaults to 'False'.
+
+
+    Returns
+    -------
+
+    Nothing is returned: 'out_rot' and 'out_trans' are changed inplace.
+
+
+    """
+    out_rot[:] = 0.0
+    out_trans[:] = 0.0
+
+    for i, element in enumerate(sym.split(sep)):
+        e_rot_list, e_trans = parse_sitesym_element(element)
+        for rot_idx, rot_sgn in e_rot_list:
+            out_rot[i][rot_idx] = rot_sgn
+        out_trans[i] = \
+            (e_trans % 1.0) if force_positive_translation else e_trans
+
+
+def parse_sitesym(symlist, sep=',', force_positive_translation=False):
     """Parses a sequence of site symmetries in the form used by
     International Tables and returns corresponding rotation and
     translation arrays.
@@ -687,6 +811,7 @@ def parse_sitesym(symlist, sep=','):
     ...     'x,y,z',
     ...     '-y+1/2,x+1/2,z',
     ...     '-y,-x,-z',
+    ...     'x-1/4, y-1/4, -z'
     ... ]
     >>> rot, trans = parse_sitesym(symlist)
     >>> rot
@@ -700,59 +825,53 @@ def parse_sitesym(symlist, sep=','):
     <BLANKLINE>
            [[ 0, -1,  0],
             [-1,  0,  0],
+            [ 0,  0, -1]],
+    <BLANKLINE>
+           [[ 1,  0,  0],
+            [ 0,  1,  0],
             [ 0,  0, -1]]])
     >>> trans
-    array([[ 0. ,  0. ,  0. ],
-           [ 0.5,  0.5,  0. ],
-           [ 0. ,  0. ,  0. ]])
+    array([[ 0.  ,  0.  ,  0.  ],
+           [ 0.5 ,  0.5 ,  0.  ],
+           [ 0.  ,  0.  ,  0.  ],
+           [-0.25, -0.25,  0.  ]])
     """
+
     nsym = len(symlist)
     rot = np.zeros((nsym, 3, 3), dtype='int')
     trans = np.zeros((nsym, 3))
+
     for i, sym in enumerate(symlist):
-        for j, s in enumerate(sym.split(sep)):
-            s = s.lower().strip()
-            while s:
-                sign = 1
-                if s[0] in '+-':
-                    if s[0] == '-':
-                        sign = -1
-                    s = s[1:]
-                if s[0] in 'xyz':
-                    k = ord(s[0]) - ord('x')
-                    rot[i, j, k] = sign
-                    s = s[1:]
-                elif s[0].isdigit() or s[0] == '.':
-                    n = 0
-                    while n < len(s) and (s[n].isdigit() or s[n] in '/.'):
-                        n += 1
-                    t = s[:n]
-                    s = s[n:]
-                    if '/' in t:
-                        q, r = t.split('/')
-                        trans[i, j] = float(q) / float(r)
-                    else:
-                        trans[i, j] = float(t)
-                else:
-                    raise SpacegroupValueError(
-                        'Error parsing %r. Invalid site symmetry: %s' %
-                        (s, sym))
+        parse_sitesym_single(
+            sym, rot[i], trans[i], sep=sep,
+            force_positive_translation=force_positive_translation)
+
     return rot, trans
 
 
-def spacegroup_from_data(no=None, symbol=None, setting=1,
-                         centrosymmetric=None, scaled_primitive_cell=None,
-                         reciprocal_cell=None, subtrans=None, sitesym=None,
-                         rotations=None, translations=None, datafile=None):
+def spacegroup_from_data(no=None,
+                         symbol=None,
+                         setting=None,
+                         centrosymmetric=None,
+                         scaled_primitive_cell=None,
+                         reciprocal_cell=None,
+                         subtrans=None,
+                         sitesym=None,
+                         rotations=None,
+                         translations=None,
+                         datafile=None):
     """Manually create a new space group instance.  This might be
     useful when reading crystal data with its own spacegroup
     definitions."""
-    if no is not None:
+    if no is not None and setting is not None:
         spg = Spacegroup(no, setting, datafile)
     elif symbol is not None:
-        spg = Spacegroup(symbol, setting, datafile)
+        spg = Spacegroup(symbol, None, datafile)
     else:
-        raise SpacegroupValueError('either *no* or *symbol* must be given')
+        raise SpacegroupValueError('either *no* and *setting* '
+                                   'or *symbol* must be given')
+    if not isinstance(sitesym, list):
+        raise TypeError('sitesym must be a list')
 
     have_sym = False
     if centrosymmetric is not None:
@@ -781,11 +900,10 @@ def spacegroup_from_data(no=None, symbol=None, setting=1,
     return spg
 
 
-def get_spacegroup(atoms, symprec=1e-5, method='phonopy'):
+def get_spacegroup(atoms, symprec=1e-5):
     """Determine the spacegroup to which belongs the Atoms object.
 
-    When PhonoPy/SPGlib is NOT available, a pure ASE python implementation is
-    used. The pure ASE method is NOT recommended for large systems (SLOW).
+    This requires spglib: https://atztogo.github.io/spglib/ .
 
     Parameters:
 
@@ -794,75 +912,27 @@ def get_spacegroup(atoms, symprec=1e-5, method='phonopy'):
     symprec: float
         Symmetry tolerance, i.e. distance tolerance in Cartesian
         coordinates to find crystal symmetry.
-    method: str
-        'phonopy' or 'spglib' when available, or 'ase' (fallback).
 
     The Spacegroup object is returned.
-
-    Example:
-
-    >>> from ase.build import bulk
-    >>> atoms = bulk("Cu", "fcc", a=3.6, cubic=True)
-    >>> sg = get_spacegroup(atoms)
-    >>> sg
-    Spacegroup(225, setting=1)
-    >>> sg.no
-    225
     """
 
-    # use spglib when it is available (and return)
-    if has_spglib and method in ['phonopy', 'spglib']:
-        cell = (atoms.cell, atoms.get_scaled_positions(), atoms.numbers)
-        sg = spglib.get_spacegroup(cell, symprec=symprec)
-        sg_no = int(sg[sg.find('(') + 1:sg.find(')')])
-        return Spacegroup(sg_no)
+    # Example:
+    # (We don't include the example in docstring to appease doctests
+    #  when import fails)
+    # >>> from ase.build import bulk
+    # >>> atoms = bulk("Cu", "fcc", a=3.6, cubic=True)
+    # >>> sg = get_spacegroup(atoms)
+    # >>> sg
+    # Spacegroup(225, setting=1)
+    # >>> sg.no
+    # 225
 
-    # no spglib, we use our own spacegroup finder. Not as fast as spglib.
-    # we center the Atoms positions on each atom in the cell, and find the
-    # spacegroup of highest symmetry
-    found = None
-    for kind, pos in enumerate(atoms.get_scaled_positions()):
-        sg = _get_spacegroup(atoms, symprec=symprec, center=kind)
-        if found is None or sg.no > found.no:
-            found = sg
+    import spglib
 
-    return found
-
-
-def _get_spacegroup(atoms, symprec=1e-5, center=None):
-    """ASE implementation of get_spacegroup, pure python."""
-
-    # we try all available spacegroups from 230 to 1, backwards
-    # a Space group is the collection of all symmetry operations which lets the
-    # unit cell invariant.
-    found = None
-    positions = atoms.get_scaled_positions(wrap=True)  # in the lattice frame
-
-    # make sure we are insensitive to translation. this choice is arbitrary and
-    # could lead to a 'slightly' wrong guess for the Space group, e.g. do not
-    # guess centro-symmetry.
-    if center is not None:
-        try:
-            positions -= positions[center]
-        except IndexError:
-            pass
-
-    # search space groups from the highest symmetry to the lowest
-    # retain the first match
-    for nb in range(230, 0, -1):
-        sg = Spacegroup(nb)
-        #
-        # now we scan all atoms in the cell and look for equivalent sites
-        sites, kinds = sg.equivalent_sites(positions,
-                                           onduplicates='keep',
-                                           symprec=symprec)
-
-        # the equivalent sites should match all other atom locations in the
-        # cell as the spacegroup transforms the unit cell in itself
-        # we test on the number of equivalent sites
-        if len(sites) == len(positions):
-            # store the space group into the list
-            found = sg
-            break
-
-    return found
+    sg = spglib.get_spacegroup((atoms.get_cell(), atoms.get_scaled_positions(),
+                                atoms.get_atomic_numbers()),
+                               symprec=symprec)
+    if sg is None:
+        raise RuntimeError('Spacegroup not found')
+    sg_no = int(sg[sg.find('(') + 1:sg.find(')')])
+    return Spacegroup(sg_no)

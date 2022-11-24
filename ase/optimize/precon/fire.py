@@ -4,6 +4,7 @@ from ase.optimize.optimize import Optimizer
 from ase.constraints import UnitCellFilter
 import time
 
+
 class PreconFIRE(Optimizer):
 
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
@@ -66,8 +67,12 @@ class PreconFIRE(Optimizer):
     def read(self):
         self.v, self.dt = self.load()
 
-    def step(self, f):
+    def step(self, f=None):
         atoms = self.atoms
+
+        if f is None:
+            f = atoms.get_forces()
+
         r = atoms.get_positions()
 
         if self.precon is not None:
@@ -91,7 +96,7 @@ class PreconFIRE(Optimizer):
                 func_val = self.func(r_test)
                 self.e1 = func_val
                 if (func_val > self.func(r) -
-                      self.theta * self.dt * np.vdot(v_test, f)):
+                        self.theta * self.dt * np.vdot(v_test, f)):
                     self.v[:] *= 0.0
                     self.a = self.astart
                     self.dt *= self.fdec
@@ -161,7 +166,9 @@ class PreconFIRE(Optimizer):
             fmax_sq = (forces**2).sum(axis=1).max()
             return fmax_sq < self.fmax**2
 
-    def log(self, forces):
+    def log(self, forces=None):
+        if forces is None:
+            forces = self.atoms.get_forces()
         if isinstance(self.atoms, UnitCellFilter):
             natoms = len(self.atoms.atoms)
             forces, stress = forces[:natoms], self.atoms.stress

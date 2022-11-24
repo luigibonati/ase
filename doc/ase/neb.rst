@@ -31,6 +31,10 @@ Relevant literature References:
    S. Smidstrup, A. Pedersen, K. Stokbro and H. Jonsson,
    J. Chem. Phys. 140, 214106 (2014)
 
+5. 'Scaled and Dynamic Optimizations of Nudged Elastic Bands',
+   P. Lindgren, G. Kastlunger and A. A. Peterson,
+   J. Chem. Theory Comput. 15, 11, 5787-5793 (2019)
+
 
 The NEB class
 =============
@@ -57,7 +61,7 @@ saved in A.traj and B.traj::
   neb.interpolate()
   # Set calculators:
   for image in images[1:4]:
-      image.set_calculator(MyCalculator(...))
+      image.calc = MyCalculator(...)
   # Optimize:
   optimizer = MDMin(neb, trajectory='A2B.traj')
   optimizer.run(fmax=0.04)
@@ -70,23 +74,31 @@ the original atoms object.
 Notice the use of the :meth:`~NEB.interpolate` method to obtain an
 initial guess for the path from A to B.
 
+
 Interpolation
 =============
 
-.. method:: NEB.interpolate()
+``NEB.interpolate()``
 
    Interpolate path linearly from initial to final state.
 
-.. method:: NEB.interpolate('idpp')
+.. autofunction:: interpolate
 
-   From a linear interpolation, create an improved path
-   from initial to final state using the IDPP approach [4].
+   Interpolate path linearly from initial to final state. This standalone
+   function can be used independently of the NEB class, but is functionally
+   identical.
 
-.. method:: NEB.idpp_interpolate()
+``NEB.interpolate(method='idpp')``
 
-   Generate an idpp pathway from a set of images. This differs
-   from above in that an initial guess for the IDPP, other than
-   linear interpolation can be provided.
+   Create an improved path from initial to final state using the IDPP approach
+   [4]. This will start from an initial guess of a linear interpolation.
+
+.. autofunction:: idpp_interpolate
+
+   Generate an IDPP pathway from a set of images. This differs
+   from above in that more IDPP-specific parameters can be specified,
+   and an initial guess for the IDPP other than linear interpolation
+   can be provided.
 
 Only the internal images (not the endpoints) need have
 calculators attached.
@@ -181,6 +193,45 @@ To use the climbing image NEB method, instantiate the NEB object like this::
   convergence is slow.
 
 
+Scaled and dynamic optimizations
+================================
+
+.. autoclass:: ase.dyneb.DyNEB
+
+The convergence of images is often non-uniform, and a large fraction of
+computational resources can be spent calculating images that are below
+the convergence criterion. This can be avoided with a dynamic optimization
+method that monitors the convergence of each image. Dynamic optimization
+is implemented as a subclass of the NEB method::
+
+    from ase.dyneb import DyNEB
+    neb = DyNEB(images, fmax=0.05, dynamic_relaxation=True)
+
+where ``fmax`` must be identical to the ``fmax`` of the optimizer.
+
+.. note::
+
+    Dynamic optimization only works efficiently in series, and will not result
+    in reduced computational time when resources are parallelized over images.
+    ``dynamic_relaxation=False`` reverts to the default NEB implementation.
+
+The saddle point is the important result of an NEB calculation, and the other
+interior images are typically not used in subsequent analyses. The
+convergence criteria can be scaled to focus on the saddle point and increase
+the tolerance in other regions of the PES. Convergence scaling is implemented
+as::
+
+  neb = DyNEB(images, fmax=0.05, dynamic_relaxation=True, scale_fmax=1.)
+
+where the convergence criterion of each image is scaled based on the position
+of the image relative to the highest point in the band. The rate (slope) of
+convergence scaling is controlled by the keyword ``scale_fmax``.
+
+.. note::
+
+  A low scaling factor (``scale_fmax=1-3``) is often enough to significantly
+  reduce the number of force calls required for convergence.
+
 Parallelization over images
 ===========================
 
@@ -189,21 +240,28 @@ The script will have to be run with an MPI-enabled Python interpreter
 like GPAW_'s gpaw-python_.  All images exist on all processors, but
 only some of them have a calculator attached::
 
-  from ase.parallel import rank, size
+  from ase.parallel import world
   from ase.calculators.emt import EMT
   # Number of internal images:
   n = len(images) - 2
-  j = rank * n // size
+  j = world.rank * n // world.size
   for i, image in enumerate(images[1:-1]):
       if i == j:
-          image.set_calculator(EMT())
+          image.calc = EMT()
 
 Create the NEB object with ``NEB(images, parallel=True)``.
 For a complete example using GPAW_, see here_.
 
-.. _GPAW: http://wiki.fysik.dtu.dk/gpaw
+.. _GPAW: https://wiki.fysik.dtu.dk/gpaw
 .. _gpaw-python: https://wiki.fysik.dtu.dk/gpaw/documentation/manual.html#parallel-calculations
 .. _here: https://wiki.fysik.dtu.dk/gpaw/tutorials/neb/neb.html
+
+Using Shared Calculators
+========================
+
+Some calculators may parallelize well outside of ASE, or constructing them
+consumes resources, for this purpose the user can allow the usage of shared
+calculators with the `allow_shared_calculator` parameter of NEB.
 
 
 .. _nebtools:
@@ -216,3 +274,27 @@ A class exists to help in automating the analysis of NEB jobs. See the
 
 .. autoclass:: NEBTools
    :members:
+
+.. highlight:: bash
+
+You can also make NEB plots that show the relaxation of your trajectory
+directly from the command line; this will output the plots into a single PDF::
+
+    $ ase nebplot neb.traj
+
+You can find more help with::
+
+    $ ase nebplot -h
+
+.. highlight:: python
+
+AutoNEB
+=======
+
+.. warning::
+
+    The module from where the :class:`ase.autoneb.AutoNEB` class is imported
+    may be changed some day in a future version of ASE
+    (most likely to :mod:`ase.neb` or :mod:`ase.mep`).
+
+.. autoclass:: ase.autoneb.AutoNEB

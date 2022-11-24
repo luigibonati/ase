@@ -1,49 +1,6 @@
-import os
 import numpy as np
-import string
 
-from ase.units import Bohr
 from ase.io.fortranfile import FortranFile
-
-
-def xv_to_atoms(filename):
-    """Create atoms object from xv file.
-
-    Parameters:
-        -filename : str. The filename of the '.XV' file.
-
-    return : An Atoms object
-    """
-    from ase.atoms import Atoms
-    if not os.path.exists(filename):
-        filename += '.gz'
-
-    with open(filename, 'r') as f:
-        # Read cell vectors (lines 1-3)
-        vectors = []
-        for i in range(3):
-            data = string.split(f.readline())
-            vectors.append([string.atof(data[j]) * Bohr for j in range(3)])
-
-        # Read number of atoms (line 4)
-        string.atoi(string.split(f.readline())[0])
-
-        # Read remaining lines
-        speciesnumber, atomnumbers, xyz, V = [], [], [], []
-        for line in f.readlines():
-            if len(line) > 5:  # Ignore blank lines
-                data = string.split(line)
-                speciesnumber.append(string.atoi(data[0]))
-                atomnumbers.append(string.atoi(data[1]))
-                xyz.append([string.atof(data[2 + j]) * Bohr for j in range(3)])
-                V.append([string.atof(data[5 + j]) * Bohr for j in range(3)])
-
-    vectors = np.array(vectors)
-    atomnumbers = np.array(atomnumbers)
-    xyz = np.array(xyz)
-    atoms = Atoms(numbers=atomnumbers, positions=xyz, cell=vectors)
-
-    return atoms
 
 
 def read_rho(fname):
@@ -89,11 +46,11 @@ def read_rho(fname):
 
 def get_valence_charge(filename):
     """ Read the valence charge from '.psf'-file."""
-    with open(filename, 'r') as f:
-        f.readline()
-        f.readline()
-        f.readline()
-        valence = -float(f.readline().split()[-1])
+    with open(filename, 'r') as fd:
+        fd.readline()
+        fd.readline()
+        fd.readline()
+        valence = -float(fd.readline().split()[-1])
 
     return valence
 
@@ -109,8 +66,8 @@ def read_vca_synth_block(filename, species_number=None):
 
     Returns: A string that can be inserted into the main '.fdf-file'.
     """
-    with open(filename, 'r') as f:
-        lines = f.readlines()
+    with open(filename, 'r') as fd:
+        lines = fd.readlines()
     lines = lines[1:-1]
 
     if species_number is not None:
@@ -253,7 +210,7 @@ def readPLD(fname, norbitals, natoms):
     orb2ao = np.zeros((norbitals), dtype=int)
     orb2uorb = np.zeros((norbitals), dtype=int)
     orb2occ = np.zeros((norbitals), dtype=float)
-    
+
     max_rcut = fh.readReals('d')
     for iorb in range(norbitals):
         dat = fh.readRecord()
@@ -267,7 +224,7 @@ def readPLD(fname, norbitals, natoms):
     atm2shift = np.zeros((natoms + 1), dtype=int)
     for iatm in range(natoms):
         atm2sp[iatm] = fh.readInts('i')[0]
-    
+
     for iatm in range(natoms + 1):
         atm2shift[iatm] = fh.readInts('i')[0]
 
@@ -276,7 +233,7 @@ def readPLD(fname, norbitals, natoms):
     for i in range(3):
         cell[i, :] = fh.readReals('d')
     nunit_cells = fh.readInts('i')
-    
+
     coord_sc = np.zeros((natoms, 3), dtype=float)
     for iatm in range(natoms):
         coord_sc[iatm, :] = fh.readReals('d')
@@ -363,7 +320,7 @@ def readWFSX(fname):
                      {0}  {1}  {2}\n siesta_get_wfsx'.format(ikpoint,
                                                              ispin, ispin_in)
                 raise ValueError(msg)
-            
+
             norbitals_in = fh.readInts('i')[0]
             if (norbitals_in > norbitals):
                 msg = 'siesta_get_wfsx: err: norbitals_in>norbitals\n \
@@ -397,7 +354,7 @@ def readWFSX(fname):
                 msg = 'siesta_get_wfsx: warn: .not. all(mo_spin_k_2_is_read)'
                 print('mo_spin_kpoint_2_is_read = ', mo_spin_kpoint_2_is_read)
                 raise ValueError(msg)
- 
+
     fh.close()
     return WFSX_tuple(nkpoints, nspin, norbitals, gamma, orb2atm,
                       orb2strspecies, orb2ao, orb2n, orb2strsym,

@@ -1,18 +1,17 @@
-from __future__ import print_function
-import os
-import os.path as op
+# Note:
+# Try to avoid module level import statements here to reduce
+# import time during CLI execution
 import sys
-
-from ase.io import read
-from ase.io.formats import filetype, UnknownFileTypeError
-from ase.db import connect
-from ase.db.core import parse_selection
-from ase.db.jsondb import JSONDatabase
-from ase.db.row import atoms2dict
 
 
 class CLICommand:
-    short_description = 'Find files with atoms in them'
+    """Find files with atoms in them.
+
+    Search through files known to ASE applying a query to filter the results.
+
+    See https://wiki.fysik.dtu.dk/ase/ase/db/db.html#querying for more
+    informations on how to construct the query string.
+    """
 
     @staticmethod
     def add_arguments(parser):
@@ -22,7 +21,8 @@ class CLICommand:
             help='Examples: More than 2 hydrogens and no silver: "H>2,Ag=0". '
             'More than 1000 atoms: "natoms>1000". '
             'Slab geometry containing Cu and Ni: "pbc=TTF,Cu,Ni".')
-        parser.add_argument('-v', '--verbose', action='store_true')
+        parser.add_argument('-v', '--verbose', action='store_true',
+                            help='More output.')
         parser.add_argument('-l', '--long', action='store_true',
                             help='Show also periodic boundary conditions, '
                             'chemical formula and filetype.')
@@ -39,6 +39,8 @@ class CLICommand:
 
 
 def main(args):
+    from ase.db.core import parse_selection
+
     query = parse_selection(args.query)
     include = args.include.split(',') if args.include else []
     exclude = args.exclude.split(',') if args.exclude else []
@@ -61,6 +63,9 @@ def main(args):
 
 def allpaths(folder, include, exclude):
     """Generate paths."""
+    import os
+    import os.path as op
+
     exclude += ['.py', '.pyc']
     for dirpath, dirnames, filenames in os.walk(folder):
         for name in filenames:
@@ -84,6 +89,18 @@ def check(path, query, verbose):
 
     Returns a (filetype, AtomsRow object) tuple.
     """
+    from ase.io import read
+    from ase.io.formats import filetype, UnknownFileTypeError
+    from ase.db import connect
+    from ase.db.row import atoms2dict
+    from ase.db.jsondb import JSONDatabase
+
+    class FakeDB(JSONDatabase):
+        def __init__(self, atoms):
+            self.bigdct = {1: atoms2dict(atoms)}
+
+        def _read_json(self):
+            return self.bigdct, [1], 2
 
     try:
         format = filetype(path, guess=False)
@@ -109,11 +126,3 @@ def check(path, query, verbose):
             print(path + ':', x, file=sys.stderr)
 
     return '', None
-
-
-class FakeDB(JSONDatabase):
-    def __init__(self, atoms):
-        self.bigdct = {1: atoms2dict(atoms)}
-
-    def _read_json(self):
-        return self.bigdct, [1], 2

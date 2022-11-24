@@ -1,4 +1,4 @@
-from __future__ import print_function
+# flake8: noqa
 import logging
 import math
 import numpy as np
@@ -313,14 +313,14 @@ class LineSearchArmijo:
                 a_final = a1
                 phi_a_final = phi_a1
                 logger.debug("Linesearch returned a = %e, phi_a = %e",
-                            a_final, phi_a_final)
+                             a_final, phi_a_final)
                 logger.debug("-----------LINESEARCH COMPLETE-----------")
                 return a_final, phi_a_final, num_iter==0
 
             # we don't have sufficient decrease, so we need to compute a
             # new trial step-length
             at = -  ((self.phi_prime_start * a1) /
-                (2*((phi_a1 - self.func_start)/a1 - self.phi_prime_start)))
+                     (2*((phi_a1 - self.func_start)/a1 - self.phi_prime_start)))
             logger.debug("quadratic_min: initial at = %e", at)
 
             # because a1 does not satisfy Armijo it follows that at must

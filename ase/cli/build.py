@@ -1,25 +1,43 @@
+# Note:
+# Try to avoid module level import statements here to reduce
+# import time during CLI execution
 import sys
-
 import numpy as np
-
-from ase.db import connect
-from ase.build import bulk
-from ase.io import read, write
-from ase.visualize import view
-from ase.build import molecule
-from ase.atoms import Atoms, string2symbols
-from ase.data import ground_state_magnetic_moments
-from ase.data import atomic_numbers, covalent_radii
 
 
 class CLICommand:
-    short_description = 'Build an atom, molecule or bulk structure'
+    """Build an atom, molecule or bulk structure.
+
+    Atom:
+
+        ase build <chemical symbol> ...
+
+    Molecule:
+
+        ase build <formula> ...
+
+    where <formula> must be one of the formulas known to ASE
+    (see here: https://wiki.fysik.dtu.dk/ase/ase/build/build.html#molecules).
+
+    Bulk:
+
+        ase build -x <crystal structure> <formula> ...
+
+    Examples:
+
+        ase build Li  # lithium atom
+        ase build Li -M 1  # ... with a magnetic moment of 1
+        ase build Li -M 1 -V 3.5 # ... in a 7x7x7 Ang cell
+        ase build H2O  # water molecule
+        ase build -x fcc Cu -a 3.6  # FCC copper
+    """
 
     @staticmethod
     def add_arguments(parser):
         add = parser.add_argument
-        add('name', metavar='name/input-file')
-        add('output', nargs='?')
+        add('name', metavar='formula/input-file',
+            help='Chemical formula or input filename.')
+        add('output', nargs='?', help='Output file.')
         add('-M', '--magnetic-moment',
             metavar='M1,M2,...',
             help='Magnetic moments.  '
@@ -57,6 +75,10 @@ class CLICommand:
 
     @staticmethod
     def run(args, parser):
+        from ase.db import connect
+        from ase.io import read, write
+        from ase.visualize import view
+
         if args.vacuum0:
             parser.error('Please use -V or --vacuum instead!')
 
@@ -96,10 +118,16 @@ class CLICommand:
 
 
 def build_molecule(args):
+    from ase.atoms import Atoms
+    from ase.build import molecule
+    from ase.data import ground_state_magnetic_moments
+    from ase.data import atomic_numbers, covalent_radii
+    from ase.symbols import string2symbols
+
     try:
         # Known molecule or atom?
         atoms = molecule(args.name)
-    except NotImplementedError:
+    except (NotImplementedError, KeyError):
         symbols = string2symbols(args.name)
         if len(symbols) == 1:
             Z = atomic_numbers[symbols[0]]
@@ -153,6 +181,8 @@ def build_molecule(args):
 
 
 def build_bulk(args):
+    from ase.build import bulk
+
     L = args.lattice_constant.replace(',', ' ').split()
     d = dict([(key, float(x)) for key, x in zip('ac', L)])
     atoms = bulk(args.name, crystalstructure=args.crystal_structure,

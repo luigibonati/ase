@@ -12,6 +12,7 @@ File input and output
 .. toctree::
     :hidden:
 
+    formatoptions
     trajectory
     ulm
     opls
@@ -23,6 +24,11 @@ The :mod:`ase.io` module has three basic functions: :func:`read`,
 .. autofunction:: read
 .. autofunction:: iread
 .. autofunction:: write
+
+Use ``ase info --formats`` to see a list of formats.  This information
+is programmatically accessible as ``ase.io.formats.ioformats``, a
+dictionary which maps format names to :class:`ase.io.formats.IOFormat`
+objects.
 
 These are the file-formats that are recognized (formats with a ``+`` support
 multiple configurations):
@@ -50,8 +56,7 @@ multiple configurations):
 .. note::
 
     ASE can read and write directly to compressed files. Simply add ``.gz``,
-    ``.bz2`` or ``.xz`` to your filename (``.xz`` requires the
-    ``backports.lzma`` module on Python 2).
+    ``.bz2`` or ``.xz`` to your filename.
 
 The :func:`read` function is only designed to retrieve the atomic configuration
 from a file, but for the CUBE format you can import the function:
@@ -69,7 +74,7 @@ Examples
 ========
 
 >>> from ase import Atoms
->>> from ase.build import fcc111, add_adsorbate
+>>> from ase.build import fcc111, add_adsorbate, bulk
 >>> from ase.io import read, write
 >>> adsorbate = Atoms('CO')
 >>> adsorbate[1].z = 1.1
@@ -83,13 +88,19 @@ Write PNG image
 
 .. image:: io1.png
 
-Write POVRAY file
+Write animation with 500 ms duration per frame
 
->>> write('slab.pov', slab * (3, 3, 1), rotation='10z,-80x')
+>>> write('movie.gif', [bulk(s) for s in ['Cu', 'Ag', 'Au']], interval=500)
+
+
+Write POVRAY file (the projection settings and povray specific settings are separated)
+
+>>> write('slab.pov', slab * (3, 3, 1),
+...       generic_projection_settings = dict(rotation='10z,-80x'))
 
 This will write both a ``slab.pov`` and a ``slab.ini`` file.  Convert
 to PNG with the command ``povray slab.ini`` or use the
-``run_povray=True`` option:
+``.render`` method on the returned object:
 
 .. image:: io2.png
 
@@ -97,9 +108,16 @@ Here is an example using ``bbox``
 
 >>> d = a / 2**0.5
 >>> write('slab.pov', slab * (2, 2, 1),
-...       bbox=(d, 0, 3 * d, d * 3**0.5))
+...       generic_projection_settings = dict(
+...       bbox=(d, 0, 3 * d, d * 3**0.5))).render()
 
 .. image:: io3.png
+
+This is an example of displaying bond order for a molecule
+
+.. literalinclude:: save_C2H4.py
+
+.. image:: C2H4.png
 
 Note that in general the XYZ-format does not contain information about the unit cell, however, ASE uses the extended XYZ-format which stores the unitcell:
 
@@ -143,3 +161,19 @@ Adding a new file-format to ASE
 Try to model the read/write functions after the *xyz* format as implemented
 in :git:`ase/io/xyz.py` and also read, understand and update
 :git:`ase/io/formats.py`.
+
+Adding a new file-format in a plugin package
+============================================
+
+IO formats can also be implemented in external packages. For this the read
+write functions of the IO format are implemented as normal. To define the
+format the parameters are entered into a :class:`ase.utils.plugins.ExternalIOFormat`
+object.
+
+.. note::
+    The module name of the external IO format has to be absolute and cannot
+    be omitted.
+
+In the configuration of the package an entry point is added under the group
+``ase.ioformats`` which points to the defined :class:`ase.utils.plugins.ExternalIOFormat`
+object. The format of this entry point looks like ``format-name=ase_plugin.io::ioformat``.

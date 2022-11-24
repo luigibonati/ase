@@ -1,14 +1,43 @@
-from __future__ import print_function
-from math import sqrt
+from math import sqrt, gcd
 
 import numpy as np
 
 from ase.atoms import Atoms
-from ase.utils import gcd
 
 
 def nanotube(n, m, length=1, bond=1.42, symbol='C', verbose=False,
              vacuum=None):
+    """Create an atomic structure.
+
+    Creates a single-walled nanotube whose structure is specified using the
+    standardized (n, m) notation.
+
+    Parameters
+    ----------
+    n : int
+        n in the (n, m) notation.
+    m : int
+        m in the (n, m) notation.
+    length : int, optional
+        Length (axial repetitions) of the nanotube.
+    bond : float, optional
+        Bond length between neighboring atoms.
+    symbol : str, optional
+        Chemical element to construct the nanotube from.
+    verbose : bool, optional
+        If True, will display key geometric parameters.
+
+    Returns
+    -------
+    ase.atoms.Atoms
+        An ASE Atoms object corresponding to the specified molecule.
+
+    Examples
+    --------
+    >>> from ase.build import nanotube
+    >>> atoms1 = nanotube(6, 0, length=4)
+    >>> atoms2 = nanotube(3, 3, length=6, bond=1.4, symbol='Si')
+    """
     if n < m:
         m, n = n, m
         sign = -1
@@ -19,7 +48,7 @@ def nanotube(n, m, length=1, bond=1.42, symbol='C', verbose=False,
     sq3 = sqrt(3.0)
     a = sq3 * bond
     l2 = n * n + m * m + n * m
-    l = sqrt(l2)
+    l1 = sqrt(l2)
 
     nd = gcd(n, m)
     if (n - m) % (3 * nd) == 0:
@@ -63,7 +92,7 @@ def nanotube(n, m, length=1, bond=1.42, symbol='C', verbose=False,
 
     lp = nnnp * nnnp + nnnq * nnnq + nnnp * nnnq
     r = a * sqrt(lp)
-    c = a * l
+    c = a * l1
     t = sq3 * c / ndr
 
     if 2 * nn > nk:

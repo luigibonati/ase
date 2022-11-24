@@ -6,4 +6,3 @@ ASE enhancement proposals
 
   labels
   calculators
-  cli

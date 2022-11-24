@@ -81,7 +81,8 @@ All the functions setting up surfaces take the same arguments.
   The thickness of the vacuum layer.  The specified amount of
   vacuum appears on both sides of the slab.  Default value is None,
   meaning not to add any vacuum.  In that case the third axis perpendicular to
-  the surface will be undefined (``[0, 0, 0]``).  Some calculators can work
+  the surface will be undefined (``[0, 0, 0]``) or left at its intrinsic
+  bulk value if requested (see *periodic*).  Some calculators can work
   with undefined axes as long as the :attr:`~ase.Atoms.pbc` flag is set to
   ``False`` along that direction.
 
@@ -89,6 +90,13 @@ All the functions setting up surfaces take the same arguments.
   (optional, not supported by all functions). If specified and true,
   forces the creation of a unit cell with orthogonal basis vectors.
   If the default is such a unit cell, this argument is not supported.
+
+*periodic*:
+  (optional) Produce a bulk system.  Defaults to False.  If true, sets
+  boundary conditions and cell constantly with the corresponding bulk
+  structure.  Useful for stacking multiple different surfaces.  The
+  system will be fully equivalent to the bulk material only if the
+  number of layers is consistent with the crystal stacking.
 
 Each function defines a number of standard adsorption sites that can
 later be used when adding an adsorbate with
@@ -237,7 +245,8 @@ Example
 To setup a Au(211) surface with 9 layers and 10 Å of vacuum:
 
 .. literalinclude:: general_surface.py
-    :lines: 2-4
+    :start-after: Au example
+    :end-before: Mo example
 
 This is the easy way, where you use the experimental lattice constant
 for gold bulk structure.  You can write::
@@ -253,7 +262,8 @@ Next example is a molybdenum bcc(321) surface where we decide what
 lattice constant to use:
 
 .. literalinclude:: general_surface.py
-    :lines: 6-9
+    :start-after: Mo example
+    :end-before: Pt3Rh example
 
 .. image:: s2.png
 
@@ -262,7 +272,8 @@ carried out with this module.  In this example, two :mol:`Pt_3Rh`
 fcc(211) surfaces will be created:
 
 .. literalinclude:: general_surface.py
-    :lines: 11-25
+    :start-after: Pt3Rh example
+    :end-before: Done
 
 |s3| |s4|
 

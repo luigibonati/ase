@@ -1,3 +1,4 @@
+# flake8: noqa
 """
 The following contains a database of small molecules
 
@@ -28,7 +29,7 @@ and may be distributed or copied http://www.nist.gov/public_affairs/disclaimer.c
 
 """
 
-from ase.atoms import string2symbols
+from ase.symbols import string2symbols
 
 atom_names = ['H','Li','Be','C','N','O','F','Na','Si','P','S','Cl']
 

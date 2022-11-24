@@ -6,9 +6,9 @@ Amber
 Introduction
 ------------
 
-Amber_ is a powerfull classical simulations package.  It is not free, academic
+Amber_ is a powerful classical simulations package.  It is not free, academic
 license costs $500. Ase-Amber has been tested only for amber16 (2016). It can
-bee usefull as MM part of QM/MM calculations since amber supports fast netCDF
+bee useful as MM part of QM/MM calculations since amber supports fast netCDF
 fileIO.
 
 .. _Amber: http://ambermd.org
@@ -43,7 +43,7 @@ You need a file ``mm.in`` with instructions for the simulation::
 Here is your example Python script::
 
     from ase import Atoms
-    from ase.calculator.amber import Amber
+    from ase.calculators.amber import Amber
 
     atoms = Atoms('OH2OH2',
                   [[-0.956, -0.121, 0],
@@ -59,5 +59,5 @@ Here is your example Python script::
                  topologyfile='2h2o.top',
                  incoordfile='mm.crd')
     calc.write_coordinates(atoms, 'mm.crd')
-    atoms.set_calculator(calc)
+    atoms.calc = calc
     f = atoms.get_forces()

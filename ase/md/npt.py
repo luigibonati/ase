@@ -1,4 +1,3 @@
-from __future__ import print_function
 '''Constant pressure/stress and temperature dynamics.
 
 Combined Nose-Hoover and Parrinello-Rahman dynamics, creating an NPT
@@ -27,7 +26,7 @@ import weakref
 import numpy as np
 
 from ase.md.md import MolecularDynamics
-from ase.utils import basestring
+from ase import units
 
 linalg = np.linalg
 
@@ -36,117 +35,117 @@ linalg = np.linalg
 
 
 class NPT(MolecularDynamics):
-    '''Constant pressure/stress and temperature dynamics.
-
-    Combined Nose-Hoover and Parrinello-Rahman dynamics, creating an
-    NPT (or N,stress,T) ensemble.
-
-    The method is the one proposed by Melchionna et al. [1] and later
-    modified by Melchionna [2].  The differential equations are integrated
-    using a centered difference method [3].  See also NPTdynamics.tex
-
-    The dynamics object is called with the following parameters:
-
-    atoms
-        The list of atoms.
-
-    dt
-        The timestep in units matching eV, A, u.
-
-    temperature
-        The desired temperature in eV.
-
-    externalstress
-        The external stress in eV/A^3.  Either a symmetric
-        3x3 tensor, a 6-vector representing the same, or a
-        scalar representing the pressure.  Note that the
-        stress is positive in tension whereas the pressure is
-        positive in compression: giving a scalar p is
-        equivalent to giving the tensor (-p, -p, -p, 0, 0, 0).
-
-    ttime
-        Characteristic timescale of the thermostat.
-        Set to None to disable the thermostat.
-
-    pfactor
-        A constant in the barostat differential equation.  If
-        a characteristic barostat timescale of ptime is
-        desired, set pfactor to ptime^2 * B (where B is the
-        Bulk Modulus).  Set to None to disable the barostat.
-        Typical metallic bulk moduli are of the order of
-        100 GPa or 0.6 eV/A^3.
-
-    mask=None
-        Optional argument.  A tuple of three integers (0 or 1),
-        indicating if the system can change size along the
-        three Cartesian axes.  Set to (1,1,1) or None to allow
-        a fully flexible computational box.  Set to (1,1,0)
-        to disallow elongations along the z-axis etc.
-        mask may also be specified as a symmetric 3x3 array
-        indicating which strain values may change.
-
-    Useful parameter values:
-
-    * The same timestep can be used as in Verlet dynamics, i.e. 5 fs is fine
-      for bulk copper.
-
-    * The ttime and pfactor are quite critical[4], too small values may
-      cause instabilites and/or wrong fluctuations in T / p.  Too
-      large values cause an oscillation which is slow to die.  Good
-      values for the characteristic times seem to be 25 fs for ttime,
-      and 75 fs for ptime (used to calculate pfactor), at least for
-      bulk copper with 15000-200000 atoms.  But this is not well
-      tested, it is IMPORTANT to monitor the temperature and
-      stress/pressure fluctuations.
-
-    It has the following methods:
-
-    run(n)
-        Perform n timesteps.
-    initialize()
-        Estimates the dynamic variables for time=-1 to start
-        the algorithm.   This is automatically called before
-        the first timestep.
-    set_stress()
-        Set the external stress.  Use with care.  It is
-        preferable to set the right value when creating the
-        object.
-    set_mask()
-        Change the mask.  Use with care, as you may "freeze"
-        a fluctuation in the strain rate.
-    get_gibbs_free_energy()
-        Gibbs free energy is supposed to be preserved by this
-        dynamics.  This is mainly intended as a diagnostic
-        tool.
-
-    References:
-
-    1) S. Melchionna, G. Ciccotti and B. L. Holian, Molecular
-       Physics 78, p. 533 (1993).
-
-    2) S. Melchionna, Physical
-       Review E 61, p. 6165 (2000).
-
-    3) B. L. Holian, A. J. De Groot, W. G. Hoover, and C. G. Hoover,
-       Physical Review A 41, p. 4552 (1990).
-
-    4) F. D. Di Tolla and M. Ronchetti, Physical
-       Review E 48, p. 1726 (1993).
-
-    '''
 
     classname = "NPT"  # Used by the trajectory.
     _npt_version = 2   # Version number, used for Asap compatibility.
 
     def __init__(self, atoms,
-                 timestep, temperature, externalstress, ttime, pfactor,
-                 mask=None, trajectory=None, logfile=None, loginterval=1):
+                 timestep, temperature=None, externalstress=None,
+                 ttime=None, pfactor=None,
+                 *, temperature_K=None,
+                 mask=None, trajectory=None, logfile=None, loginterval=1,
+                 append_trajectory=False):
+        '''Constant pressure/stress and temperature dynamics.
+
+        Combined Nose-Hoover and Parrinello-Rahman dynamics, creating an
+        NPT (or N,stress,T) ensemble.
+
+        The method is the one proposed by Melchionna et al. [1] and later
+        modified by Melchionna [2].  The differential equations are integrated
+        using a centered difference method [3].  See also NPTdynamics.tex
+
+        The dynamics object is called with the following parameters:
+
+        atoms: Atoms object
+            The list of atoms.
+
+        timestep: float
+            The timestep in units matching eV, Å, u.
+
+        temperature: float (deprecated)
+            The desired temperature in eV.
+
+        temperature_K: float
+            The desired temperature in K.
+
+        externalstress: float or nparray
+            The external stress in eV/A^3.  Either a symmetric
+            3x3 tensor, a 6-vector representing the same, or a
+            scalar representing the pressure.  Note that the
+            stress is positive in tension whereas the pressure is
+            positive in compression: giving a scalar p is
+            equivalent to giving the tensor (-p, -p, -p, 0, 0, 0).
+
+        ttime: float
+            Characteristic timescale of the thermostat, in ASE internal units
+            Set to None to disable the thermostat.
+
+            WARNING: Not specifying ttime sets it to None, disabling the
+            thermostat.
+
+        pfactor: float
+            A constant in the barostat differential equation.  If
+            a characteristic barostat timescale of ptime is
+            desired, set pfactor to ptime^2 * B
+            (where ptime is in units matching
+            eV, Å, u; and B is the Bulk Modulus, given in eV/Å^3).
+            Set to None to disable the barostat.
+            Typical metallic bulk moduli are of the order of
+            100 GPa or 0.6 eV/A^3.
+
+            WARNING: Not specifying pfactor sets it to None, disabling the
+            barostat.
+
+        mask: None or 3-tuple or 3x3 nparray (optional)
+            Optional argument.  A tuple of three integers (0 or 1),
+            indicating if the system can change size along the
+            three Cartesian axes.  Set to (1,1,1) or None to allow
+            a fully flexible computational box.  Set to (1,1,0)
+            to disallow elongations along the z-axis etc.
+            mask may also be specified as a symmetric 3x3 array
+            indicating which strain values may change.
+
+        Useful parameter values:
+
+        * The same timestep can be used as in Verlet dynamics, i.e. 5 fs is fine
+          for bulk copper.
+
+        * The ttime and pfactor are quite critical[4], too small values may
+          cause instabilites and/or wrong fluctuations in T / p.  Too
+          large values cause an oscillation which is slow to die.  Good
+          values for the characteristic times seem to be 25 fs for ttime,
+          and 75 fs for ptime (used to calculate pfactor), at least for
+          bulk copper with 15000-200000 atoms.  But this is not well
+          tested, it is IMPORTANT to monitor the temperature and
+          stress/pressure fluctuations.
+
+
+        References:
+
+        1) S. Melchionna, G. Ciccotti and B. L. Holian, Molecular
+           Physics 78, p. 533 (1993).
+
+        2) S. Melchionna, Physical
+           Review E 61, p. 6165 (2000).
+
+        3) B. L. Holian, A. J. De Groot, W. G. Hoover, and C. G. Hoover,
+           Physical Review A 41, p. 4552 (1990).
+
+        4) F. D. Di Tolla and M. Ronchetti, Physical
+           Review E 48, p. 1726 (1993).
+
+        '''
+
         MolecularDynamics.__init__(self, atoms, timestep, trajectory,
-                                   logfile, loginterval)
+                                   logfile, loginterval,
+                                   append_trajectory=append_trajectory)
         # self.atoms = atoms
         # self.timestep = timestep
+        if externalstress is None and pfactor is not None:
+            raise TypeError("Missing 'externalstress' argument.")
         self.zero_center_of_mass_momentum(verbose=1)
-        self.temperature = temperature
+        self.temperature = units.kB * self._process_temperature(
+            temperature, temperature_K, 'eV')
         self.set_stress(externalstress)
         self.set_mask(mask)
         self.eta = np.zeros((3, 3), float)
@@ -159,8 +158,19 @@ class NPT(MolecularDynamics):
         self.timeelapsed = 0.0
         self.frac_traceless = 1
 
-    def set_temperature(self, temperature):
-        self.temperature = temperature
+    def set_temperature(self, temperature=None, *, temperature_K=None):
+        """Set the temperature.
+
+        Parameters:
+
+        temperature: float (deprecated)
+            The new temperature in eV.  Deprecated, use ``temperature_K``.
+
+        temperature_K: float (keyword-only argument)
+            The new temperature, in K.
+        """
+        self.temperature = units.kB * self._process_temperature(
+            temperature, temperature_K, 'eV')
         self._calculateconstants()
 
     def set_stress(self, stress):
@@ -168,6 +178,9 @@ class NPT(MolecularDynamics):
 
         Must be a symmetric 3x3 tensor, a 6-vector representing a symmetric
         3x3 tensor, or a number representing the pressure.
+
+        Use with care, it is better to set the correct stress when creating
+        the object.
         """
 
         if np.isscalar(stress):
@@ -193,8 +206,10 @@ class NPT(MolecularDynamics):
         along which the size of the computational box cannot change.
         For example, if mask = (1,1,0) the length of the system along
         the z-axis cannot change, although xz and yz shear is still
-        possible.  To disable shear globally, set the mode to diagonal
-        (not yet implemented).
+        possible.  May also be specified as a symmetric 3x3 array indicating
+        which strain values may change.
+
+        Use with care, as you may "freeze in" a fluctuation in the strain rate.
         """
         if mask is None:
             mask = np.ones((3,))
@@ -220,11 +235,20 @@ class NPT(MolecularDynamics):
         self.frac_traceless = fracTraceless
 
     def get_strain_rate(self):
-        "Get the strain rate as an upper-triangular 3x3 matrix"
+        """Get the strain rate as an upper-triangular 3x3 matrix.
+
+        This includes the fluctuations in the shape of the computational box.
+
+        """
         return np.array(self.eta, copy=1)
 
     def set_strain_rate(self, rate):
-        "Set the strain rate.  Must be an upper triangular 3x3 matrix."
+        """Set the strain rate.  Must be an upper triangular 3x3 matrix.
+
+        If you set a strain rate along a direction that is "masked out"
+        (see ``set_mask``), the strain rate along that direction will be
+        maintained constantly.
+        """
         if not (rate.shape == (3, 3) and self._isuppertriangular(rate)):
             raise ValueError("Strain rate must be an upper triangular matrix.")
         self.eta = rate
@@ -291,24 +315,25 @@ class NPT(MolecularDynamics):
                                   (stress - self.externalstress))
 
         if self.frac_traceless == 1:
-            eta_future = self.eta_past + self.mask * self._makeuppertriangular(deltaeta)
+            eta_future = self.eta_past + self.mask * \
+                self._makeuppertriangular(deltaeta)
         else:
-            trace_part, traceless_part = self._separatetrace(self._makeuppertriangular(deltaeta))
-            eta_future = self.eta_past + trace_part + self.frac_traceless * traceless_part
+            trace_part, traceless_part = self._separatetrace(
+                self._makeuppertriangular(deltaeta))
+            eta_future = (self.eta_past + trace_part +
+                          self.frac_traceless * traceless_part)
 
         deltazeta = 2 * dt * self.tfact * (self.atoms.get_kinetic_energy() -
                                            self.desiredEkin)
         zeta_future = self.zeta_past + deltazeta
         # Advance time
-        # print "Max change in scaled positions:", max(abs(self.q_future.flat - self.q.flat))
-        # print "Max change in basis set", max(abs((h_future - self.h).flat))
         self.timeelapsed += dt
         self.h_past = self.h
         self.h = h_future
         self.inv_h = linalg.inv(self.h)
         self.q_past = self.q
         self.q = self.q_future
-        self._setbox_and_positions(self.h,self.q)
+        self._setbox_and_positions(self.h, self.q)
         self.eta_past = self.eta
         self.eta = eta_future
         self.zeta_past = self.zeta
@@ -317,15 +342,16 @@ class NPT(MolecularDynamics):
         self.zeta_integrated += dt * self.zeta
         force = self.forcecalculator()
         self._calculate_q_future(force)
-        self.atoms.set_momenta(np.dot(self.q_future-self.q_past, self.h/(2*dt)) *
-                               self._getmasses())
+        self.atoms.set_momenta(
+            np.dot(self.q_future - self.q_past, self.h / (2 * dt)) *
+            self._getmasses())
         # self.stresscalculator()
 
     def forcecalculator(self):
-        return self.atoms.get_forces()
+        return self.atoms.get_forces(md=True)
 
     def stresscalculator(self):
-        return self.atoms.get_stress()
+        return self.atoms.get_stress(include_ideal_gas=True)
 
     def initialize(self):
         """Initialize the dynamics.
@@ -334,6 +360,8 @@ class NPT(MolecularDynamics):
         do a timestep, so the algorithm is not self-starting.  This
         method performs a 'backwards' timestep to generate a
         configuration before the current.
+
+        This is called automatically the first time ``run()`` is called.
         """
         # print "Initializing the NPT dynamics."
         dt = self.dt
@@ -345,7 +373,9 @@ class NPT(MolecularDynamics):
             print(self.h)
             print("Min:", min((self.h[1, 0], self.h[2, 0], self.h[2, 1])))
             print("Max:", max((self.h[1, 0], self.h[2, 0], self.h[2, 1])))
-            raise NotImplementedError("Can (so far) only operate on lists of atoms where the computational box is an upper triangular matrix.")
+            raise NotImplementedError(
+                "Can (so far) only operate on lists of atoms where the "
+                "computational box is an upper triangular matrix.")
         self.inv_h = linalg.inv(self.h)
         # The contents of the q arrays should migrate in parallel simulations.
         # self._make_special_q_arrays()
@@ -420,9 +450,10 @@ class NPT(MolecularDynamics):
         limit = 1e-6
         h = self._getbox()
         if max(abs((h - self.h).ravel())) > limit:
-            raise RuntimeError("The unit cell of the atoms does not match the unit cell stored in the file.")
+            raise RuntimeError(
+                "The unit cell of the atoms does not match "
+                "the unit cell stored in the file.")
         self.inv_h = linalg.inv(self.h)
-        #self._make_special_q_arrays()
         self.q = np.dot(self.atoms.get_positions(), self.inv_h) - 0.5
         self._calculate_q_past_and_future()
         self.initialized = 1
@@ -491,14 +522,15 @@ class NPT(MolecularDynamics):
         atoms (optional, internal use only)
             Pre-read atoms.  Do not use.
         """
-        if isinstance(trajectory, basestring):
+        if isinstance(trajectory, str):
             if trajectory.endswith('/'):
                 trajectory = trajectory[:-1]
             if trajectory.endswith('.bundle'):
                 from ase.io.bundletrajectory import BundleTrajectory
                 trajectory = BundleTrajectory(trajectory)
             else:
-                raise ValueError("Cannot open '%': unsupported file format" % trajectory)
+                raise ValueError(
+                    f"Cannot open '{trajectory}': unsupported file format")
         # trajectory is now a BundleTrajectory object (or compatible)
         if atoms is None:
             atoms = trajectory[frame]
@@ -524,23 +556,7 @@ class NPT(MolecularDynamics):
 
     def _getmasses(self):
         "Get the masses as an Nx1 array."
-        return np.reshape(self.atoms.get_masses(), (-1,1))
-
-#    def _getcartesianpositions(self):
-#        "Get the cartesian positions of the atoms"
-#        return self.atoms.get_positions()
-
-#    def _getmomenta(self):
-#        "Get the (cartesian) momenta of the atoms"
-#        return self.atoms.GetCartesianMomenta()
-
-#    def _getforces(self):
-#        "Get the (cartesian) forces of the atoms"
-#        return self.atoms.GetCartesianForces()
-
-#    def _setmomenta(self, momenta):
-#        "Set the (cartesian) momenta of the atoms"
-#        self.atoms.SetCartesianMomenta(momenta)
+        return np.reshape(self.atoms.get_masses(), (-1, 1))
 
     def _separatetrace(self, mat):
         """return two matrices, one proportional to the identity
@@ -552,7 +568,7 @@ class NPT(MolecularDynamics):
     # A number of convenient helper methods
     def _warning(self, text):
         "Emit a warning."
-        sys.stderr.write("WARNING: "+text+"\n")
+        sys.stderr.write("WARNING: " + text + "\n")
         sys.stderr.flush()
 
     def _calculate_q_future(self, force):
@@ -562,14 +578,15 @@ class NPT(MolecularDynamics):
         alpha = (dt * dt) * np.dot(force / self._getmasses(),
                                    self.inv_h)
         beta = dt * np.dot(self.h, np.dot(self.eta + 0.5 * self.zeta * id3,
-                                    self.inv_h))
+                                          self.inv_h))
         inv_b = linalg.inv(beta + id3)
-        self.q_future = np.dot(2*self.q + np.dot(self.q_past, beta - id3) + alpha,
-                            inv_b)
+        self.q_future = np.dot(2 * self.q +
+                               np.dot(self.q_past, beta - id3) + alpha,
+                               inv_b)
 
     def _calculate_q_past_and_future(self):
-        def ekin(p, m = self.atoms.get_masses()):
-            p2 = np.sum(p*p, -1)
+        def ekin(p, m=self.atoms.get_masses()):
+            p2 = np.sum(p * p, -1)
             return 0.5 * np.sum(p2 / m) / len(m)
         p0 = self.atoms.get_momenta()
         m = self._getmasses()
@@ -577,8 +594,8 @@ class NPT(MolecularDynamics):
         dt = self.dt
         for i in range(2):
             self.q_past = self.q - dt * np.dot(p / m, self.inv_h)
-            self._calculate_q_future(self.atoms.get_forces())
-            p = np.dot(self.q_future - self.q_past, self.h/(2*dt)) * m
+            self._calculate_q_future(self.atoms.get_forces(md=True))
+            p = np.dot(self.q_future - self.q_past, self.h / (2 * dt)) * m
             e = ekin(p)
             if e < 1e-5:
                 # The kinetic energy and momenta are virtually zero
@@ -593,24 +610,29 @@ class NPT(MolecularDynamics):
             deltaeta = (-self.dt * self.pfact * linalg.det(self.h)
                         * (self.stresscalculator() - self.externalstress))
         if self.frac_traceless == 1:
-            self.eta_past = self.eta - self.mask * self._makeuppertriangular(deltaeta)
+            self.eta_past = self.eta - self.mask * \
+                self._makeuppertriangular(deltaeta)
         else:
-            trace_part, traceless_part = self._separatetrace(self._makeuppertriangular(deltaeta))
-            self.eta_past = self.eta - trace_part - self.frac_traceless * traceless_part
-
+            trace_part, traceless_part = self._separatetrace(
+                self._makeuppertriangular(deltaeta))
+            self.eta_past = (self.eta - trace_part -
+                             self.frac_traceless * traceless_part)
 
     def _makeuppertriangular(self, sixvector):
         "Make an upper triangular matrix from a 6-vector."
         return np.array(((sixvector[0], sixvector[5], sixvector[4]),
-                      (0,            sixvector[1], sixvector[3]),
-                      (0,            0,            sixvector[2])))
+                         (0, sixvector[1], sixvector[3]),
+                         (0, 0, sixvector[2])))
 
-    def _isuppertriangular(self, m):
+    @staticmethod
+    def _isuppertriangular(m) -> bool:
         "Check that a matrix is on upper triangular form."
-        return m[1,0] == m[2,0] == m[2,1] == 0.0
+        return m[1, 0] == m[2, 0] == m[2, 1] == 0.0
 
     def _calculateconstants(self):
-        "(Re)calculate some constants when pfactor, ttime or temperature have been changed."
+        """(Re)calculate some constants when pfactor,
+        ttime or temperature have been changed."""
+
         n = self._getnatoms()
         if self.ttime is None:
             self.tfact = 0.0
@@ -626,14 +648,14 @@ class NPT(MolecularDynamics):
 
     def _setbox_and_positions(self, h, q):
         """Set the computational box and the positions."""
-        self.atoms.set_cell(h, scale_atoms=True)  # Why scale_atoms ...
+        self.atoms.set_cell(h)
         r = np.dot(q + 0.5, h)
-        self.atoms.set_positions(r)               # ... they are overwritten here ???
+        self.atoms.set_positions(r)
 
     # A few helper methods, which have been placed in separate methods
     # so they can be replaced in the parallel version.
     def _synchronize(self):
-        """Synchronizes eta, h and zeta on all processors in a parallel simulation.
+        """Synchronize eta, h and zeta on all processors.
 
         In a parallel simulation, eta, h and zeta are communicated
         from the master to all slaves, to prevent numerical noise from
@@ -658,9 +680,10 @@ class NPT(MolecularDynamics):
         serial simulation they are ordinary Numeric arrays.
         """
         natoms = len(self.atoms)
-        self.q = np.zeros((natoms,3), float)
-        self.q_past = np.zeros((natoms,3), float)
-        self.q_future = np.zeros((natoms,3), float)
+        self.q = np.zeros((natoms, 3), float)
+        self.q_past = np.zeros((natoms, 3), float)
+        self.q_future = np.zeros((natoms, 3), float)
+
 
 class WeakMethodWrapper:
     """A weak reference to a method.
@@ -671,6 +694,7 @@ class WeakMethodWrapper:
     Just storing a weak reference to a bound method would not work,
     as the bound method object would go away immediately.
     """
+
     def __init__(self, obj, method):
         self.obj = weakref.proxy(obj)
         self.method = method
@@ -678,113 +702,3 @@ class WeakMethodWrapper:
     def __call__(self, *args, **kwargs):
         m = getattr(self.obj, self.method)
         return m(*args, **kwargs)
-
-# class _HooverNPTTrajectory:
-#     """A Trajectory-like object storing data in a HooverNPT object."""
-#     def InitForWrite(self):
-#         """Does initialization related to write mode."""
-#         self.CreateDimension('unlim', None)
-#         self.nc.history = 'ASE NPT trajectory'
-#         self.nc.version = '0.1'
-#         self.nc.classname = self.atoms.classname
-#         self.unlim = 0
-#         self.nc.lengthunit = units.GetLengthUnit()
-#         self.nc.energyunit = units.GetEnergyUnit()
-#         self.conversion = (1, 1)
-
-#     def InitForWriteOrAppend(self):
-#         """Does initialization related to write and append mode.
-
-#         Either InitForWrite or InitForReadOrAppend will have been
-#         called before calling this method.
-#         """
-#         names = copy.copy(self.known_names)
-#         if self.atoms.ttime is None:
-#             del names['ttime']
-#         if self.atoms.pfactor_given is None:
-#             del names['pfactor_given']
-#         for d in names.keys():
-#             def getdata(atoms=self.atoms, name=d):
-#                 return getattr(atoms, name)
-#             self.Add(d, data = getdata)
-
-#     known_names = {
-#         #    name                 shape        typecode  once    units
-#         # ----------------------------------------------------------------
-#         'dt':              ((),                Float,    True,   (1, -0.5)),
-#         'temperature':     ((),                Float,    True,   (0, 1)),
-#         'desiredEkin':     ((),                Float,    True,   (0, 1)),
-#         'externalstress':  ((6,),              Float,    True,   (-3, 1)),
-#         'mask':            ((3, 3),            Float,    True,   (0, 0)),
-#         'ttime':           ((),                Float,    True,   (1, -0.5)),
-#         'tfact':           ((),                Float,    True,   (-2, 0)),
-#         'pfactor_given':   ((),                Float,    True,   (-1, 0)),
-#         'pfact':           ((),                Float,    True,   (-2, 0)),
-#         'frac_traceless':  ((),                Float,    True,   (0, 0)),
-#         'eta':             ((3, 3),            Float,    False,  (-1, 0.5)),
-#         'eta_past':        ((3, 3),            Float,    False,  (-1, 0.5)),
-#         'zeta':            ((),                Float,    False,  (-1, 0.5)),
-#         'zeta_past':       ((),                Float,    False,  (-1, 0.5)),
-#         'zeta_integrated': ((),                Float,    False,  (0, 0)),
-#         'h':               ((3, 3),            Float,    False,  (1, 0)),
-#         'h_past':          ((3, 3),            Float,    False,  (1, 0)),
-#         'timeelapsed':     ((),                Float,    False,  (1, -0.5))
-#         }
-
-#     # This trajectory does not store a list of atoms
-#     def GetListOfAtoms(self, frame=None):
-#         raise AttributeError, "GetListOfAtoms makes no sense in a HooverNPTTrajectory"
-
-#     # Instead, we store a dynamics
-#     def GetDynamics(self, frame=None):
-#         """Get a HooverNPT Dynamics object.
-
-#         If a frame number is not given, the current frame is used.
-
-#         The variant of the object (ASE HooverNPT, ASAP Serial/Parallel NPT)
-#         will be the same as the stored object.
-
-#         After getting the dynamics, the atoms should be attached with the
-#         dynamics.attach_atoms(atoms) method.
-#         """
-#         # Bypass calling the normal constructor
-#         class Dummy:
-#             pass
-#         dyn = Dummy()
-#         dyn.__class__ = self.getClass(self.nc.classname)
-#         vars = self.nc.variables
-#         for q in self.known_names.keys():
-#             if vars.has_key(q):
-#                 once = self.known_names[q][2]
-#                 if once:
-#                     setattr(dyn, q, vars[q].getValue())
-#                 else:
-#                     setattr(dyn, q, vars[q][frame])
-#         return dyn
-
-#     def getClass(self, classname):
-#         "Internal function: turns a class name into a class object."
-#         if self.nc.classname == "HooverNPT":
-#             return HooverNPT
-#         else:
-#             raise RuntimeError, ("Cannot create a dynamics of type "
-#                                  + self.nc.classname)
-
-# class HooverNPTTrajectory(_HooverNPTTrajectory,NetCDFTrajectory):
-#     """A Trajectory-like object storing data in a HooverNPT object."""
-#     def __init__(self, filename, dynamics=None, mode=None, interval=1):
-#         """Open the NetCDF file.
-
-#         If there is no ``dynamics`` argument, then the file is opened
-#         in read mode - otherwise, write or append mode is used.  The
-#         ``interval`` argument determines how often the configurations
-#         are written to file."""
-#         # Call the original constructor, but passing the dynamics instead of
-#         # the atoms.
-#         if dynamics is not None:
-#             # Prevents a circular reference when the trajectory is attached
-#             # to the dynamics it observes.
-#             dynamics = weakref.proxy(dynamics)
-#         NetCDFTrajectory.__init__(self, filename,
-#                                   atoms=dynamics,
-#                                   mode=mode, interval=interval)

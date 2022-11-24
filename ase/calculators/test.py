@@ -1,4 +1,3 @@
-from __future__ import division
 from math import pi
 
 import numpy as np
@@ -136,16 +135,20 @@ class FreeElectrons(Calculator):
     """
 
     implemented_properties = ['energy']
+    default_parameters = {'kpts': np.zeros((1, 3)),
+                          'nvalence': 0.0,
+                          'nbands': 20,
+                          'gridsize': 7}
 
     def calculate(self, atoms, properties, system_changes):
         Calculator.calculate(self, atoms)
         self.kpts = kpts2ndarray(self.parameters.kpts, atoms)
-        icell = atoms.get_reciprocal_cell() * 2 * np.pi * Bohr
-        n = 7
+        icell = atoms.cell.reciprocal() * 2 * np.pi * Bohr
+        n = self.parameters.gridsize
         offsets = np.indices((n, n, n)).T.reshape((n**3, 1, 3)) - n // 2
         eps = 0.5 * (np.dot(self.kpts + offsets, icell)**2).sum(2).T
         eps.sort()
-        self.eigenvalues = eps[:, :20] * Ha
+        self.eigenvalues = eps[:, :self.parameters.nbands] * Ha
         self.results = {'energy': 0.0}
 
     def get_eigenvalues(self, kpt, spin=0):
@@ -178,6 +181,50 @@ def numeric_force(atoms, a, i, d=0.001):
     eminus = atoms.get_potential_energy()
     atoms.set_positions(p0, apply_constraint=False)
     return (eminus - eplus) / (2 * d)
+
+
+def numeric_forces(atoms, d=0.001):
+    return np.array([[numeric_force(atoms, a, i, d)
+                      for i in range(3)] for a in range(len(atoms))])
+
+
+def numeric_stress(atoms, d=1e-6, voigt=True):
+    stress = np.zeros((3, 3), dtype=float)
+
+    cell = atoms.cell.copy()
+    V = atoms.get_volume()
+    for i in range(3):
+        x = np.eye(3)
+        x[i, i] += d
+        atoms.set_cell(np.dot(cell, x), scale_atoms=True)
+        eplus = atoms.get_potential_energy(force_consistent=True)
+
+        x[i, i] -= 2 * d
+        atoms.set_cell(np.dot(cell, x), scale_atoms=True)
+        eminus = atoms.get_potential_energy(force_consistent=True)
+
+        stress[i, i] = (eplus - eminus) / (2 * d * V)
+        x[i, i] += d
+
+        j = i - 2
+        x[i, j] = d
+        x[j, i] = d
+        atoms.set_cell(np.dot(cell, x), scale_atoms=True)
+        eplus = atoms.get_potential_energy(force_consistent=True)
+
+        x[i, j] = -d
+        x[j, i] = -d
+        atoms.set_cell(np.dot(cell, x), scale_atoms=True)
+        eminus = atoms.get_potential_energy(force_consistent=True)
+
+        stress[i, j] = (eplus - eminus) / (4 * d * V)
+        stress[j, i] = stress[i, j]
+    atoms.set_cell(cell, scale_atoms=True)
+
+    if voigt:
+        return stress.flat[[0, 4, 8, 5, 2, 1]]
+    else:
+        return stress
 
 
 def gradient_test(atoms, indices=None):

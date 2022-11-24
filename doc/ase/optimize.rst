@@ -102,7 +102,7 @@ quantities to decide where to move the atoms on each step:
 * the forces on each atom, as returned by the associated
   :class:`~ase.calculators.calculator.Calculator` object
 * the Hessian matrix, i.e. the matrix of second derivatives
-  :math:`\frac{\partial^2 E}{\partial x_i \partial x_j}` of the
+  `\frac{\partial^2 E}{\partial x_i \partial x_j}` of the
   total energy with respect to nuclear coordinates.
 
 If the atoms are close to the minimum, such that the potential energy
@@ -189,9 +189,15 @@ to speed up BFGS local minimzations.
 Read more about this algorithm here:
 
   | Estefanía Garijo del Río, Jens Jørgen Mortensen, Karsten W. Jacobsen
-  | `A local Bayesian optimizer for atomic structures`__
+  | :doi:`Local Bayesian optimizer for atomic structures <10.1103/PhysRevB.100.104103>`
+  | Physical Review B, Vol. **100**, 104103 (2019)
 
-__ https://arxiv.org/abs/1808.08588
+.. warning:: The memory of the optimizer scales as O(n²N²) where
+             N is the number of atoms and n the number of steps.
+             If the number of atoms is sufficiently high, this
+             may cause a memory issue.
+             This class prints a warning if the user tries to
+             run GPMin with more than 100 atoms in the unit cell.
 
 
 FIRE
@@ -202,10 +208,8 @@ FIRE
 Read about this algorithm here:
 
   | Erik Bitzek, Pekka Koskinen, Franz Gähler, Michael Moseler, and Peter Gumbsch
-  | `Structural Relaxation Made Simple`__
+  | :doi:`Structural Relaxation Made Simple <10.1103/PhysRevLett.97.170201>`
   | Physical Review Letters, Vol. **97**, 170201 (2006)
-
-__ http://dx.doi.org/10.1103/PhysRevLett.97.170201
 
 
 MDMin
@@ -279,6 +283,15 @@ optimization and the information needed to generate the Hessian Matrix.
 The BFGSLineSearch algorithm is not compatible with nudged elastic band
 calculations.
 
+Pyberny
+-------
+
+ASE includes a wrapper for the Pyberny_ optimizer. This requires installing
+Pyberny::
+
+    pip install pyberny
+
+.. autoclass:: Berny
 
 .. module:: ase.optimize.precon
 
@@ -300,10 +313,8 @@ the :class:`ase.optimize.precon.lbfgs.PreconLBFGS` and
 You can read more about the theory and implementation here:
 
   | D. Packwood, J.R. Kermode; L. Mones, N. Bernstein, J. Woolley, N. Gould, C. Ortner and G. Csányi
-  | `A universal preconditioner for simulating condensed phase materials`__
+  | :doi:`A universal preconditioner for simulating condensed phase materials <10.1063/1.4947024>`
   | J. Chem. Phys. *144*, 164109 (2016).
-
-__ http://dx.doi.org/10.1063/1.4947024
 
 Tests with a variety of solid-state systems using both DFT and classical
 interatomic potentials driven though ASE calculators show speedup factors of up
@@ -353,7 +364,7 @@ cube of copper containing a vacancy::
                              ['None', 'Exp(A=3)']):
        log_calc.label = label
        atoms = a0.copy()
-       atoms.set_calculator(log_calc)
+       atoms.calc = log_calc
        opt = PreconLBFGS(atoms, precon=precon, use_armijo=True)
        opt.run(fmax=1e-3)
 
@@ -413,7 +424,7 @@ is computed using a standalone force field calculator::
                              ['None', 'FF']):
         log_calc.label = label
         atoms = a0.copy()
-        atoms.set_calculator(log_calc)
+        atoms.calc = log_calc
         opt = PreconLBFGS(atoms, precon=precon, use_armijo=True)
         opt.run(fmax=1e-4)
 
@@ -456,18 +467,15 @@ local optimization algorithm::
 Read more about this algorithm here:
 
   | David J. Wales and Jonathan P. K. Doye
-  | `Global Optimization by Basin-Hopping and the Lowest Energy Structures of Lennard-Jones Clusters Containing up to 110 Atoms`__
+  | :doi:`Global Optimization by Basin-Hopping and the Lowest Energy Structures of Lennard-Jones Clusters Containing up to 110 Atoms <10.1021/jp970984n>`
   | J. Phys. Chem. A, Vol. **101**, 5111-5116 (1997)
-
-__ http://pubs.acs.org/doi/abs/10.1021/jp970984n
 
 and here:
 
   | David J. Wales and Harold A. Scheraga
-  | `Global Optimization of Clusters, Crystals, and Biomolecules`__
+  | :doi:`Global Optimization of Clusters, Crystals, and Biomolecules <10.1126/science.285.5432.1368>`
   | Science, Vol. **285**, 1368 (1999)
 
-__ http://www.sciencemag.org/cgi/content/abstract/sci;285/5432/1368
 
 Minima hopping
 --------------
@@ -475,12 +483,10 @@ Minima hopping
 The minima hopping algorithm was developed and described by Goedecker:
 
   | Stefan Goedecker
-  | `Minima hopping: An efficient search method for the global minimum of the potential energy surface of complex molecular systems`__
+  | :doi:`Minima hopping: An efficient search method for the global minimum of the potential energy surface of complex molecular systems <10.1063/1.1724816>`
   | J. Chem. Phys., Vol. **120**, 9911 (2004)
 
-__ http://dx.doi.org/10.1063/1.1724816
-
-This algorithm utilizes a series of alternating steps of NVE molecular dynamics and local optimizations, and has two parameters that the code dynamically adjusts in response to the progress of the search. The first parameter is the initial temperature of the NVE simulation. Whenever a step finds a new minimum this temperature is decreased; if the step finds a previously found minimum the temperature is increased. The second dynamically adjusted parameter is :math:`E_\mathrm{diff}`, which is an energy threshold for accepting a newly found minimum. If the new minimum is no more than :math:`E_\mathrm{diff}` eV higher than the previous minimum, it is acccepted and :math:`E_\mathrm{diff}` is decreased; if it is more than :math:`E_\mathrm{diff}` eV higher it is rejected and :math:`E_\mathrm{diff}` is increased. The method is used as::
+This algorithm utilizes a series of alternating steps of NVE molecular dynamics and local optimizations, and has two parameters that the code dynamically adjusts in response to the progress of the search. The first parameter is the initial temperature of the NVE simulation. Whenever a step finds a new minimum this temperature is decreased; if the step finds a previously found minimum the temperature is increased. The second dynamically adjusted parameter is `E_\mathrm{diff}`, which is an energy threshold for accepting a newly found minimum. If the new minimum is no more than `E_\mathrm{diff}` eV higher than the previous minimum, it is acccepted and `E_\mathrm{diff}` is decreased; if it is more than `E_\mathrm{diff}` eV higher it is rejected and `E_\mathrm{diff}` is increased. The method is used as::
 
    from ase.optimize.minimahopping import MinimaHopping
    opt = MinimaHopping(atoms=system)
@@ -502,13 +508,33 @@ This will run the algorithm until 10 steps are taken; alternatively, if totalste
  | ``timestep`` : 1.0,  # fs, timestep for MD simulations
  | ``optimizer`` : QuasiNewton,  # local optimizer to use
  | ``minima_traj`` : 'minima.traj',  # storage file for minima list
+ | ``fmax`` : 0.05,  # eV/A, max force for optimizations
 
 Specific definitions of the ``alpha``, ``beta``, and ``mdmin`` parameters can be found in the publication by Goedecker. ``minima_threshold`` is used to determine if two atomic configurations are identical; if any atom has moved by more than this amount it is considered a new configuration. Note that the code tries to do this in an intelligent manner: atoms are considered to be indistinguishable, and translations are allowed in the directions of the periodic boundary conditions. Therefore, if a CO is adsorbed in an ontop site on a (211) surface it will be considered identical no matter which ontop site it occupies.
 
 The trajectory file ``minima_traj`` will be populated with the accepted minima as they are found. A log of the progress is kept in ``logfile``.
 
-The code is written such that a stopped simulation (e.g., killed by the batching system when the maximum wall time was exceeded) can usually be restarted without too much effort by the user. In most cases, the script can be resubmitted without any modification -- if the ``logfile`` and ``minima_traj`` are found, the script will attempt to use these to resume. (Note that you may need to clean up files left in the directory by the calculator, however, such as the .nc file produced by Jacapo.)
+The code is written such that a stopped simulation (e.g., killed by the batching system when the maximum wall time was exceeded) can usually be restarted without too much effort by the user. In most cases, the script can be resubmitted without any modification -- if the ``logfile`` and ``minima_traj`` are found, the script will attempt to use these to resume. (Note that you may need to clean up files left in the directory by the calculator, however.)
 
-Note that these searches can be quite slow, so it can pay to have multiple searches running at a time. Multiple searches can run in parallel and share one list of minima. (Run each script from a separate directory but specify the location to the same absolute location for ``minima_traj``). Each search will use the global information of the list of minima, but will keep its own local information of the initial temperature and :math:`E_\mathrm{diff}`.
+Note that these searches can be quite slow, so it can pay to have multiple searches running at a time. Multiple searches can run in parallel and share one list of minima. (Run each script from a separate directory but specify the location to the same absolute location for ``minima_traj``). Each search will use the global information of the list of minima, but will keep its own local information of the initial temperature and `E_\mathrm{diff}`.
 
 For an example of use, see the :ref:`mhtutorial` tutorial.
+
+Transition state search
+=======================
+There are several strategies and tools for the search and optimization of
+transition states available in ASE.
+The transition state search and optimization algorithms are:
+:class:`ClimbFixInternals`, :mod:`~ase.neb` and :mod:`~ase.dimer`.
+
+ClimbFixInternals
+-----------------
+The :class:`BFGSClimbFixInternals` optimizer can be used to climb a reaction
+coordinate defined using the :class:`~ase.constraints.FixInternals` class.
+
+.. module:: ase.optimize.climbfixinternals
+
+.. autoclass:: BFGSClimbFixInternals
+
+   .. automethod:: get_projected_forces
+   .. automethod:: get_scaled_fmax

@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 from ase.gui.i18n import _
 
 import ase.gui.ui as ui
@@ -10,7 +9,7 @@ class Rotate:
 
     def __init__(self, gui):
         self.gui = gui
-        win = ui.Window(_('Rotate'))
+        win = ui.Window(_('Rotate'), wmtype='utility')
         win.add(_('Rotation angles:'))
         self.rotate = [ui.SpinBox(42.0, -360, 360, 1, self.change)
                        for i in '123']

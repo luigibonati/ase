@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 # ******NOTICE***************
 # optimize.py module by Travis E. Oliphant
 #
@@ -12,8 +10,6 @@ import numpy as np
 from numpy import eye, absolute, sqrt, isinf
 from ase.utils.linesearch import LineSearch
 from ase.optimize.optimize import Optimizer
-from ase.utils import basestring
-
 
 # These have been copied from Numeric's MLab.py
 # I don't think they made the transition to scipy_core
@@ -26,7 +22,7 @@ __version__ = '0.1'
 
 
 class BFGSLineSearch(Optimizer):
-    def __init__(self, atoms, restart=None, logfile='-', maxstep=.2,
+    def __init__(self, atoms, restart=None, logfile='-', maxstep=None,
                  trajectory=None, c1=0.23, c2=0.46, alpha=10.0, stpmax=50.0,
                  master=None, force_consistent=None):
         """Optimize atomic positions in the BFGSLineSearch algorithm, which
@@ -63,7 +59,10 @@ class BFGSLineSearch(Optimizer):
             force-consistent energies if available in the calculator, but
             falls back to force_consistent=False if not.
         """
-        self.maxstep = maxstep
+        if maxstep is None:
+            self.maxstep = self.defaults['maxstep']
+        else:
+            self.maxstep = maxstep
         self.stpmax = stpmax
         self.alpha = alpha
         self.H = None
@@ -83,29 +82,32 @@ class BFGSLineSearch(Optimizer):
         self.replay = False
 
         Optimizer.__init__(self, atoms, restart, logfile, trajectory,
-                           master, force_consistent)
+                           master, force_consistent=force_consistent)
 
     def read(self):
         self.r0, self.g0, self.e0, self.task, self.H = self.load()
         self.load_restart = True
 
     def reset(self):
-        print('reset')
         self.H = None
         self.r0 = None
         self.g0 = None
         self.e0 = None
         self.rep_count = 0
 
-    def step(self, f):
+    def step(self, forces=None):
         atoms = self.atoms
+
+        if forces is None:
+            forces = atoms.get_forces()
+
         from ase.neb import NEB
         if isinstance(atoms, NEB):
             raise TypeError('NEB calculations cannot use the BFGSLineSearch'
                             ' optimizer. Use BFGS or another optimizer.')
         r = atoms.get_positions()
         r = r.reshape(-1)
-        g = -f.reshape(-1) / self.alpha
+        g = -forces.reshape(-1) / self.alpha
         p0 = self.p
         self.update(r, g, self.r0, self.g0, p0)
         # o,v = np.linalg.eigh(self.B)
@@ -114,7 +116,7 @@ class BFGSLineSearch(Optimizer):
         self.p = -np.dot(self.H, g)
         p_size = np.sqrt((self.p**2).sum())
         if p_size <= np.sqrt(len(atoms) * 1e-10):
-            self.p /= (p_size / np.sqrt(len(atoms)*1e-10))
+            self.p /= (p_size / np.sqrt(len(atoms) * 1e-10))
         ls = LineSearch()
         self.alpha_k, e, self.e0, self.no_update = \
             ls._line_search(self.func, self.fprime, r, self.p, g, e, self.e0,
@@ -175,30 +177,36 @@ class BFGSLineSearch(Optimizer):
         self.force_calls += 1
         # Remember that forces are minus the gradient!
         # Scale the problem as SciPy uses I as initial Hessian.
-        f = self.atoms.get_forces().reshape(-1)
-        return - f / self.alpha
+        forces = self.atoms.get_forces().reshape(-1)
+        return - forces / self.alpha
 
     def replay_trajectory(self, traj):
         """Initialize hessian from old trajectory."""
         self.replay = True
-        if isinstance(traj, basestring):
-            from ase.io.trajectory import Trajectory
-            traj = Trajectory(traj, 'r')
-        r0 = None
-        g0 = None
-        for i in range(0, len(traj) - 1):
-            r = traj[i].get_positions().ravel()
-            g = - traj[i].get_forces().ravel() / self.alpha
-            self.update(r, g, r0, g0, self.p)
-            self.p = -np.dot(self.H, g)
-            r0 = r.copy()
-            g0 = g.copy()
-        self.r0 = r0
-        self.g0 = g0
+        from ase.utils import IOContext
 
-    def log(self, forces):
+        with IOContext() as files:
+            if isinstance(traj, str):
+                from ase.io.trajectory import Trajectory
+                traj = files.closelater(Trajectory(traj, mode='r'))
+
+            r0 = None
+            g0 = None
+            for i in range(0, len(traj) - 1):
+                r = traj[i].get_positions().ravel()
+                g = - traj[i].get_forces().ravel() / self.alpha
+                self.update(r, g, r0, g0, self.p)
+                self.p = -np.dot(self.H, g)
+                r0 = r.copy()
+                g0 = g.copy()
+            self.r0 = r0
+            self.g0 = g0
+
+    def log(self, forces=None):
         if self.logfile is None:
             return
+        if forces is None:
+            forces = self.atoms.get_forces()
         fmax = sqrt((forces**2).sum(axis=1).max())
         e = self.atoms.get_potential_energy(
             force_consistent=self.force_consistent)
@@ -207,7 +215,7 @@ class BFGSLineSearch(Optimizer):
         w = self.logfile.write
         if self.nsteps == 0:
             w('%s  %4s[%3s] %8s %15s  %12s\n' %
-              (' '*len(name), 'Step', 'FC', 'Time', 'Energy', 'fmax'))
+              (' ' * len(name), 'Step', 'FC', 'Time', 'Energy', 'fmax'))
             if self.force_consistent:
                 w('*Force-consistent energies used in optimization.\n')
         w('%s:  %3d[%3d] %02d:%02d:%02d %15.6f%1s %12.4f\n'

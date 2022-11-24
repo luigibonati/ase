@@ -1,20 +1,19 @@
 # creates:  nitrogen.txt, ethane.txt, gold.txt
 import io
 import os
+import runpy
 import sys
 
 
 def output_to_string(pythonfile):
     """Returns the stdout of executing the code in pythonfile
     as a string."""
-    if sys.version_info.major == 2:
-        buffer = io.BytesIO()
-    else:
-        buffer = io.StringIO()
+    buffer = io.StringIO()
     sys.stdout = buffer
-    exec(open(pythonfile).read())
+    runpy.run_path(pythonfile)
     sys.stdout = sys.__stdout__
     return buffer.getvalue()
+
 
 # Only save the parts relevant to thermochemistry
 nitrogen = output_to_string('nitrogen.py')

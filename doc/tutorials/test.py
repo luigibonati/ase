@@ -1,23 +1,29 @@
 # creates: test.txt
-from __future__ import print_function
-import sys
+import runpy
 import numpy as np
+from pathlib import Path
 
 # Monkey-patch view() to avoid ASE-GUI windows popping up:
 import ase.visualize
 ase.visualize.view = lambda *args, **kwargs: None
 
-fd = open('test.txt', 'w')
 
-sys.path.append('selfdiffusion')
+def run(script):
+    return runpy.run_path(Path('selfdiffusion') / script)
 
-import neb1
-e1 = np.ptp([i.get_potential_energy() for i in neb1.images])
+
+def run_and_get_ptp_energy(script):
+    dct = run(script)
+    energy = np.ptp([i.get_potential_energy() for i in dct['images']])
+    return energy
+
+
+e1 = run_and_get_ptp_energy('neb1.py')
 assert abs(e1 - 0.111) < 0.002
-import neb2
-e2 = np.ptp([i.get_potential_energy() for i in neb2.images])
+e2 = run_and_get_ptp_energy('neb2.py')
 assert abs(e2 - 0.564) < 0.002
-import neb3
-e3 = np.ptp([i.get_potential_energy() for i in neb3.images])
+e3 = run_and_get_ptp_energy('neb3.py')
 assert abs(e3 - 0.239) < 0.002
-print(e1, e2, e3, file=fd)
+
+with open('test.txt', 'w') as fd:
+    print(e1, e2, e3, file=fd)

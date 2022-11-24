@@ -1,4 +1,3 @@
-from __future__ import print_function
 """Function-like objects creating orthorhombic lattices.
 
 The following lattice creators are defined:
@@ -32,16 +31,19 @@ class SimpleOrthorhombicFactory(Bravais):
     inverse_basis_factor = 1.0
 
     def get_lattice_constant(self):
-        "Get the lattice constant of an element with orhtorhombic crystal structure."
+        """Get the lattice constant of an element with orhtorhombic
+        crystal structure."""
         if _refstate[self.atomicnumber]['symmetry'] != self.xtal_name:
             raise ValueError(("Cannot guess the %s lattice constant of"
-                                + " an element with crystal structure %s.")
-                               % (self.xtal_name,
-                                  _refstate[self.atomicnumber]['symmetry']))
+                              + " an element with crystal structure %s.")
+                             % (self.xtal_name,
+                                _refstate[self.atomicnumber]['symmetry']))
         return _refstate[self.atomicnumber].copy()
 
     def make_crystal_basis(self):
-        "Make the basis matrix for the crystal unit cell and the system unit cell."
+        """Make the basis matrix for the crystal unit cell and the system unit
+        cell."""
+
         lattice = self.latticeconstant
         if isinstance(lattice, type({})):
             a = lattice['a']
@@ -55,11 +57,12 @@ class SimpleOrthorhombicFactory(Bravais):
                 c = a * lattice['c/a']
         else:
             if len(lattice) == 3:
-                (a,b,c) = lattice
+                (a, b, c) = lattice
             else:
-                raise ValueError("Improper lattice constants for orthorhombic crystal.")
+                raise ValueError(
+                    "Improper lattice constants for orthorhombic crystal.")
 
-        lattice = np.array([[a,0,0],[0,b,0],[0,0,c]])
+        lattice = np.array([[a, 0, 0], [0, b, 0], [0, 0, c]])
         self.latticeconstant = lattice
         self.miller_basis = lattice
         self.crystal_basis = (self.basis_factor *
@@ -73,10 +76,12 @@ class SimpleOrthorhombicFactory(Bravais):
         vol2 = self.calc_num_atoms() * np.linalg.det(self.latticeconstant)
         if self.bravais_basis is not None:
             vol2 /= len(self.bravais_basis)
-        if abs(vol1-vol2) > 1e-5:
+        if abs(vol1 - vol2) > 1e-5:
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
 
+
 SimpleOrthorhombic = SimpleOrthorhombicFactory()
+
 
 class BaseCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
     "A factory for creating base-centered orthorhombic lattices."
@@ -97,10 +102,12 @@ class BaseCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
         "Check the volume of the unit cell."
         vol1 = abs(np.linalg.det(self.basis))
         vol2 = self.calc_num_atoms() * np.linalg.det(self.latticeconstant) / 2.0
-        if abs(vol1-vol2) > 1e-5:
+        if abs(vol1 - vol2) > 1e-5:
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
 
+
 BaseCenteredOrthorhombic = BaseCenteredOrthorhombicFactory()
+
 
 class BodyCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
     "A factory for creating body-centered orthorhombic lattices."
@@ -118,10 +125,13 @@ class BodyCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
         "Check the volume of the unit cell."
         vol1 = abs(np.linalg.det(self.basis))
         vol2 = self.calc_num_atoms() * np.linalg.det(self.latticeconstant) / 2.0
-        if abs(vol1-vol2) > 1e-5:
+        if abs(vol1 - vol2) > 1e-5:
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
 
+
 BodyCenteredOrthorhombic = BodyCenteredOrthorhombicFactory()
+
+
 class FaceCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
     "A factory for creating face-centered orthorhombic lattices."
 
@@ -138,8 +148,8 @@ class FaceCenteredOrthorhombicFactory(SimpleOrthorhombicFactory):
         "Check the volume of the unit cell."
         vol1 = abs(np.linalg.det(self.basis))
         vol2 = self.calc_num_atoms() * np.linalg.det(self.latticeconstant) / 4.0
-        if abs(vol1-vol2) > 1e-5:
+        if abs(vol1 - vol2) > 1e-5:
             print("WARNING: Got volume %f, expected %f" % (vol1, vol2))
 
-FaceCenteredOrthorhombic = FaceCenteredOrthorhombicFactory()
 
+FaceCenteredOrthorhombic = FaceCenteredOrthorhombicFactory()

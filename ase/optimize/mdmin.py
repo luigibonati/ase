@@ -4,6 +4,9 @@ from ase.optimize.optimize import Optimizer
 
 
 class MDMin(Optimizer):
+    # default parameters
+    defaults = {**Optimizer.defaults, 'dt': 0.2}
+
     def __init__(self, atoms, restart=None, logfile='-', trajectory=None,
                  dt=None, master=None):
         """Parameters:
@@ -19,10 +22,6 @@ class MDMin(Optimizer):
         trajectory: string
             Pickle file used to store trajectory of atomic movement.
 
-        maxstep: float
-            Used to set the maximum distance an atom can move per
-            iteration (default value is 0.2 Angstroms).
-
         logfile: string
             Text file used to write summary information.
 
@@ -32,31 +31,35 @@ class MDMin(Optimizer):
         """
         Optimizer.__init__(self, atoms, restart, logfile, trajectory, master)
 
-        if dt is not None:
+        if dt is None:
+            self.dt = self.defaults['dt']
+        else:
             self.dt = dt
 
     def initialize(self):
         self.v = None
-        self.dt = 0.2
 
     def read(self):
         self.v, self.dt = self.load()
-        
-    def step(self, f):
+
+    def step(self, forces=None):
         atoms = self.atoms
+
+        if forces is None:
+            forces = atoms.get_forces()
 
         if self.v is None:
             self.v = np.zeros((len(atoms), 3))
         else:
-            self.v += 0.5 * self.dt * f
+            self.v += 0.5 * self.dt * forces
             # Correct velocities:
-            vf = np.vdot(self.v, f)
+            vf = np.vdot(self.v, forces)
             if vf < 0.0:
                 self.v[:] = 0.0
             else:
-                self.v[:] = f * vf / np.vdot(f, f)
+                self.v[:] = forces * vf / np.vdot(forces, forces)
 
-        self.v += 0.5 * self.dt * f
-        r = atoms.get_positions()
-        atoms.set_positions(r + self.dt * self.v)
+        self.v += 0.5 * self.dt * forces
+        pos = atoms.get_positions()
+        atoms.set_positions(pos + self.dt * self.v)
         self.dump((self.v, self.dt))

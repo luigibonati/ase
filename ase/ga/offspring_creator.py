@@ -1,24 +1,26 @@
 """Base module for all operators that create offspring."""
 import numpy as np
-from random import random
 
 from ase import Atoms
 
 
-class OffspringCreator(object):
+class OffspringCreator:
     """Base class for all procreation operators
 
     Parameters:
 
     verbose: Be verbose and print some stuff
 
+    rng: Random number generator
+        By default numpy.random.
     """
 
-    def __init__(self, verbose=False, num_muts=1):
+    def __init__(self, verbose=False, num_muts=1, rng=np.random):
         self.descriptor = 'OffspringCreator'
         self.verbose = verbose
         self.min_inputs = 0
         self.num_muts = num_muts
+        self.rng = rng
 
     def get_min_inputs(self):
         """Returns the number of inputs required for a mutation,
@@ -55,7 +57,7 @@ class OffspringCreator(object):
         return indi
 
 
-class OperationSelector(object):
+class OperationSelector:
     """Class used to randomly select a procreation operation
     from a list of operations.
 
@@ -66,15 +68,19 @@ class OperationSelector(object):
         does not need to be 1.
 
     oplist: The list of operations to select from.
+
+    rng: Random number generator
+        By default numpy.random.
     """
 
-    def __init__(self, probabilities, oplist):
+    def __init__(self, probabilities, oplist, rng=np.random):
         assert len(probabilities) == len(oplist)
         self.oplist = oplist
         self.rho = np.cumsum(probabilities)
+        self.rng = rng
 
     def __get_index__(self):
-        v = random() * self.rho[-1]
+        v = self.rng.random() * self.rho[-1]
         for i in range(len(self.rho)):
             if self.rho[i] > v:
                 return i
@@ -88,3 +94,46 @@ class OperationSelector(object):
         """Choose operator and return it."""
         to_use = self.__get_index__()
         return self.oplist[to_use]
+
+
+class CombinationMutation(OffspringCreator):
+    """Combine two or more mutations into one operation.
+
+    Parameters:
+
+    mutations: Operator instances
+        Supply two or more mutations that will applied one after the other
+        as one mutation operation. The order of the supplied mutations prevail
+        when applying the mutations.
+
+    """
+
+    def __init__(self, *mutations, verbose=False):
+        super(CombinationMutation, self).__init__(verbose=verbose)
+        self.descriptor = 'CombinationMutation'
+
+        # Check that a combination mutation makes sense
+        msg = "Too few operators supplied to a CombinationMutation"
+        assert len(mutations) > 1, msg
+
+        self.operators = mutations
+
+    def get_new_individual(self, parents):
+        f = parents[0]
+
+        indi = self.mutate(f)
+        if indi is None:
+            return indi, 'mutation: {}'.format(self.descriptor)
+
+        indi = self.initialize_individual(f, indi)
+        indi.info['data']['parents'] = [f.info['confid']]
+
+        return (self.finalize_individual(indi),
+                'mutation: {}'.format(self.descriptor))
+
+    def mutate(self, atoms):
+        """Perform the mutations one at a time."""
+        for op in self.operators:
+            if atoms is not None:
+                atoms = op.mutate(atoms)
+        return atoms

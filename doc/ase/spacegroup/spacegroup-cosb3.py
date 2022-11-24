@@ -18,20 +18,20 @@ symbols = cosb3.get_chemical_symbols()
 for i in range(len(cosb3)):
     for j in range(i):
         if (symbols[i] == symbols[j] == 'Co' and
-            cosb3.get_distance(i, j) < 4.53):
+                cosb3.get_distance(i, j) < 4.53):
             bondatoms.append((i, j))
         elif (symbols[i] == symbols[j] == 'Sb' and
               cosb3.get_distance(i, j) < 2.99):
             bondatoms.append((i, j))
 
 # Create nice-looking image using povray
-io.write('spacegroup-cosb3.pov', cosb3,
-         transparent=False,
-         display=False,
-         run_povray=True,
-         camera_type='perspective',
-         canvas_width=320,
-         radii=0.4,
-         rotation='90y',
-         bondlinewidth=0.07,
-         bondatoms=bondatoms)
+renderer = io.write('spacegroup-cosb3.pov', cosb3,
+                    rotation='90y',
+                    radii=0.4,
+                    povray_settings=dict(transparent=False,
+                                         camera_type='perspective',
+                                         canvas_width=320,
+                                         bondlinewidth=0.07,
+                                         bondatoms=bondatoms))
+
+renderer.render()

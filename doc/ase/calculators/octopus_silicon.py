@@ -1,15 +1,15 @@
 from ase.calculators.octopus import Octopus
 from ase.build import bulk
 
-system = bulk('Si', orthorhombic=True)
+system = bulk('Si')
 
-calc = Octopus(label='silicon',
+calc = Octopus(directory='oct-si',
                Spacing=0.25,
                KPointsGrid=[[4, 4, 4]],
                KPointsUseSymmetries=True,
-               Output='dos + density + potential',
+               Output=[['dos'], ['density'], ['potential']],
                OutputFormat='xcrysden',
                DosGamma=0.1)
 
-system.set_calculator(calc)
+system.calc = calc
 system.get_potential_energy()

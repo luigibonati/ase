@@ -42,8 +42,8 @@ a large degree of customisability. :ref:`More information <matplotlib_plotting>`
 .. _RasMol: http://openrasmol.org/
 .. _VMD: http://www.ks.uiuc.edu/Research/vmd/
 .. _gOpenMol: http://www.csc.fi/gopenmol/
-.. _Avogadro: http://avogadro.openmolecules.net/
-.. _ParaView: http://www.paraview.org/
+.. _Avogadro: http://avogadro.cc/
+.. _ParaView: https://www.paraview.org/
 .. _NGLView: https://github.com/arose/nglview
 
 
@@ -93,7 +93,7 @@ The `.view` member exposes full API of the NGLView_ widget. The
 widgets. For the full documentation of these objects consult the NGLView_,
 NGL_ and ipywidgets_ websites.
 
-.. _Jupyter: https://www.jupyter.org/
+.. _Jupyter: https://jupyter.org/
 .. _NGL: https://github.com/arose/ngl
 .. _ipywidgets: https://github.com/jupyter-widgets/ipywidgets
 
@@ -101,7 +101,6 @@ NGL_ and ipywidgets_ websites.
    :inherited-members:
 
 .. autofunction:: ase.visualize.ngl.view_ngl
-.. automethod:: ase.visualize.ngl.NGLDisplay.custom_colors
 
 
 .. module:: ase.visualize.mlab
@@ -126,34 +125,6 @@ Options:
     :start-after: Options:
 
 .. autofunction:: ase.visualize.mlab.plot
-
-
-PrimiPlotter
-------------
-
-The PrimiPlotter is intended to do on-the-fly plotting of the
-positions of the atoms during long molecular dynamics simulations.
-The module :mod:`ase.visualize.primiplotter` contains the
-PrimiPlotter and the various output modules, see below.
-
-.. autoclass:: ase.visualize.primiplotter.PrimiPlotter
-   :inherited-members:
-
-
-FieldPlotter
-------------
-
-The FieldPlotter is intended to plot fields defined on the atoms in
-large-scale simulations.  The fields could be e.g. pressure, stress or
-temperature (kinetic energy), i.e. any quantity that in a given
-simulation is best defined on a per-atom basis, but is best
-interpreted as a continuum field.
-
-The current version of FieldPlotter only works if the number of atoms
-is at least 5-10 times larger than the number of pixels in the plot.
-
-.. autoclass:: ase.visualize.fieldplotter.FieldPlotter
-   :inherited-members:
 
 
 .. _matplotlib_plotting:

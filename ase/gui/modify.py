@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 from functools import partial
 
 from ase.gui.i18n import _
@@ -12,6 +11,7 @@ class ModifyAtoms:
     """Presents a dialog box where the user is able to change the
     atomic type, the magnetic moment and tags of the selected atoms.
     """
+
     def __init__(self, gui):
         self.gui = gui
         selected = self.selection()
@@ -19,7 +19,7 @@ class ModifyAtoms:
             ui.error(_('No atoms selected!'))
             return
 
-        win = ui.Window(_('Modify'))
+        win = ui.Window(_('Modify'), wmtype='utility')
         element = Element(callback=self.set_element)
         win.add(element)
         win.add(ui.Button(_('Change element'),
@@ -30,9 +30,9 @@ class ModifyAtoms:
         win.add([_('Moment'), self.magmom])
 
         atoms = self.gui.atoms
-        Z = atoms.numbers
-        if Z.ptp() == 0:
-            element.Z = Z[0]
+        sym = atoms.symbols[selected]
+        if len(sym.species()) == 1:
+            element.symbol = sym[0]
 
         tags = atoms.get_tags()[selected]
         if tags.ptp() == 0:

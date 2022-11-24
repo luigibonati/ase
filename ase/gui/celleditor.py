@@ -1,7 +1,6 @@
-# encoding: utf-8
 '''celleditor.py - Window for editing the cell of an atoms object
 '''
-from __future__ import division, unicode_literals
+from ase.cell import Cell
 from ase.gui.i18n import _
 
 import ase.gui.ui as ui
@@ -10,6 +9,7 @@ import numpy as np
 
 class CellEditor:
     '''Window for editing the cell of an atoms object.'''
+
     def __init__(self, gui):
         self.gui = gui
         self.gui.register_vulnerable(self)
@@ -25,27 +25,28 @@ class CellEditor:
         atoms = self.gui.atoms
 
         cell = atoms.cell
-        mags = atoms.get_cell_lengths_and_angles()[0:3]
-        angles = atoms.get_cell_lengths_and_angles()[3:6]
+        mags = cell.lengths()
+        angles = cell.angles()
         pbc = atoms.pbc
 
-        for i in [0, 1, 2]: # x_ y_ z_
+        for i in [0, 1, 2]:  # x_ y_ z_
             row = []
-            for j in [0, 1, 2]: # _x _y _z
+            for j in [0, 1, 2]:  # _x _y _z
                 row.append(ui.SpinBox(cell[i][j], -30, 30, 0.1,
                            self.apply_vectors, rounding=7, width=9))
             row.append(ui.SpinBox(mags[i], -30, 30, 0.1, self.apply_magnitudes,
                                   rounding=7, width=9))
             self.cell_grid.append(row)
             self.pbc.append(ui.CheckButton('', bool(pbc[i]), self.apply_pbc))
-            self.angles.append(ui.SpinBox(angles[i], -360, 360, 15, self.apply_angles,
+            self.angles.append(ui.SpinBox(angles[i], -360, 360, 15,
+                                          self.apply_angles,
                                           rounding=7, width=9))
 
         self.scale_atoms = ui.CheckButton('', False)
         self.vacuum = ui.SpinBox(5, 0, 15, 0.1, self.apply_vacuum)
 
         # TRANSLATORS: This is a title of a window.
-        win = self.win = ui.Window(_('Cell Editor'))
+        win = self.win = ui.Window(_('Cell Editor'), wmtype='utility')
 
         x, y, z = self.cell_grid
 
@@ -62,17 +63,12 @@ class CellEditor:
                  ui.Button(_('Apply Magnitudes'), self.apply_magnitudes),
                  ui.Button(_('Apply Angles'), self.apply_angles)])
         win.add([_('Pressing 〈Enter〉 as you enter values will '
-                    'automatically apply correctly')])
+                   'automatically apply correctly')])
         # TRANSLATORS: verb
         win.add([ui.Button(_('Center'), self.apply_center),
                  ui.Button(_('Wrap'), self.apply_wrap),
                  _('Vacuum:'), self.vacuum,
                  ui.Button(_('Apply Vacuum'), self.apply_vacuum)])
-
-        #win.add([_('\tx: '), self.x, _(' unit cells'), self.x_warn])
-        #win.add([_('\ty: '), self.y, _(' unit cells'), self.y_warn])
-        #win.add([_('\tz: '), self.z, _(' unit cells')])
-        #win.add([_('Vacuum: '), self.vacuum_check, self.vacuum, (u'Å')])
 
     def apply_center(self, *args):
         atoms = self.gui.atoms.copy()
@@ -95,44 +91,51 @@ class CellEditor:
         atoms.center(vacuum=self.vacuum.value, axis=axis)
         self.gui.new_atoms(atoms)
 
-
     def apply_vectors(self, *args):
         atoms = self.gui.atoms.copy()
-        x, y, z = self.cell_grid
 
-        new_cell = np.array([[x[0].value, x[1].value, x[2].value],
-                             [y[0].value, y[1].value, y[2].value],
-                             [z[0].value, z[1].value, z[2].value]])
-
-        atoms.set_cell(new_cell, scale_atoms=self.scale_atoms.var.get())
+        atoms.set_cell(self.get_vectors(),
+                       scale_atoms=self.scale_atoms.var.get())
         self.gui.new_atoms(atoms)
+
+    def get_vectors(self):
+        x, y, z = self.cell_grid
+        cell = np.array(
+            [[x[0].value, x[1].value, x[2].value],
+             [y[0].value, y[1].value, y[2].value],
+             [z[0].value, z[1].value, z[2].value]]
+        )
+        return Cell(cell)
+
+    def get_magnitudes(self):
+        x, y, z = self.cell_grid
+        return np.array([x[3].value, y[3].value, z[3].value])
 
     def apply_magnitudes(self, *args):
         atoms = self.gui.atoms.copy()
-        x, y, z = self.cell_grid
 
-        old_cell = atoms.cell
+        old_mags = atoms.cell.lengths()
+        new_mags = self.get_magnitudes()
 
-        old_mags = atoms.get_cell_lengths_and_angles()[0:3]
-        new_mags = np.array([x[3].value, y[3].value, z[3].value])
+        newcell = atoms.cell.copy()
+        for i in range(3):
+            newcell[i] *= new_mags[i] / old_mags[i]
 
-        atoms.set_cell(old_cell / old_mags * new_mags,
+        atoms.set_cell(newcell,
                        scale_atoms=self.scale_atoms.var.get())
 
         self.gui.new_atoms(atoms)
 
-
     def apply_angles(self, *args):
         atoms = self.gui.atoms.copy()
 
-        cell_data = atoms.get_cell_lengths_and_angles()
+        cell_data = atoms.cell.cellpar()
         cell_data[3:7] = [self.angles[0].value, self.angles[1].value,
                           self.angles[2].value]
 
         atoms.set_cell(cell_data, scale_atoms=self.scale_atoms.var.get())
 
         self.gui.new_atoms(atoms)
-
 
     def apply_pbc(self, *args):
         atoms = self.gui.atoms.copy()
@@ -142,27 +145,27 @@ class CellEditor:
 
         self.gui.new_atoms(atoms)
 
-
     def notify_atoms_changed(self):
         atoms = self.gui.atoms
+        self.update(atoms.cell, atoms.pbc)
 
-        cell = atoms.cell
-        mags = atoms.get_cell_lengths_and_angles()[0:3]
-        angles = atoms.get_cell_lengths_and_angles()[3:6]
-        pbc = atoms.pbc
+    def update(self, cell, pbc):
+        cell = Cell(cell)
+        mags = cell.lengths()
+        angles = cell.angles()
 
-        for i in [0, 1, 2]:
-            for j in [0, 1, 2]:
+        for i in range(3):
+            for j in range(3):
                 if np.isnan(cell[i][j]):
                     cell[i][j] = 0
                 self.cell_grid[i][j].value = cell[i][j]
 
             if np.isnan(mags[i]):
-                    mags[i] = 0
+                mags[i] = 0
             self.cell_grid[i][3].value = mags[i]
 
             if np.isnan(angles[i]):
-                    angles[i] = 0
+                angles[i] = 0
             self.angles[i].value = angles[i]
 
             self.pbc[i].var.set(bool(pbc[i]))

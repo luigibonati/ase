@@ -1,7 +1,6 @@
-from __future__ import division
+import re
 import numpy as np
 from xml.dom import minidom
-from ase.calculators.siesta.mbpt_lcao_utils import str2int, str2float
 
 
 def get_ion(fname):
@@ -12,7 +11,7 @@ def get_ion(fname):
     fname (str): name of the ion file
     Output Parameters:
     ------------------
-    ion (dict): The ion dictionnary contains all the data
+    ion (dict): The ion dictionary contains all the data
         from the ion file. Each field of the xml file give
         one key.
         The different keys are:
@@ -33,8 +32,8 @@ def get_ion(fname):
             'delta':list of float
             'cutoff': list of float
             'data':list of np.arrayof shape (npts[i], 2)
-            'orbital': list of dictionnary
-            'projector': list of dictionnary
+            'orbital': list of dictionary
+            'projector': list of dictionary
 
     """
     doc = minidom.parse(fname)
@@ -174,3 +173,43 @@ def extract_projector(pro_xml):
     pro['ref_energy'] = str2float(pro_xml.attributes['ref_energy'].value)[0]
 
     return pro
+
+
+def str2float(string):
+    numeric_const_pattern = r"""
+  [-+]? # optional sign
+  (?:
+    (?: \d* \. \d+ ) # .1 .12 .123 etc 9.1 etc 98.1 etc
+    |
+    (?: \d+ \.? ) # 1. 12. 123. etc 1 12 123 etc
+  )
+  # followed by optional exponent part if desired
+  (?: [Ee] [+-]? \d+ ) ?
+  """
+    rx = re.compile(numeric_const_pattern, re.VERBOSE)
+
+    nb = rx.findall(string)
+    for i in enumerate(nb):
+        nb[i[0]] = float(i[1])
+
+    return np.array(nb)
+
+
+def str2int(string):
+    numeric_const_pattern = r"""
+  [-+]? # optional sign
+  (?:
+    (?: \d* \. \d+ ) # .1 .12 .123 etc 9.1 etc 98.1 etc
+    |
+    (?: \d+ \.? ) # 1. 12. 123. etc 1 12 123 etc
+  )
+  # followed by optional exponent part if desired
+  (?: [Ee] [+-]? \d+ ) ?
+  """
+    rx = re.compile(numeric_const_pattern, re.VERBOSE)
+
+    nb = rx.findall(string)
+    for i in enumerate(nb):
+        nb[i[0]] = int(i[1])
+
+    return np.array(nb)

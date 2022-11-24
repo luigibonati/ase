@@ -1,71 +1,60 @@
-"""Build ASE's web-page.
+"""Build ASE's web-page."""
 
-Initial setup::
-
-    cd ~
-    python3 -m venv ase-web-page
-    cd ase-web-page
-    . bin/activate
-    pip install sphinx-rtd-theme
-    pip install Sphinx
-    pip install matplotlib scipy flask
-    git clone http://gitlab.com/ase/ase.git
-    cd ase
-    pip install -U .
-
-Crontab::
-
-    WEB_PAGE_FOLDER=...
-    CMD="python -m ase.utils.build_web_page"
-    10 19 * * * cd ~/ase-web-page; . bin/activate; cd ase; $CMD > ../ase.log
-
-"""
-
-from __future__ import print_function
 import os
+import shutil
 import subprocess
 import sys
-
-from ase import __version__
+from pathlib import Path
 
 
 cmds = """\
-touch ../ase-web-page.lock
-pip install --upgrade pip
-git clean -fdx
-git checkout web-page -q
-git pull -q > /dev/null 2>&1
+python3 -m venv venv
+. venv/bin/activate
+pip install sphinx-rtd-theme pillow
+git clone http://gitlab.com/ase/ase.git
+cd ase
 pip install .
-cd doc; sphinx-build -b html -d build/doctrees . build/html
-mv doc/build/html ase-web-page
-git clean -fdx doc
-git checkout master -q
-git pull -q > /dev/null 2>&1
-pip install .
-cd doc; sphinx-build -b html -d build/doctrees . build/html
-mv doc/build/html ase-web-page/dev
 python setup.py sdist
-cp dist/ase-*.tar.gz ase-web-page/
-cp dist/ase-*.tar.gz ase-web-page/dev/
-find ase-web-page -name install.html | xargs sed -i s/snapshot.tar.gz/{0}/g
-tar -czf ase-web-page.tar.gz ase-web-page
-cp ase-web-page.tar.gz {1}/tmp-ase-web-page.tar.gz
-mv {1}/tmp-ase-web-page.tar.gz {1}/ase-web-page.tar.gz"""
-
-cmds = cmds.format('ase-' + __version__ + '.tar.gz',
-                   os.environ['WEB_PAGE_FOLDER'])
+cd doc
+make
+mv build/html ase-web-page"""
 
 
 def build():
-    if os.path.isfile('../ase-web-page.lock'):
-        print('Locked', file=sys.stderr)
-        return
-    try:
-        for cmd in cmds.splitlines():
-            subprocess.check_call(cmd, shell=True)
-    finally:
-        os.remove('../ase-web-page.lock')
+    root = Path('/tmp/ase-docs')
+    if root.is_dir():
+        sys.exit('Locked')
+    root.mkdir()
+    os.chdir(root)
+    cmds2 = ' && '.join(cmds.splitlines())
+    p = subprocess.run(cmds2, shell=True)
+    if p.returncode == 0:
+        status = 'ok'
+    else:
+        print('FAILED!', file=sys.stdout)
+        status = 'error'
+    f = root.with_name(f'ase-docs-{status}')
+    if f.is_dir():
+        shutil.rmtree(f)
+    root.rename(f)
+    return status
+
+
+def build_all():
+    assert build() == 'ok'
+    tar = next(
+        Path('/tmp/ase-docs-ok/ase/dist/').glob('ase-*.tar.gz'))
+    webpage = Path('/tmp/ase-docs-ok/ase/doc/ase-web-page')
+    home = Path.home() / 'web-pages'
+    cmds = ' && '.join(
+        [f'cp {tar} {webpage}',
+         f'find {webpage} -name install.html | '
+         f'xargs sed -i s/snapshot.tar.gz/{tar.name}/g',
+         f'cd {webpage.parent}',
+         'tar -czf ase-web-page.tar.gz ase-web-page',
+         f'cp ase-web-page.tar.gz {home}'])
+    subprocess.run(cmds, shell=True, check=True)
 
 
 if __name__ == '__main__':
-    build()
+    build_all()

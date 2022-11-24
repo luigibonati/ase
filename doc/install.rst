@@ -7,24 +7,34 @@ Installation
 Requirements
 ============
 
-* Python_ 2.7, 3.4-3.6
-* NumPy_ 1.9 or newer (base N-dimensional array package)
+* Python_ 3.6 or newer
+* NumPy_ (base N-dimensional array package)
 * SciPy_ (library for scientific computing)
+
+Optional but strongly recommended:
+
+* Matplotlib_ for plotting
+* :mod:`tkinter` for :mod:`ase.gui`
 
 Optional:
 
-* Matplotlib_ (plotting)
-* :mod:`tkinter` (for :mod:`ase.gui`)
-* Flask_ (for :mod:`ase.db` web-interface)
+* Flask_ for :mod:`ase.db` web-interface
+* pytest_ for running tests
+* pytest-mock_ for running some more tests
+* pytest-xdist_ for running tests in parallel
+* spglib_ for certain symmetry-related features
 
-.. _Python: http://www.python.org/
-.. _NumPy: http://docs.scipy.org/doc/numpy/reference/
-.. _SciPy: http://docs.scipy.org/doc/scipy/reference/
-.. _Matplotlib: http://matplotlib.org/
-.. _Flask: http://flask.pocoo.org/
+.. _Python: https://www.python.org/
+.. _NumPy: https://docs.scipy.org/doc/numpy/reference/
+.. _SciPy: https://docs.scipy.org/doc/scipy/reference/
+.. _Matplotlib: https://matplotlib.org/
+.. _Flask: https://palletsprojects.com/p/flask/
 .. _PyPI: https://pypi.org/project/ase
 .. _PIP: https://pip.pypa.io/en/stable/
-
+.. _pytest: https://pypi.org/project/pytest/
+.. _pytest-xdist: https://pypi.org/project/pytest-xdist/
+.. _pytest-mock: https://pypi.org/project/pytest-mock/
+.. _spglib: https://pypi.org/project/spglib/
 
 Installation using system package managers
 ==========================================
@@ -44,13 +54,21 @@ dependencies and make ASE available for all users.
 Max OSX (Homebrew)
 ------------------
 
-Mac users may be familiar with Homebrew_.  Before installing ASE with pip_ as
-described in the next section. Homebrew's ``python`` package provides an up-
-to-date version of Python 2.7.x and sets up ``pip`` for you::
+The old version of Python included in Mac OSX is incompatible with ASE
+and does not include the pip_ package manager.
+
+Before installing ASE with ``pip`` as described in the next section, Mac
+users need to install an appropriate Python version.  One option is
+to use the Homebrew_ package manager, which provides an up-to-date version
+of Python 3 including ``pip`` and the tkinter graphical interface bindings::
 
   $ brew install python
 
+For more information about the quirks of brewed Python see this guide_.
+
 .. _Homebrew: http://brew.sh
+
+.. _guide: https://docs.brew.sh/Homebrew-and-Python
 
 
 .. index:: pip
@@ -67,6 +85,10 @@ the source code from PyPI_::
 
     $ pip install --upgrade --user ase
 
+If you intend to run the tests, use::
+
+    $ pip install --upgrade --user ase[test]
+
 This will install ASE in a local folder where Python can
 automatically find it (``~/.local`` on Unix, see here_ for details).  Some
 :ref:`cli` will be installed in the following location:
@@ -79,8 +101,8 @@ Windows            ``%APPDATA%/Python/Scripts``
 
 Make sure you have that path in your :envvar:`PATH` environment variable.
 
-Now you should be ready to use ASE, but before you start, please `run the
-tests`_ as described below.
+Now you should be ready to use ASE, but before you start, you may
+wish to `run the tests`_ as described below.
 
 
 .. note::
@@ -105,13 +127,13 @@ from Git.
 :Tar-file:
 
     You can get the source as a `tar-file <http://xkcd.com/1168/>`__ for the
-    latest stable release (ase-3.16.2.tar.gz_) or the latest
+    latest stable release (ase-3.22.1.tar.gz_) or the latest
     development snapshot (`<snapshot.tar.gz>`_).
 
     Unpack and make a soft link::
 
-        $ tar -xf ase-3.16.2.tar.gz
-        $ ln -s ase-3.16.2 ase
+        $ tar -xf ase-3.22.1.tar.gz
+        $ ln -s ase-3.22.1 ase
 
     Here is a `list of tarballs <https://pypi.org/simple/ase/>`__.
 
@@ -120,7 +142,7 @@ from Git.
     Alternatively, you can get the source for the latest stable release from
     https://gitlab.com/ase/ase like this::
 
-        $ git clone -b 3.16.2 https://gitlab.com/ase/ase.git
+        $ git clone -b 3.22.1 https://gitlab.com/ase/ase.git
 
     or if you want the development version::
 
@@ -151,7 +173,7 @@ Finally, please `run the tests`_.
     dates of older releases can be found there.
 
 
-.. _ase-3.16.2.tar.gz: https://pypi.org/packages/source/a/ase/ase-3.16.2.tar.gz
+.. _ase-3.22.1.tar.gz: https://pypi.org/packages/source/a/ase/ase-3.22.1.tar.gz
 
 
 Environment variables

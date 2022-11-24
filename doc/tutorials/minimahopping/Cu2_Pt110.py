@@ -15,14 +15,14 @@ atoms.extend(adsorbate)
 # Constrain the surface to be fixed and a Hookean constraint between
 # the adsorbate atoms.
 constraints = [FixAtoms(indices=[atom.index for atom in atoms if
-                                 atom.symbol=='Pt']),
+                                 atom.symbol == 'Pt']),
                Hookean(a1=8, a2=9, rt=2.6, k=15.),
-               Hookean(a1=8, a2=(0., 0., 1., -15.), k=15.),]
+               Hookean(a1=8, a2=(0., 0., 1., -15.), k=15.), ]
 atoms.set_constraint(constraints)
 
 # Set the calculator.
 calc = EMT()
-atoms.set_calculator(calc)
+atoms.calc = calc
 
 # Instantiate and run the minima hopping algorithm.
 hop = MinimaHopping(atoms,

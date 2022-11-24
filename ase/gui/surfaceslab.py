@@ -1,7 +1,5 @@
-# encoding: utf-8
 '''surfaceslab.py - Window for setting up surfaces
 '''
-from __future__ import division, unicode_literals
 from ase.gui.i18n import _, ngettext
 
 import ase.gui.ui as ui
@@ -45,6 +43,7 @@ atoms = {func}(symbol='{symbol}', size={size},
 
 class SetupSurfaceSlab:
     '''Window for setting up a surface.'''
+
     def __init__(self, gui):
         self.element = Element('', self.apply)
         self.structure = ui.ComboBox(structures, structures,
@@ -64,7 +63,7 @@ class SetupSurfaceSlab:
         self.vacuum = ui.SpinBox(5, 0, 40, 0.01, self.make)
         self.description = ui.Label('')
 
-        win = self.win = ui.Window(_('Surface'))
+        win = self.win = ui.Window(_('Surface'), wmtype='utility')
         win.add(ui.Text(introtext))
         win.add(self.element)
         win.add([_('Structure:'), self.structure, self.structure_warn])
@@ -134,7 +133,7 @@ class SetupSurfaceSlab:
                 if surface[1] == _('hcp'):
                     self.lattice_c.active = True
                     self.lattice_c.value = round(self.lattice_a.value *
-                                                 ((8.0/3.0) ** (0.5)), 3)
+                                                 ((8.0 / 3.0) ** (0.5)), 3)
                 else:
                     self.lattice_c.active = False
                     self.lattice_c.value = 'None'
@@ -194,7 +193,7 @@ class SetupSurfaceSlab:
                     self.atoms = surface[3](symbol, size, a, vacuum, ortho)
 
                 if vacuum is not None:
-                    vacuumtext =_(' Vacuum: {} Å.').format(vacuum)
+                    vacuumtext = _(' Vacuum: {} Å.').format(vacuum)
                 else:
                     vacuumtext = ''
 

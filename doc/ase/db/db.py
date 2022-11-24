@@ -1,6 +1,4 @@
 # creates: ase-db.txt, ase-db-long.txt, known-keys.csv
-from __future__ import print_function
-
 import subprocess
 
 import ase.db
@@ -58,6 +56,6 @@ with open('known-keys.csv', 'w') as fd:
     print('key,short description,long description,unit', file=fd)
     for key, (short, long, unit) in default_key_descriptions.items():
         if unit == '|e|':
-            unit = '\|e|'
+            unit = r'\|e|'
         long = long or short
         print('{},{},{},{}'.format(key, short, long, unit), file=fd)

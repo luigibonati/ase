@@ -11,29 +11,27 @@ Versions:
 6) Use REAL for magmom and drop possibility for non-collinear spin
 7) Volume can be None
 8) Added name='metadata' row to "information" table
+9) Row data is now stored in binary format.
 """
 
-from __future__ import absolute_import, print_function
 import json
 import numbers
 import os
 import sqlite3
 import sys
-import functools
+from contextlib import contextmanager
 
 import numpy as np
 
+import ase.io.jsonio
 from ase.data import atomic_numbers
+from ase.calculators.calculator import all_properties
 from ase.db.row import AtomsRow
-from ase.db.core import Database, ops, now, lock, invop, parse_selection
-from ase.io.jsonio import encode, numpyfy, mydecode
+from ase.db.core import (Database, ops, now, lock, invop, parse_selection,
+                         object_to_bytes, bytes_to_object)
 from ase.parallel import parallel_function
-from ase.utils import basestring
 
-if sys.version >= '3':
-    buffer = memoryview
-
-VERSION = 8
+VERSION = 9
 
 init_statements = [
     """CREATE TABLE systems (
@@ -63,7 +61,7 @@ init_statements = [
     magmom REAL,
     charges BLOB,
     key_value_pairs TEXT,  -- key-value pairs and data as json
-    data TEXT,
+    data BLOB,
     natoms INTEGER,  -- stuff for making queries faster
     fmax REAL,
     smax REAL,
@@ -120,7 +118,7 @@ def float_if_not_none(x):
         return float(x)
 
 
-class SQLite3Database(Database, object):
+class SQLite3Database(Database):
     type = 'db'
     initialized = False
     _allow_reading_old_format = False
@@ -130,11 +128,53 @@ class SQLite3Database(Database, object):
     columnnames = [line.split()[0].lstrip()
                    for line in init_statements[0].splitlines()[1:]]
 
+    def encode(self, obj, binary=False):
+        if binary:
+            return object_to_bytes(obj)
+        return ase.io.jsonio.encode(obj)
+
+    def decode(self, txt, lazy=False):
+        if lazy:
+            return txt
+        if isinstance(txt, str):
+            return ase.io.jsonio.decode(txt)
+        return bytes_to_object(txt)
+
+    def blob(self, array):
+        """Convert array to blob/buffer object."""
+
+        if array is None:
+            return None
+        if len(array) == 0:
+            array = np.zeros(0)
+        if array.dtype == np.int64:
+            array = array.astype(np.int32)
+        if not np.little_endian:
+            array = array.byteswap()
+        return memoryview(np.ascontiguousarray(array))
+
+    def deblob(self, buf, dtype=float, shape=None):
+        """Convert blob/buffer object to ndarray of correct dtype and shape.
+
+        (without creating an extra view)."""
+        if buf is None:
+            return None
+        if len(buf) == 0:
+            array = np.zeros(0, dtype)
+        else:
+            array = np.frombuffer(buf, dtype)
+            if not np.little_endian:
+                array = array.byteswap()
+        if shape is not None:
+            array.shape = shape
+        return array
+
     def _connect(self):
-        return sqlite3.connect(self.filename, timeout=600)
+        return sqlite3.connect(self.filename, timeout=20)
 
     def __enter__(self):
         assert self.connection is None
+        self.change_count = 0
         self.connection = self._connect()
         return self
 
@@ -145,6 +185,25 @@ class SQLite3Database(Database, object):
             self.connection.rollback()
         self.connection.close()
         self.connection = None
+
+    @contextmanager
+    def managed_connection(self, commit_frequency=5000):
+        try:
+            con = self.connection or self._connect()
+            self._initialize(con)
+            yield con
+        except ValueError as exc:
+            if self.connection is None:
+                con.close()
+            raise exc
+        else:
+            if self.connection is None:
+                con.commit()
+                con.close()
+            else:
+                self.change_count += 1
+                if self.change_count % commit_frequency == 0:
+                    con.commit()
 
     def _initialize(self, con):
         if self.initialized:
@@ -195,25 +254,13 @@ class SQLite3Database(Database, object):
         self.initialized = True
 
     def _write(self, atoms, key_value_pairs, data, id):
+        ext_tables = key_value_pairs.pop("external_tables", {})
         Database._write(self, atoms, key_value_pairs, data)
-        if self.type == 'postgresql':
-            encode = functools.partial(_encode, pg=True)
-        else:
-            encode = _encode
-
-        con = self.connection or self._connect()
-        self._initialize(con)
-        cur = con.cursor()
 
         mtime = now()
 
-        if self.type == 'postgresql':
-            blob = functools.partial(_blob, pg=True)
-        else:
-            blob = _blob
-
-        text_key_values = []
-        number_key_values = []
+        encode = self.encode
+        blob = self.blob
 
         if not isinstance(atoms, AtomsRow):
             row = AtomsRow(atoms)
@@ -221,13 +268,19 @@ class SQLite3Database(Database, object):
             row.user = os.getenv('USER')
         else:
             row = atoms
+            # Extract the external tables from AtomsRow
+            names = self._get_external_table_names()
+            for name in names:
+                new_table = row.get(name, {})
+                if new_table:
+                    ext_tables[name] = new_table
 
-        if id:
-            self._delete(cur, [id], ['keys', 'text_key_values',
-                                     'number_key_values', 'species'])
-        else:
-            if not key_value_pairs:
-                key_value_pairs = row.key_value_pairs
+        if not id and not key_value_pairs and not ext_tables:
+            key_value_pairs = row.key_value_pairs
+
+        for k, v in ext_tables.items():
+            dtype = self._guess_type(v)
+            self._create_table_if_not_exists(k, dtype)
 
         constraints = row._constraints
         if constraints:
@@ -258,62 +311,118 @@ class SQLite3Database(Database, object):
 
         if not data:
             data = row._data
-        if not isinstance(data, basestring):
-            data = encode(data)
 
-        values += (row.get('energy'),
-                   row.get('free_energy'),
-                   blob(row.get('forces')),
-                   blob(row.get('stress')),
-                   blob(row.get('dipole')),
-                   blob(row.get('magmoms')),
-                   row.get('magmom'),
-                   blob(row.get('charges')),
-                   encode(key_value_pairs),
-                   data,
-                   len(row.numbers),
-                   float_if_not_none(row.get('fmax')),
-                   float_if_not_none(row.get('smax')),
-                   float_if_not_none(row.get('volume')),
-                   float(row.mass),
-                   float(row.charge))
+        with self.managed_connection() as con:
+            if not isinstance(data, (str, bytes)):
+                data = encode(data, binary=self.version >= 9)
 
-        if id is None:
-            q = self.default + ', ' + ', '.join('?' * len(values))
-            cur.execute('INSERT INTO systems VALUES ({})'.format(q),
-                        values)
-            id = self.get_last_id(cur)
-        else:
-            q = ', '.join(name + '=?' for name in self.columnnames[1:])
-            cur.execute('UPDATE systems SET {} WHERE id=?'.format(q),
-                        values + (id,))
+            values += (row.get('energy'),
+                       row.get('free_energy'),
+                       blob(row.get('forces')),
+                       blob(row.get('stress')),
+                       blob(row.get('dipole')),
+                       blob(row.get('magmoms')),
+                       row.get('magmom'),
+                       blob(row.get('charges')),
+                       encode(key_value_pairs),
+                       data,
+                       len(row.numbers),
+                       float_if_not_none(row.get('fmax')),
+                       float_if_not_none(row.get('smax')),
+                       float_if_not_none(row.get('volume')),
+                       float(row.mass),
+                       float(row.charge))
 
-        count = row.count_atoms()
-        if count:
-            species = [(atomic_numbers[symbol], n, id)
-                       for symbol, n in count.items()]
-            cur.executemany('INSERT INTO species VALUES (?, ?, ?)',
-                            species)
-
-        text_key_values = []
-        number_key_values = []
-        for key, value in key_value_pairs.items():
-            if isinstance(value, (numbers.Real, np.bool_)):
-                number_key_values.append([key, float(value), id])
+            cur = con.cursor()
+            if id is None:
+                q = self.default + ', ' + ', '.join('?' * len(values))
+                cur.execute('INSERT INTO systems VALUES ({})'.format(q),
+                            values)
+                id = self.get_last_id(cur)
             else:
-                assert isinstance(value, basestring)
-                text_key_values.append([key, value, id])
+                self._delete(cur, [id], ['keys', 'text_key_values',
+                                         'number_key_values', 'species'])
+                q = ', '.join(name + '=?' for name in self.columnnames[1:])
+                cur.execute('UPDATE systems SET {} WHERE id=?'.format(q),
+                            values + (id,))
 
-        cur.executemany('INSERT INTO text_key_values VALUES (?, ?, ?)',
-                        text_key_values)
-        cur.executemany('INSERT INTO number_key_values VALUES (?, ?, ?)',
-                        number_key_values)
-        cur.executemany('INSERT INTO keys VALUES (?, ?)',
-                        [(key, id) for key in key_value_pairs])
+            count = row.count_atoms()
+            if count:
+                species = [(atomic_numbers[symbol], n, id)
+                           for symbol, n in count.items()]
+                cur.executemany('INSERT INTO species VALUES (?, ?, ?)',
+                                species)
 
-        if self.connection is None:
-            con.commit()
-            con.close()
+            text_key_values = []
+            number_key_values = []
+            for key, value in key_value_pairs.items():
+                if isinstance(value, (numbers.Real, np.bool_)):
+                    number_key_values.append([key, float(value), id])
+                else:
+                    assert isinstance(value, str)
+                    text_key_values.append([key, value, id])
+
+            cur.executemany('INSERT INTO text_key_values VALUES (?, ?, ?)',
+                            text_key_values)
+            cur.executemany('INSERT INTO number_key_values VALUES (?, ?, ?)',
+                            number_key_values)
+            cur.executemany('INSERT INTO keys VALUES (?, ?)',
+                            [(key, id) for key in key_value_pairs])
+
+            # Insert entries in the valid tables
+            for tabname in ext_tables.keys():
+                entries = ext_tables[tabname]
+                entries['id'] = id
+                self._insert_in_external_table(
+                    cur, name=tabname, entries=ext_tables[tabname])
+
+        return id
+
+    def _update(self, id, key_value_pairs, data=None):
+        """Update key_value_pairs and data for a single row """
+        encode = self.encode
+        ext_tables = key_value_pairs.pop('external_tables', {})
+
+        for k, v in ext_tables.items():
+            dtype = self._guess_type(v)
+            self._create_table_if_not_exists(k, dtype)
+
+        mtime = now()
+        with self.managed_connection() as con:
+            cur = con.cursor()
+            cur.execute(
+                'UPDATE systems SET mtime=?, key_value_pairs=? WHERE id=?',
+                (mtime, encode(key_value_pairs), id))
+            if data:
+                if not isinstance(data, (str, bytes)):
+                    data = encode(data, binary=self.version >= 9)
+                cur.execute('UPDATE systems set data=? where id=?', (data, id))
+
+            self._delete(cur, [id], ['keys', 'text_key_values',
+                                     'number_key_values'])
+
+            text_key_values = []
+            number_key_values = []
+            for key, value in key_value_pairs.items():
+                if isinstance(value, (numbers.Real, np.bool_)):
+                    number_key_values.append([key, float(value), id])
+                else:
+                    assert isinstance(value, str)
+                    text_key_values.append([key, value, id])
+
+            cur.executemany('INSERT INTO text_key_values VALUES (?, ?, ?)',
+                            text_key_values)
+            cur.executemany('INSERT INTO number_key_values VALUES (?, ?, ?)',
+                            number_key_values)
+            cur.executemany('INSERT INTO keys VALUES (?, ?)',
+                            [(key, id) for key in key_value_pairs])
+
+            # Insert entries in the valid tables
+            for tabname in ext_tables.keys():
+                entries = ext_tables[tabname]
+                entries['id'] = id
+                self._insert_in_external_table(
+                    cur, name=tabname, entries=ext_tables[tabname])
 
         return id
 
@@ -327,27 +436,21 @@ class SQLite3Database(Database, object):
             return 0
 
     def _get_row(self, id):
-        con = self._connect()
-        self._initialize(con)
-        c = con.cursor()
-        if id is None:
-            c.execute('SELECT COUNT(*) FROM systems')
-            assert c.fetchone()[0] == 1
-            c.execute('SELECT * FROM systems')
-        else:
-            c.execute('SELECT * FROM systems WHERE id=?', (id,))
-        values = c.fetchone()
+        with self.managed_connection() as con:
+            cur = con.cursor()
+            if id is None:
+                cur.execute('SELECT COUNT(*) FROM systems')
+                assert cur.fetchone()[0] == 1
+                cur.execute('SELECT * FROM systems')
+            else:
+                cur.execute('SELECT * FROM systems WHERE id=?', (id,))
+            values = cur.fetchone()
 
-        values = self._old2new(values)
         return self._convert_tuple_to_row(values)
 
     def _convert_tuple_to_row(self, values):
-        if self.type == 'postgresql':
-            deblob = functools.partial(_deblob, pg=True)
-            decode = functools.partial(_decode, pg=True)
-        else:
-            deblob = _deblob
-            decode = _decode
+        deblob = self.deblob
+        decode = self.decode
 
         values = self._old2new(values)
         dct = {'id': values[0],
@@ -396,8 +499,16 @@ class SQLite3Database(Database, object):
         if values[25] != '{}':
             dct['key_value_pairs'] = decode(values[25])
         if len(values) >= 27 and values[26] != 'null':
-            dct['data'] = decode(values[26])
+            dct['data'] = decode(values[26], lazy=True)
 
+        # Now we need to update with info from the external tables
+        external_tab = self._get_external_table_names()
+        tables = {}
+        for tab in external_tab:
+            row = self._read_external_table(tab, dct["id"])
+            tables[tab] = row
+
+        dct.update(tables)
         return AtomsRow(dct)
 
     def _old2new(self, values):
@@ -409,7 +520,7 @@ class SQLite3Database(Database, object):
         if self.version < 6:
             m = values[23]
             if m is not None and not isinstance(m, float):
-                magmom = float(_deblob(m, shape=()))
+                magmom = float(self.deblob(m, shape=()))
                 values = values[:23] + (magmom,) + values[24:]
         return values
 
@@ -446,7 +557,7 @@ class SQLite3Database(Database, object):
             if key in ['id', 'energy', 'magmom', 'ctime', 'user',
                        'calculator', 'natoms', 'pbc', 'unique_id',
                        'fmax', 'smax', 'volume', 'mass', 'charge']:
-                if key == 'user' and self.version >= 2:
+                if key == 'user':
                     key = 'username'
                 elif key == 'pbc':
                     assert op in ['=', '!=']
@@ -463,8 +574,9 @@ class SQLite3Database(Database, object):
                     args += [key, value]
                 else:
                     if bad[key]:
-                        where.append('systems.id not in (select id from species ' +
-                                     'where Z=? and n{}?)'.format(invop[op]))
+                        where.append(
+                            'systems.id not in (select id from species ' +
+                            'where Z=? and n{}?)'.format(invop[op]))
                         args += [key, value]
                     else:
                         where.append('systems.id in (select id from species ' +
@@ -473,19 +585,23 @@ class SQLite3Database(Database, object):
 
             elif self.type == 'postgresql':
                 jsonop = '->'
-                if isinstance(value, basestring):
+                if isinstance(value, str):
                     jsonop = '->>'
+                elif isinstance(value, bool):
+                    jsonop = '->>'
+                    value = str(value).lower()
                 where.append("systems.key_value_pairs {} '{}'{}?"
                              .format(jsonop, key, op))
                 args.append(str(value))
 
-            elif isinstance(value, basestring):
+            elif isinstance(value, str):
                 where.append('systems.id in (select id from text_key_values ' +
                              'where key=? and value{}?)'.format(op))
                 args += [key, value]
             else:
-                where.append('systems.id in (select id from number_key_values ' +
-                             'where key=? and value{}?)'.format(op))
+                where.append(
+                    'systems.id in (select id from number_key_values ' +
+                    'where key=? and value{}?)'.format(op))
                 args += [key, float(value)]
 
         if sort:
@@ -510,8 +626,6 @@ class SQLite3Database(Database, object):
     def _select(self, keys, cmps, explain=False, verbosity=0,
                 limit=None, offset=0, sort=None, include_data=True,
                 columns='all'):
-        con = self._connect()
-        self._initialize(con)
 
         values = np.array([None for i in range(27)])
         values[25] = '{}'
@@ -539,7 +653,7 @@ class SQLite3Database(Database, object):
                 for dct in self._select(keys + [sort], cmps=[], limit=1,
                                         include_data=False,
                                         columns=['key_value_pairs']):
-                    if isinstance(dct['key_value_pairs'][sort], basestring):
+                    if isinstance(dct['key_value_pairs'][sort], str):
                         sort_table = 'text_key_values'
                     else:
                         sort_table = 'number_key_values'
@@ -566,65 +680,83 @@ class SQLite3Database(Database, object):
             sql += '\nLIMIT {0}'.format(limit)
 
         if offset:
-            sql += '\nOFFSET {0}'.format(offset)
+            sql += self.get_offset_string(offset, limit=limit)
 
         if verbosity == 2:
             print(sql, args)
 
-        cur = con.cursor()
-        cur.execute(sql, args)
-        if explain:
-            for row in cur.fetchall():
-                yield {'explain': row}
-        else:
-            n = 0
-            for shortvalues in cur.fetchall():
-                values[columnindex] = shortvalues
-                yield self._convert_tuple_to_row(tuple(values))
-                n += 1
+        with self.managed_connection() as con:
+            cur = con.cursor()
+            cur.execute(sql, args)
+            if explain:
+                for row in cur.fetchall():
+                    yield {'explain': row}
+            else:
+                n = 0
+                for shortvalues in cur.fetchall():
+                    values[columnindex] = shortvalues
+                    yield self._convert_tuple_to_row(tuple(values))
+                    n += 1
 
-            if sort and sort_table != 'systems':
-                # Yield rows without sort key last:
-                if limit is not None:
-                    if n == limit:
-                        return
-                    limit -= n
-                for row in self._select(keys + ['-' + sort], cmps,
-                                        limit=limit, offset=offset,
-                                        include_data=include_data,
-                                        columns=columns):
-                    yield row
+                if sort and sort_table != 'systems':
+                    # Yield rows without sort key last:
+                    if limit is not None:
+                        if n == limit:
+                            return
+                        limit -= n
+                    for row in self._select(keys + ['-' + sort], cmps,
+                                            limit=limit, offset=offset,
+                                            include_data=include_data,
+                                            columns=columns):
+                        yield row
+
+    def get_offset_string(self, offset, limit=None):
+        sql = ''
+        if not limit:
+            # In sqlite you cannot have offset without limit, so we
+            # set it to -1 meaning no limit
+            sql += '\nLIMIT -1'
+        sql += '\nOFFSET {0}'.format(offset)
+        return sql
 
     @parallel_function
     def count(self, selection=None, **kwargs):
         keys, cmps = parse_selection(selection, **kwargs)
         sql, args = self.create_select_statement(keys, cmps, what='COUNT(*)')
-        con = self._connect()
-        self._initialize(con)
-        cur = con.cursor()
-        cur.execute(sql, args)
-        return cur.fetchone()[0]
+
+        with self.managed_connection() as con:
+            cur = con.cursor()
+            cur.execute(sql, args)
+            return cur.fetchone()[0]
 
     def analyse(self):
-        con = self._connect()
-        self._initialize(con)
-        con.execute('ANALYZE')
+        with self.managed_connection() as con:
+            con.execute('ANALYZE')
 
     @parallel_function
     @lock
     def delete(self, ids):
         if len(ids) == 0:
             return
-        con = self._connect()
-        self._delete(con.cursor(), ids)
-        con.commit()
-        con.close()
+        table_names = self._get_external_table_names() + all_tables[::-1]
+        with self.managed_connection() as con:
+            self._delete(con.cursor(), ids,
+                         tables=table_names)
+        self.vacuum()
 
     def _delete(self, cur, ids, tables=None):
         tables = tables or all_tables[::-1]
         for table in tables:
             cur.execute('DELETE FROM {} WHERE id in ({});'.
                         format(table, ', '.join([str(id) for id in ids])))
+
+    def vacuum(self):
+        if not self.type == 'db':
+            return
+
+        with self.managed_connection() as con:
+            con.commit()
+            con.cursor().execute("VACUUM")
 
     @property
     def metadata(self):
@@ -635,76 +767,161 @@ class SQLite3Database(Database, object):
     @metadata.setter
     def metadata(self, dct):
         self._metadata = dct
-        con = self._connect()
-        self._initialize(con)
         md = json.dumps(dct)
-        cur = con.cursor()
-        cur.execute(
-            "SELECT COUNT(*) FROM information WHERE name='metadata'")
-
-        if cur.fetchone()[0]:
+        with self.managed_connection() as con:
+            cur = con.cursor()
             cur.execute(
-                "UPDATE information SET value=? WHERE name='metadata'", [md])
-        else:
-            cur.execute('INSERT INTO information VALUES (?, ?)',
-                        ('metadata', md))
-        con.commit()
+                "SELECT COUNT(*) FROM information WHERE name='metadata'")
 
+            if cur.fetchone()[0]:
+                cur.execute(
+                    "UPDATE information SET value=? WHERE name='metadata'",
+                    [md])
+            else:
+                cur.execute('INSERT INTO information VALUES (?, ?)',
+                            ('metadata', md))
 
-def _blob(array, pg=False):
-    """Convert array to blob/buffer object."""
+    def _get_external_table_names(self, db_con=None):
+        """Return a list with the external table names."""
+        sql = "SELECT value FROM information WHERE name='external_table_name'"
+        with self.managed_connection() as con:
+            cur = con.cursor()
+            cur.execute(sql)
+            ext_tab_names = [x[0] for x in cur.fetchall()]
+        return ext_tab_names
 
-    if array is None:
-        return None
-    if len(array) == 0:
-        array = np.zeros(0)
-    if array.dtype == np.int64:
-        array = array.astype(np.int32)
-    if pg:
-        return array.tolist()
-    if not np.little_endian:
-        array = array.byteswap()
-    return buffer(np.ascontiguousarray(array))
+    def _external_table_exists(self, name):
+        """Return True if an external table name exists."""
+        return name in self._get_external_table_names()
 
+    def _create_table_if_not_exists(self, name, dtype):
+        """Create a new table if it does not exits.
 
-def _deblob(buf, dtype=float, shape=None, pg=False):
-    """Convert blob/buffer object to ndarray of correct dtype and shape.
+        Arguments
+        ==========
+        name: str
+            Name of the new table
+        dtype: str
+            Datatype of the value field (typically REAL, INTEGER, TEXT etc.)
+        """
 
-    (without creating an extra view)."""
-    if buf is None:
-        return None
-    if pg:
-        return np.array(buf, dtype=dtype)
-    if len(buf) == 0:
-        array = np.zeros(0, dtype)
-    else:
-        if len(buf) % 2 == 1:
-            # old psycopg2:
-            array = np.fromstring(str(buf)[1:].decode('hex'), dtype)
-        else:
-            array = np.frombuffer(buf, dtype)
-        if not np.little_endian:
-            array = array.byteswap()
-    if shape is not None:
-        array.shape = shape
-    return array
+        taken_names = set(all_tables + all_properties + self.columnnames)
+        if name in taken_names:
+            raise ValueError("External table can not be any of {}"
+                             "".format(taken_names))
 
+        if self._external_table_exists(name):
+            return
 
-def _encode(obj, pg=False):
-    if pg:
-        return encode(obj).replace('NaN', '"NaN"').replace('Infinity', '"Infinity"')
-    else:
-        return encode(obj)
+        sql = "CREATE TABLE IF NOT EXISTS {} ".format(name)
+        sql += "(key TEXT, value {}, id INTEGER, ".format(dtype)
+        sql += "FOREIGN KEY (id) REFERENCES systems(id))"
+        sql2 = "INSERT INTO information VALUES (?, ?)"
+        with self.managed_connection() as con:
+            cur = con.cursor()
+            cur.execute(sql)
+            # Insert an entry saying that there is a new external table
+            # present and an entry with the datatype
+            cur.execute(sql2, ("external_table_name", name))
+            cur.execute(sql2, (name + "_dtype", dtype))
 
+    def delete_external_table(self, name):
+        """Delete an external table."""
+        if not self._external_table_exists(name):
+            return
 
-def _decode(txt, pg=False):
-    if pg:
-        txt = encode(txt).replace('"NaN"', 'NaN').replace('"Infinity"', 'Infinity')
-    return numpyfy(mydecode(txt))
+        with self.managed_connection() as con:
+            cur = con.cursor()
+
+            sql = "DROP TABLE {}".format(name)
+            cur.execute(sql)
+
+            sql = "DELETE FROM information WHERE value=?"
+            cur.execute(sql, (name,))
+            sql = "DELETE FROM information WHERE name=?"
+            cur.execute(sql, (name + "_dtype",))
+
+    def _convert_to_recognized_types(self, value):
+        """Convert Numpy types to python types."""
+        if np.issubdtype(type(value), np.integer):
+            return int(value)
+        elif np.issubdtype(type(value), np.floating):
+            return float(value)
+        return value
+
+    def _insert_in_external_table(self, cursor, name=None, entries=None):
+        """Insert into external table"""
+        if name is None or entries is None:
+            # There is nothing to do
+            return
+
+        id = entries.pop("id")
+        dtype = self._guess_type(entries)
+        expected_dtype = self._get_value_type_of_table(cursor, name)
+        if dtype != expected_dtype:
+            raise ValueError("The provided data type for table {} "
+                             "is {}, while it is initialized to "
+                             "be of type {}"
+                             "".format(name, dtype, expected_dtype))
+
+        # First we check if entries already exists
+        cursor.execute("SELECT key FROM {} WHERE id=?".format(name), (id,))
+        updates = []
+        for item in cursor.fetchall():
+            value = entries.pop(item[0], None)
+            if value is not None:
+                updates.append(
+                    (value, id, self._convert_to_recognized_types(item[0])))
+
+        # Update entry if key and ID already exists
+        sql = "UPDATE {} SET value=? WHERE id=? AND key=?".format(name)
+        cursor.executemany(sql, updates)
+
+        # Insert the ones that does not already exist
+        inserts = [(k, self._convert_to_recognized_types(v), id)
+                   for k, v in entries.items()]
+        sql = "INSERT INTO {} VALUES (?, ?, ?)".format(name)
+        cursor.executemany(sql, inserts)
+
+    def _guess_type(self, entries):
+        """Guess the type based on the first entry."""
+        values = [v for _, v in entries.items()]
+
+        # Check if all datatypes are the same
+        all_types = [type(v) for v in values]
+        if any([t != all_types[0] for t in all_types]):
+            typenames = [t.__name__ for t in all_types]
+            raise ValueError("Inconsistent datatypes in the table. "
+                             "given types: {}".format(typenames))
+
+        val = values[0]
+        if isinstance(val, int) or np.issubdtype(type(val), np.integer):
+            return "INTEGER"
+        if isinstance(val, float) or np.issubdtype(type(val), np.floating):
+            return "REAL"
+        if isinstance(val, str):
+            return "TEXT"
+        raise ValueError("Unknown datatype!")
+
+    def _get_value_type_of_table(self, cursor, tab_name):
+        """Return the expected value name."""
+        sql = "SELECT value FROM information WHERE name=?"
+        cursor.execute(sql, (tab_name + "_dtype",))
+        return cursor.fetchone()[0]
+
+    def _read_external_table(self, name, id):
+        """Read row from external table."""
+
+        with self.managed_connection() as con:
+            cur = con.cursor()
+            cur.execute("SELECT * FROM {} WHERE id=?".format(name), (id,))
+            items = cur.fetchall()
+            dictionary = dict([(item[0], item[1]) for item in items])
+
+        return dictionary
 
 
 if __name__ == '__main__':
-    import sys
     from ase.db import connect
     con = connect(sys.argv[1])
     con._initialize(con._connect())

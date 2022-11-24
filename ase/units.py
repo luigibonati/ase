@@ -19,6 +19,7 @@ __codata_version__ = '2014'
 # to a module.
 class Units(dict):
     """Dictionary for units that supports .attribute access."""
+
     def __init__(self, *args, **kwargs):
         super(Units, self).__init__(*args, **kwargs)
         self.__dict__ = self
@@ -44,7 +45,7 @@ CODATA = {
              '_amu': 1.6605402e-27},         # atomic mass unit, kg
 
     # CODATA 1998 taken from
-    # http://dx.doi.org/10.1103/RevModPhys.72.351
+    # https://doi.org/10.1103/RevModPhys.72.351
     '1998': {'_c': 299792458.,
              '_mu0': 4.0e-7 * pi,
              '_Grav': 6.673e-11,
@@ -57,7 +58,7 @@ CODATA = {
              '_amu': 1.66053873e-27},
 
     # CODATA 2002 taken from
-    # http://dx.doi.org/10.1103/RevModPhys.77.1
+    # https://doi.org/10.1103/RevModPhys.77.1
     '2002': {'_c': 299792458.,
              '_mu0': 4.0e-7 * pi,
              '_Grav': 6.6742e-11,
@@ -70,7 +71,7 @@ CODATA = {
              '_amu': 1.66053886e-27},
 
     # CODATA 2006 taken from
-    # http://dx.doi.org/10.1103/RevModPhys.80.633
+    # https://doi.org/10.1103/RevModPhys.80.633
     '2006': {'_c': 299792458.,
              '_mu0': 4.0e-7 * pi,
              '_Grav': 6.67428e-11,
@@ -83,7 +84,7 @@ CODATA = {
              '_amu': 1.660538782e-27},
 
     # CODATA 2010 taken from
-    # http://dx.doi.org/10.1103/RevModPhys.84.1527
+    # https://doi.org/10.1103/RevModPhys.84.1527
     '2010': {'_c': 299792458.,
              '_mu0': 4.0e-7 * pi,
              '_Grav': 6.67384e-11,
@@ -106,7 +107,21 @@ CODATA = {
              '_mp': 1.672621898e-27,
              '_Nav': 6.022140857e23,
              '_k': 1.38064852e-23,
-             '_amu': 1.660539040e-27}}
+             '_amu': 1.660539040e-27},
+
+    # CODATA 2018 taken from
+    # https://physics.nist.gov/cuu/Constants/index.html
+    '2018': {'_c': 299792458.,            # Exact
+             '_mu0': 4.0e-7 * pi,         # Exact
+             '_Grav': 6.67430e-11,        # +/- 0.000_15e-11
+             '_hplanck': 6.62607015e-34,  # Exact
+             '_e': 1.602176634e-19,       # Exact
+             '_me': 9.1093837015e-31,     # +/- 0.000_000_0028e-31
+             '_mp': 1.67262192369e-27,    # +/- 0.000_000_000_51e-27
+             '_Nav': 6.02214076e23,       # Exact
+             '_k': 1.380649e-23,          # Exact
+             '_amu': 1.66053906660e-27},  # +/- 0.000_000_000_50e-27
+}
 
 
 def create_units(codata_version):
@@ -144,7 +159,7 @@ def create_units(codata_version):
         u = Units(CODATA[codata_version])
     except KeyError:
         raise NotImplementedError('CODATA version "{0}" not implemented'
-                                  .format(__codata_version__))
+                                  .format(codata_version))
 
     # derived from the CODATA values
     u['_eps0'] = (1 / u['_mu0'] / u['_c']**2)  # permittivity of vacuum
@@ -172,6 +187,7 @@ def create_units(codata_version):
 
     u['Pascal'] = (1 / u['_e']) / 1e30  # J/m^3
     u['GPa'] = 1e9 * u['Pascal']
+    u['bar'] = 1e5 * u['Pascal']
 
     u['Debye'] = 1.0 / 1e11 / u['_e'] / u['_c']
     u['alpha'] = (u['_e']**2 / (4 * pi * u['_eps0']) /
@@ -210,7 +226,7 @@ def create_units(codata_version):
 (_Grav, _Nav, _amu, _auf, _aup, _aut, _auv, _c, _e, _eps0,
  _hbar, _hplanck, _k, _me, _mp, _mu0, alpha, eV, fs, invcm,
  kB, kJ, kcal, kg, m, mol, nm, s, second, A, AUT, Ang, Angstrom,
- Bohr, C, Debye, GPa, Ha, Hartree, J, Pascal, Ry, Rydberg) = [0.0] * 43
+ Bohr, C, Debye, GPa, Ha, Hartree, J, Pascal, bar, Ry, Rydberg) = [0.0] * 44
 
 # Now update the module scope:
 globals().update(create_units(__codata_version__))
