@@ -218,7 +218,7 @@ def read_occupation_numbers(results):
     lines = execute_command(['eiger', '--all', '--pview']).split('\n')
     for line in lines:
         regex = (
-            r'^\s+(\d+)\.*\s+(\w*)\s+(\d+)\s+(\S+)'
+            r'^\s+(\d+)\.\s([\sab])\s*(\d+)\s?(\w+)'
             r'\s+(\d*\.*\d*)\s+([-+]?\d+\.\d*)'
         )
         match = re.search(regex, line)
