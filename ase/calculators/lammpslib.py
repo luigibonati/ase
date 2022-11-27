@@ -250,7 +250,7 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
 """
 
     implemented_properties = ['energy', 'free_energy', 'forces', 'stress',
-                              'energies', 'free_energies']
+                              'energies']
 
     started = False
     initialized = False
@@ -500,7 +500,6 @@ xz and yz are the tilt of the lattice vectors, all to be edited.
             "energy", self.units, "ASE"
         )
         self.results["energies"][ids - 1] = self.results["energies"]
-        self.results["free_energies"] = self.results["energies"]
 
         stress = np.empty(6)
         stress_vars = ['pxx', 'pyy', 'pzz', 'pyz', 'pxz', 'pxy']
