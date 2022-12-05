@@ -86,9 +86,8 @@ def mindistance2monkhorstpack(atoms,
 
     def kptgrid():
         step = 2 if even else 1
-        rng = (step, maxperdim, step)
-        kpt_nc = np.column_stack([*map(np.ravel, np.meshgrid(
-                                  range(*rng), range(*rng), range(*rng)))])
+        ranges = [range(step, maxperdim, step) if pbc else range(1, 2) for pbc in atoms.pbc]
+        kpt_nc = np.column_stack([*map(np.ravel, np.meshgrid(*ranges))])
         yield from sorted(kpt_nc, key=lambda kpt_c: np.prod(kpt_c))
     try:
         return next(filter(check, kptgrid()))
