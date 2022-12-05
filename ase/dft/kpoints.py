@@ -75,11 +75,11 @@ def mindistance2monkhorstpack(atoms,
         raise ValueError('You need to give exactly one of the arguments:'
                          ' min_distance or kpt_density.')
     if kptdensity is not None:
-        min_distance = 2*np.pi*kptdensity
+        min_distance = 2 * np.pi * kptdensity
 
     def check(kpt_c):
         superatoms = atoms.repeat(kpt_c)
-        nl = NeighborList([min_distance/2], skin=0.0,
+        nl = NeighborList([min_distance / 2], skin=0.0,
                           self_interaction=False, bothways=False)
         nl.update(Atoms('H', cell=superatoms.cell, pbc=atoms.pbc))
         return len(nl.get_neighbors(0)[1]) == 0
