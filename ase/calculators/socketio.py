@@ -238,7 +238,8 @@ class FileIOSocketClientLauncher:
                 argv = profile.socketio_argv_unix(socket=unixsocket)
             else:
                 argv = profile.socketio_argv_inet(port=port)
-            return Popen(argv, cwd=cwd)
+            import os
+            return Popen(argv, cwd=cwd, env=os.environ)
         else:
             # Old FileIOCalculator:
             self.calc.write_input(atoms, properties=properties,
