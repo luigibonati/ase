@@ -166,7 +166,7 @@ def test_parse_polarization(testdir):
     assert np.allclose(polar, polar_0)
 
 def test_preamble_failed(testdir):
-    outfile = parent / "testdata/aims/polarization.out"
+    outfile = parent / "testdata/aims/preamble_fail.out"
     try:
         atoms = read(outfile, format="aims-output")
         raise Exception("This should fail as there is no SCF information.")
