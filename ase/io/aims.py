@@ -1574,7 +1574,9 @@ def get_header_chunk(fd):
         try:
             line = next(fd).strip()  # Raises StopIteration on empty file
         except StopIteration:
-            raise ValueError("No SCF step inside the output file. Something failed in setting up the calculation.")
+            raise ValueError(
+                "No SCF steps present, calculation failed at setup."
+            )
 
         header.append(line)
     return AimsOutHeaderChunk(header)
