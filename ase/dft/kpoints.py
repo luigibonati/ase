@@ -68,13 +68,13 @@ def mindistance2monkhorstpack(atoms,
        with integer determinant one matrices. In other words, it is
        invariant to particular choice of cell representations.
     """
-    
+
     # For orthogonal cells, min_distance is exactly 2π times previous
     # kpt-density. Hence, we also allow to take in this parameter to maintain
     # consistence to previous metric at least on some points.
     if (min_distance is None) == (kptdensity is None):
         raise TypeError('You need to give exactly one of the arguments:'
-                         ' min_distance or kpt_density.')
+                        ' min_distance or kpt_density.')
     if kptdensity is not None:
         min_distance = 2 * np.pi * kptdensity
 
