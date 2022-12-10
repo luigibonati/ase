@@ -78,20 +78,14 @@ def mindistance2monkhorstpack(atoms,
     if kptdensity is not None:
         min_distance = 2 * np.pi * kptdensity
 
-    return _mindistance2monkhorstpack(atoms.cell.uncomplete(atoms.pbc),
+    return _mindistance2monkhorstpack(atoms.cell, atoms.pbc,
                                       min_distance, maxperdim, even)
 
 
-def _mindistance2monkhorstpack(cell, min_distance, maxperdim, even):
-    """Internal routine for calculating mp-grid using minimal input data.
-       Note: It is required that cell is uncompleted, i.e. this method
-       needs to be called with cell=atoms.cell.uncomplete(atoms.pbc).
-       This will not be checked (because it cannot).
-    """
+def _mindistance2monkhorstpack(cell, pbc_c, min_distance, maxperdim, even):
     from ase import Atoms
     from ase.neighborlist import NeighborList
 
-    pbc_c = cell.any(axis=1)
     step = 2 if even else 1
     nl = NeighborList([min_distance / 2], skin=0.0,
                       self_interaction=False, bothways=False)
