@@ -56,45 +56,56 @@ def mindistance2monkhorstpack(atoms,
                               kptdensity=None,
                               maxperdim=16,
                               even=True):
-    """ Find a Monkhorst-Pack grid (nx, ny, nz) with lowest number of
-        k-points in the *reducible* Brillouin zone, which still satisfying
-        a given minimum distance (`min_distance`) condition in real space
-        (nx, ny, nz)-supercell.
+    """Find a Monkhorst-Pack grid (nx, ny, nz) with lowest number of
+       k-points in the *reducible* Brillouin zone, which still satisfying
+       a given minimum distance (`min_distance`) condition in real space
+       (nx, ny, nz)-supercell.
 
-        Compared to ase.calculators.calculator kptdensity2monkhorstpack
-        routine, this metric is based on a physical quantity (real space
-        distance), and it doesn't depend on non-physical quantities, such as
-        the cell vectors, since basis vectors can be always transformed
-        with integer determinant one matrices. In other words, it is
-        invariant to particular choice of cell representations.
+       Compared to ase.calculators.calculator kptdensity2monkhorstpack
+       routine, this metric is based on a physical quantity (real space
+       distance), and it doesn't depend on non-physical quantities, such as
+       the cell vectors, since basis vectors can be always transformed
+       with integer determinant one matrices. In other words, it is
+       invariant to particular choice of cell representations.
     """
-    from ase import Atoms
-    from ase.neighborlist import NeighborList
-
+    
+    # For orthogonal cells, min_distance is exactly 2π times previous
+    # kpt-density. Hence, we also allow to take in this parameter to maintain
+    # consistence to previous metric at least on some points.
     if (min_distance is None) == (kptdensity is None):
-        raise ValueError('You need to give exactly one of the arguments:'
+        raise TypeError('You need to give exactly one of the arguments:'
                          ' min_distance or kpt_density.')
     if kptdensity is not None:
         min_distance = 2 * np.pi * kptdensity
 
-    def check(kpt_c):
-        superatoms = atoms.repeat(kpt_c)
-        nl = NeighborList([min_distance / 2], skin=0.0,
-                          self_interaction=False, bothways=False)
-        nl.update(Atoms('H', cell=superatoms.cell, pbc=atoms.pbc))
+    return _mindistance2monkhorstpack(atoms.cell.uncomplete(atoms.pbc),
+                                      min_distance, maxperdim, even)
+
+
+def _mindistance2monkhorstpack(cell, min_distance, maxperdim, even):
+    from ase import Atoms
+    from ase.neighborlist import NeighborList
+
+    pbc = cell.any(axis=1)
+    step = 2 if even else 1
+    nl = NeighborList([min_distance / 2], skin=0.0,
+                      self_interaction=False, bothways=False)
+
+    def check(nkpts_c):
+        nl.update(Atoms('H', cell=cell @ np.diag(nkpts_c), pbc=pbc))
         return len(nl.get_neighbors(0)[1]) == 0
 
-    def kptgrid():
-        step = 2 if even else 1
+    def generate_mpgrids():
         ranges = [range(step, maxperdim, step)
                   if pbc else range(1, 2) for pbc in atoms.pbc]
-        kpt_nc = np.column_stack([*map(np.ravel, np.meshgrid(*ranges))])
-        yield from sorted(kpt_nc, key=lambda kpt_c: np.prod(kpt_c))
+        nkpts_nc = np.column_stack([*map(np.ravel, np.meshgrid(*ranges))])
+        yield from sorted(nkpts_nc, key=lambda nkpts_c: np.prod(nkpts_c))
+
     try:
-        return next(filter(check, kptgrid()))
+        return next(filter(check, generate_mpgrids()))
     except StopIteration:
-        raise ValueError('Internal error: Could not find a proper k-point grid'
-                         ' for the system. Try to run with larger maxperdim.')
+        raise ValueError('Could not find a proper k-point grid for the system.'
+                         ' Try running with a larger maxperdim.')
 
 
 def get_monkhorst_shape(kpts):
