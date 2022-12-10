@@ -86,18 +86,18 @@ def _mindistance2monkhorstpack(cell, min_distance, maxperdim, even):
     from ase import Atoms
     from ase.neighborlist import NeighborList
 
-    pbc = cell.any(axis=1)
+    pbc_c = cell.any(axis=1)
     step = 2 if even else 1
     nl = NeighborList([min_distance / 2], skin=0.0,
                       self_interaction=False, bothways=False)
 
     def check(nkpts_c):
-        nl.update(Atoms('H', cell=cell @ np.diag(nkpts_c), pbc=pbc))
+        nl.update(Atoms('H', cell=cell @ np.diag(nkpts_c), pbc=pbc_c))
         return len(nl.get_neighbors(0)[1]) == 0
 
     def generate_mpgrids():
-        ranges = [range(step, maxperdim, step)
-                  if pbc else range(1, 2) for pbc in atoms.pbc]
+        ranges = [range(step, maxperdim + 1, step)
+                  if pbc else range(1, 2) for pbc in pbc_c]
         nkpts_nc = np.column_stack([*map(np.ravel, np.meshgrid(*ranges))])
         yield from sorted(nkpts_nc, key=lambda nkpts_c: np.prod(nkpts_c))
 
