@@ -83,6 +83,11 @@ def mindistance2monkhorstpack(atoms,
 
 
 def _mindistance2monkhorstpack(cell, min_distance, maxperdim, even):
+    """Internal routine for calculating mp-grid using minimal input data.
+       Note: It is required that cell is uncompleted, i.e. this method
+       needs to be called with cell=atoms.cell.uncomplete(atoms.pbc).
+       This will not be checked (because it cannot).
+    """
     from ase import Atoms
     from ase.neighborlist import NeighborList
 
