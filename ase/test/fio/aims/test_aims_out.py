@@ -1,7 +1,8 @@
 # flake8: noqa
 import numpy as np
+import pytest
 
-from ase.io import read
+from ase.io import read, ParseError
 from ase.io.aims import read_aims_results
 from ase.stress import full_3x3_to_voigt_6_stress
 from numpy.linalg import norm
@@ -167,8 +168,5 @@ def test_parse_polarization(testdir):
 
 def test_preamble_failed(testdir):
     outfile = parent / "testdata/aims/preamble_fail.out"
-    try:
-        atoms = read(outfile, format="aims-output")
-        raise Exception("This should fail as there is no SCF information.")
-    except ValueError:
-        pass
+    with pytest.raises(ParseError, match='No SCF steps'):
+        read(outfile, format="aims-output")
