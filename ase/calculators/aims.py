@@ -42,6 +42,7 @@ class AimsProfile:
     def socketio_argv_inet(self, port):
         return list(self.argv)
 
+
 class AimsTemplate(CalculatorTemplate):
     def __init__(self):
         super().__init__(
