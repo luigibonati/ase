@@ -12,6 +12,7 @@ from ase.calculators.calculator import kpts2mp
 from ase.calculators.singlepoint import SinglePointDFTCalculator
 from ase.constraints import FixAtoms, FixCartesian
 from ase.data import atomic_numbers
+from ase.io import ParseError
 from ase.units import Ang, fs
 from ase.utils import lazymethod, lazyproperty, reader, writer
 
@@ -1574,7 +1575,10 @@ def get_header_chunk(fd):
         try:
             line = next(fd).strip()  # Raises StopIteration on empty file
         except StopIteration:
-            return
+            raise ParseError(
+                "No SCF steps present, calculation failed at setup."
+            )
+
         header.append(line)
     return AimsOutHeaderChunk(header)
 
@@ -1640,7 +1644,7 @@ def check_convergence(chunks, non_convergence_ok=False):
         True if the calculation is converged
     """
     if not non_convergence_ok and not chunks[-1].converged:
-        raise ValueError("The calculation did not complete successfully")
+        raise ParseError("The calculation did not complete successfully")
     return True
 
 
