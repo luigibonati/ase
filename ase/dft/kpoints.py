@@ -51,9 +51,8 @@ def get_monkhorst_pack_size_and_offset(kpts):
     raise ValueError('Not an ASE-style Monkhorst-Pack grid!')
 
 
-def mindistance2monkhorstpack(atoms,
-                              min_distance=None,
-                              kptdensity=None,
+def mindistance2monkhorstpack(atoms, *,
+                              min_distance,
                               maxperdim=16,
                               even=True):
     """Find a Monkhorst-Pack grid (nx, ny, nz) with lowest number of
@@ -67,17 +66,9 @@ def mindistance2monkhorstpack(atoms,
        the cell vectors, since basis vectors can be always transformed
        with integer determinant one matrices. In other words, it is
        invariant to particular choice of cell representations.
+
+       On orthogonal cells, min_distance = 2 * np.pi * kptdensity.
     """
-
-    # For orthogonal cells, min_distance is exactly 2π times previous
-    # kpt-density. Hence, we also allow to take in this parameter to maintain
-    # consistence to previous metric at least on some points.
-    if (min_distance is None) == (kptdensity is None):
-        raise TypeError('You need to give exactly one of the arguments:'
-                        ' min_distance or kpt_density.')
-    if kptdensity is not None:
-        min_distance = 2 * np.pi * kptdensity
-
     return _mindistance2monkhorstpack(atoms.cell, atoms.pbc,
                                       min_distance, maxperdim, even)
 
