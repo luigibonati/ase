@@ -18,22 +18,22 @@ def get_atoms():
 
 @pytest.fixture(scope='module')
 def database(tmp_path_factory):
-    with tmp_path_factory.mktemp('dbtest') as dbtest:
-        db = connect(dbtest / 'test.db', append=False)
-        x = [0, 1, 2]
-        t1 = [1, 2, 0]
-        t2 = [[2, 3], [1, 1], [1, 0]]
+    dbtestdir = tmp_path_factory.mktemp('dbtest')
+    db = connect(dbtestdir / 'test.db', append=False)
+    x = [0, 1, 2]
+    t1 = [1, 2, 0]
+    t2 = [[2, 3], [1, 1], [1, 0]]
 
-        atoms = get_atoms()
-        db.write(atoms,
-                 foo=42.0,
-                 bar='abc',
-                 data={'x': x,
-                       't1': t1,
-                       't2': t2})
-        db.write(atoms)
+    atoms = get_atoms()
+    db.write(atoms,
+             foo=42.0,
+             bar='abc',
+             data={'x': x,
+                   't1': t1,
+                   't2': t2})
+    db.write(atoms)
 
-        yield db
+    yield db
 
 
 def handle_query(args) -> str:
