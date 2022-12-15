@@ -296,7 +296,7 @@ class Dftb(FileIOCalculator):
             reading it once again after some runtime error """
 
         with open(os.path.join(self.directory, 'results.tag'), 'r') as fd:
-            self.lines = fd.read().splitlines()
+            self.lines = fd.readlines()
 
         self.atoms = self.atoms_input
         charges, energy, dipole = self.read_charges_energy_dipole()
@@ -428,7 +428,10 @@ class Dftb(FileIOCalculator):
         nrow = int(np.ceil(nkpt * nspin * nband * 1. / ncol))
         index_eig_end = index_eig_begin + nrow
         ncol_last = len(self.lines[index_eig_end - 1].split())
-        self.lines[index_eig_end - 1] += ' 0.0 ' * (ncol - ncol_last)
+        # XXX dirty fix
+        self.lines[index_eig_end - 1] = (
+            self.lines[index_eig_end - 1].strip()
+            + ' 0.0 ' * (ncol - ncol_last))
 
         eig = np.loadtxt(self.lines[index_eig_begin:index_eig_end]).flatten()
         eig *= Hartree
