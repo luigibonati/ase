@@ -296,7 +296,7 @@ class Dftb(FileIOCalculator):
             reading it once again after some runtime error """
 
         with open(os.path.join(self.directory, 'results.tag'), 'r') as fd:
-            self.lines = fd.readlines()
+            self.lines = fd.read().splitlines()
 
         self.atoms = self.atoms_input
         charges, energy, dipole = self.read_charges_energy_dipole()
