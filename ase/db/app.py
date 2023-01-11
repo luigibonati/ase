@@ -53,7 +53,13 @@ class DBApp:
 
     def __init__(self):
         self.projects = {}
-        self.flask = new_app(self.projects)
+
+        flask = new_app(self.projects)
+        self.flask = flask
+
+        @flask.route('/')
+        def frontpage():
+            return flask.view_functions['search']('default')
 
     def add_project(self, db: Database) -> None:
         """Add database to projects with name 'default'."""
@@ -96,7 +102,7 @@ def new_app(projects):
     from flask import Flask, render_template, request
     app = Flask(__name__, template_folder=str(DBApp.root))
 
-    @app.route('/', defaults={'project_name': 'default'})
+    # @app.route('/', defaults={'project_name': 'default'})
     @app.route('/<project_name>')
     @app.route('/<project_name>/')
     def search(project_name: str):

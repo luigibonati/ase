@@ -44,11 +44,13 @@ def handle_query(args) -> str:
 @pytest.fixture(scope='module')
 def client(database):
     pytest.importorskip('flask')
-    import ase.db.app as app
+    from ase.db.app import DBApp
 
-    app.add_project(database)
-    app.app.testing = True
-    return app.app.test_client()
+    dbapp = DBApp()
+    dbapp.add_project(database)
+    app = dbapp.flask
+    app.testing = True
+    return app.test_client()
 
 
 def test_add_columns(database):
