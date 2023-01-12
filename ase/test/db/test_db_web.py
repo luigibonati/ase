@@ -6,6 +6,9 @@ from ase.db.cli import check_jsmol
 from ase.db.web import Session
 
 
+projectname = 'db-web-test-project'
+
+
 def get_atoms():
     atoms = Atoms('H2O',
                   [(0, 0, 0),
@@ -44,11 +47,13 @@ def handle_query(args) -> str:
 @pytest.fixture(scope='module')
 def client(database):
     pytest.importorskip('flask')
-    import ase.db.app as app
+    from ase.db.app import DBApp
 
-    app.add_project(database)
-    app.app.testing = True
-    return app.app.test_client()
+    dbapp = DBApp()
+    dbapp.add_project(projectname, database)
+    app = dbapp.flask
+    app.testing = True
+    return app.test_client()
 
 
 def test_add_columns(database):
@@ -82,12 +87,12 @@ def test_db_web(client):
     sid = Session.next_id - 1
     assert 'foo' in page
     for url in [f'/update/{sid}/query/bla/?query=id=1',
-                '/default/row/1']:
+                f'/{projectname}/row/1']:
         resp = c.get(url)
         assert resp.status_code == 200
 
     for type in ['json', 'xyz', 'cif']:
-        url = f'atoms/default/1/{type}'
+        url = f'atoms/{projectname}/1/{type}'
         resp = c.get(url)
         assert resp.status_code == 200
         txt = resp.data.decode()

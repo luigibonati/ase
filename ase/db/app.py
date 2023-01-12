@@ -53,10 +53,16 @@ class DBApp:
 
     def __init__(self):
         self.projects = {}
-        self.flask = new_app(self.projects)
 
-    def add_project(self, db: Database) -> None:
-        """Add database to projects with name 'default'."""
+        flask = new_app(self.projects)
+        self.flask = flask
+
+        @flask.route('/')
+        def frontpage():
+            projectname = next(iter(self.projects))
+            return flask.view_functions['search'](projectname)
+
+    def add_project(self, name: str, db: Database) -> None:
         all_keys: Set[str] = set()
         for row in db.select(columns=['key_value_pairs'], include_data=False):
             all_keys.update(row._keys)
@@ -72,8 +78,8 @@ class DBApp:
         if default_columns is None:
             default_columns = all_columns[:]
 
-        self.projects['default'] = {
-            'name': 'default',
+        self.projects[name] = {
+            'name': name,
             'title': meta.get('title', ''),
             'uid_key': 'id',
             'key_descriptions': create_key_descriptions(key_descriptions),
@@ -88,7 +94,7 @@ class DBApp:
     @classmethod
     def run_db(cls, db):
         app = cls()
-        app.add_project(db)
+        app.add_project('default', db)
         app.flask.run(host='0.0.0.0', debug=True)
 
 
@@ -96,7 +102,6 @@ def new_app(projects):
     from flask import Flask, render_template, request
     app = Flask(__name__, template_folder=str(DBApp.root))
 
-    @app.route('/', defaults={'project_name': 'default'})
     @app.route('/<project_name>')
     @app.route('/<project_name>/')
     def search(project_name: str):
@@ -179,7 +184,9 @@ def new_app(projects):
     def gui(id: int):
         """Pop ud ase gui window."""
         from ase.visualize import view
-        atoms = projects['default']['database'].get_atoms(id)
+        # XXX so broken
+        arbitrary_project = next(iter(projects))
+        atoms = projects[arbitrary_project]['database'].get_atoms(id)
         view(atoms)
         return '', 204, []
 
@@ -202,19 +209,6 @@ def new_app(projects):
     return app
 
 
-# TODO: Issue deprecation warnings if someone accesses these variables.
-try:
-    import flask  # noqa
-except ImportError:
-    _global_dbapp = None
-    projects = {}
-    app = None
-    add_project = None
-else:
-    _global_dbapp = DBApp()
-    projects = _global_dbapp.projects
-    app = _global_dbapp.flask
-    add_project = _global_dbapp.add_project
 handle_query = request2string
 
 
