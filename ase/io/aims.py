@@ -1340,6 +1340,7 @@ class AimsOutCalcChunk(AimsOutChunk):
                 "What follows are estimated values for band gap, "
                 "HOMO, LUMO, etc.",
                 "Current spin moment of the entire structure :",
+                "Highest occupied state (VBM)"
             ],
             line_start,
         )
@@ -1364,10 +1365,12 @@ class AimsOutCalcChunk(AimsOutChunk):
         )
         kpt_def = self.search_for_all("K-point: ", line_start, line_end)
 
-        if self.n_k_points:
+        if len(kpt_def) > 0:
             kpt_inds = [int(self.lines[ll].split()[1]) - 1 for ll in kpt_def]
-        else:
+        elif (self.n_k_points is None) or (self.n_k_points == 1):
             kpt_inds = [0]
+        else:
+            raise ParseError("Cannot find k-point definitions")
 
         assert len(kpt_inds) == len(occupation_block_start)
         spins = [0] * len(occupation_block_start)
