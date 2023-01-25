@@ -43,7 +43,7 @@ def request2string(args) -> str:
 def row_to_dict(row: AtomsRow,
                 project: Dict[str, Any]) -> Dict[str, Any]:
     """Convert row to dict for use in html template."""
-    dct = row2dct(row, project['key_descriptions'])
+    dct = row2dct(row, project.key_descriptions)
     dct['formula'] = Formula(Formula(row.formula).format('abc')).format('html')
     return dct
 
@@ -78,24 +78,54 @@ class DBApp:
         if default_columns is None:
             default_columns = all_columns[:]
 
-        self.projects[name] = {
-            'name': name,
-            'title': meta.get('title', ''),
-            'uid_key': 'id',
-            'key_descriptions': create_key_descriptions(key_descriptions),
-            'database': db,
-            'row_to_dict_function': row_to_dict,
-            'handle_query_function': request2string,
-            'default_columns': default_columns,
-            'search_template': 'ase/db/templates/search.html',
-            'row_template': 'ase/db/templates/row.html',
-            'table_template': 'ase/db/templates/table.html'}
+        self.projects[name] = DatabaseProject(
+            name=name,
+            title=meta.get('title', ''),
+            key_descriptions=create_key_descriptions(key_descriptions),
+            database=db,
+            default_columns=default_columns)
 
     @classmethod
     def run_db(cls, db):
         app = cls()
         app.add_project('default', db)
         app.flask.run(host='0.0.0.0', debug=True)
+
+
+class DatabaseProject:
+    """Settings for web view of a database.
+
+    For historical reasons called a "Project".
+    """
+
+    def __init__(self, name, title, *,
+                 key_descriptions,
+                 database,
+                 default_columns):
+        self.name = name
+        self.title = title
+        self.uid_key = 'id'
+        self.key_descriptions = key_descriptions
+        self.database = database
+        self.row_to_dict_function = row_to_dict
+        self.handle_query_function = request2string
+        self.default_columns = default_columns
+
+        templates = Path('ase/db/templates')
+        self.search_template = str(templates / 'search.html')
+        self.row_template = str(templates / 'row.html')
+        self.table_template = str(templates / 'table.html')
+
+    @classmethod
+    def dummyproject(cls, **kwargs):
+        _kwargs = dict(
+            name='test',
+            title='test',
+            key_descriptions={},
+            database=None,  # XXX
+            default_columns=[])
+        _kwargs.update(kwargs)
+        return cls(**_kwargs)
 
 
 def new_app(projects):
@@ -113,7 +143,7 @@ def new_app(projects):
             return '', 204, []  # 204: "No content"
         session = Session(project_name)
         project = projects[project_name]
-        return render_template(project['search_template'],
+        return render_template(project.search_template,
                                q=request.args.get('query', ''),
                                p=project,
                                session_id=session.id)
@@ -133,10 +163,10 @@ def new_app(projects):
         session = Session.get(sid)
         project = projects[session.project_name]
         session.update(what, x, request.args, project)
-        table = session.create_table(project['database'],
-                                     project['uid_key'],
-                                     keys=list(project['key_descriptions']))
-        return render_template(project['table_template'],
+        table = session.create_table(project.database,
+                                     project.uid_key,
+                                     keys=list(project.key_descriptions))
+        return render_template(project.table_template,
                                t=table,
                                p=project,
                                s=session)
@@ -145,17 +175,17 @@ def new_app(projects):
     def row(project_name: str, uid: str):
         """Show details for one database row."""
         project = projects[project_name]
-        uid_key = project['uid_key']
-        row = project['database'].get('{uid_key}={uid}'
-                                      .format(uid_key=uid_key, uid=uid))
-        dct = project['row_to_dict_function'](row, project)
-        return render_template(project['row_template'],
+        uid_key = project.uid_key
+        row = project.database.get('{uid_key}={uid}'
+                                   .format(uid_key=uid_key, uid=uid))
+        dct = project.row_to_dict_function(row, project)
+        return render_template(project.row_template,
                                d=dct, row=row, p=project, uid=uid)
 
     @app.route('/atoms/<project_name>/<int:id>/<type>')
     def atoms(project_name: str, id: int, type: str):
         """Return atomic structure as cif, xyz or json."""
-        row = projects[project_name]['database'].get(id=id)
+        row = projects[project_name].database.get(id=id)
         a = row.toatoms()
         if type == 'cif':
             b = io.BytesIO()
@@ -186,7 +216,7 @@ def new_app(projects):
         from ase.visualize import view
         # XXX so broken
         arbitrary_project = next(iter(projects))
-        atoms = projects[arbitrary_project]['database'].get_atoms(id)
+        atoms = projects[arbitrary_project].database.get_atoms(id)
         view(atoms)
         return '', 204, []
 

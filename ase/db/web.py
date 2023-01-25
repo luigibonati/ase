@@ -52,10 +52,10 @@ class Session:
                project: Dict[str, Any]) -> None:
 
         if self.columns is None:
-            self.columns = project['default_columns'][:]
+            self.columns = project.default_columns[:]
 
         if what == 'query':
-            self.query = project['handle_query_function'](args)
+            self.query = project.handle_query_function(args)
             self.nrows = None
             self.page = 0
 
@@ -78,7 +78,7 @@ class Session:
         elif what == 'toggle':
             column = x
             if column == 'reset':
-                self.columns = project['default_columns'][:]
+                self.columns = project.default_columns[:]
             else:
                 if column in self.columns:
                     self.columns.remove(column)
