@@ -52,7 +52,7 @@ class Session:
                project: Dict[str, Any]) -> None:
 
         if self.columns is None:
-            self.columns = project.default_columns[:]
+            self.columns = list(project.default_columns)
 
         if what == 'query':
             self.query = project.handle_query(args)
@@ -78,7 +78,7 @@ class Session:
         elif what == 'toggle':
             column = x
             if column == 'reset':
-                self.columns = project.default_columns[:]
+                self.columns = list(project.default_columns)
             else:
                 if column in self.columns:
                     self.columns.remove(column)
@@ -152,7 +152,7 @@ class Session:
         table.format()
         assert self.columns is not None
         table.addcolumns = sorted(column for column in
-                                  all_columns + keys
+                                  [*all_columns, *keys]
                                   if column not in self.columns)
         return table
 

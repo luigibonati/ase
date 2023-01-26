@@ -90,13 +90,9 @@ class DatabaseProject:
         if 'key_descriptions' in meta:
             key_descriptions.update(meta['key_descriptions'])
 
-        default_columns = meta.get('default_columns')
-        if default_columns is None:
-            default_columns = all_columns[:]
-
         return DatabaseProject(
             name=name,
             title=meta.get('title', ''),
             key_descriptions=create_key_descriptions(key_descriptions),
             database=database,
-            default_columns=default_columns)
+            default_columns=all_columns)
