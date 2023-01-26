@@ -24,13 +24,11 @@ or this::
 
 import io
 import sys
-from typing import Dict, Any, Set
 from pathlib import Path
 
 from ase.db import connect
 from ase.db.core import Database
-from ase.db.web import create_key_descriptions, Session
-from ase.db.table import all_columns
+from ase.db.web import Session
 from ase.db.project import DatabaseProject
 
 
@@ -49,27 +47,8 @@ class DBApp:
             return flask.view_functions['search'](projectname)
 
     def add_project(self, name: str, db: Database) -> None:
-        all_keys: Set[str] = set()
-        for row in db.select(columns=['key_value_pairs'], include_data=False):
-            all_keys.update(row._keys)
-
-        key_descriptions = {key: (key, '', '') for key in all_keys}
-
-        meta: Dict[str, Any] = db.metadata
-
-        if 'key_descriptions' in meta:
-            key_descriptions.update(meta['key_descriptions'])
-
-        default_columns = meta.get('default_columns')
-        if default_columns is None:
-            default_columns = all_columns[:]
-
-        self.projects[name] = DatabaseProject(
-            name=name,
-            title=meta.get('title', ''),
-            key_descriptions=create_key_descriptions(key_descriptions),
-            database=db,
-            default_columns=default_columns)
+        self.projects[name] = DatabaseProject.load_db_as_ase_project(
+            name=name, database=db)
 
     @classmethod
     def run_db(cls, db):
