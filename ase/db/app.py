@@ -94,7 +94,7 @@ def new_app(projects):
             return '', 204, []  # 204: "No content"
         session = Session(project_name)
         project = projects[project_name]
-        return render_template(project.search_template,
+        return render_template(str(project.get_search_template()),
                                q=request.args.get('query', ''),
                                p=project,
                                session_id=session.id)
@@ -117,7 +117,7 @@ def new_app(projects):
         table = session.create_table(project.database,
                                      project.uid_key,
                                      keys=list(project.key_descriptions))
-        return render_template(project.table_template,
+        return render_template(str(project.get_table_template()),
                                t=table,
                                p=project,
                                s=session)
@@ -130,7 +130,7 @@ def new_app(projects):
         row = project.database.get('{uid_key}={uid}'
                                    .format(uid_key=uid_key, uid=uid))
         dct = project.row_to_dict(row)
-        return render_template(project.row_template,
+        return render_template(str(project.get_row_template()),
                                d=dct, row=row, p=project, uid=uid)
 
     @app.route('/atoms/<project_name>/<int:id>/<type>')

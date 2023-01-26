@@ -8,6 +8,7 @@ class DatabaseProject:
 
     For historical reasons called a "Project".
     """
+    _ase_templates = Path('ase/db/templates')
 
     def __init__(self, name, title, *,
                  key_descriptions,
@@ -20,10 +21,14 @@ class DatabaseProject:
         self.database = database
         self.default_columns = default_columns
 
-        templates = Path('ase/db/templates')
-        self.search_template = str(templates / 'search.html')
-        self.row_template = str(templates / 'row.html')
-        self.table_template = str(templates / 'table.html')
+    def get_search_template(self):
+        return self._ase_templates / 'search.html'
+
+    def get_row_template(self):
+        return self._ase_templates / 'row.html'
+
+    def get_table_template(self):
+        return self._ase_templates / 'table.html'
 
     def handle_query(self, args) -> str:
         """Convert request args to ase.db query string."""
