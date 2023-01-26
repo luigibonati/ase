@@ -30,7 +30,6 @@ from pathlib import Path
 from ase.db import connect
 from ase.db.core import Database
 from ase.db.web import create_key_descriptions, Session
-from ase.db.row import AtomsRow
 from ase.db.table import all_columns
 from ase.db.project import DatabaseProject
 
