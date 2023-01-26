@@ -107,9 +107,7 @@ def new_app(projects):
     def row(project_name: str, uid: str):
         """Show details for one database row."""
         project = projects[project_name]
-        uid_key = project.uid_key
-        row = project.database.get('{uid_key}={uid}'
-                                   .format(uid_key=uid_key, uid=uid))
+        row = project.uid_to_row(uid)
         dct = project.row_to_dict(row)
         return render_template(str(project.get_row_template()),
                                dct=dct, row=row, project=project, uid=uid)

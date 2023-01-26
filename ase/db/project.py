@@ -61,6 +61,9 @@ class DatabaseProject:
         dct['formula'] = Formula(row.formula).convert('abc').format('html')
         return dct
 
+    def uid_to_row(self, uid):
+        return self.database.get(f'{self.uid_key}={uid}')
+
     @classmethod
     def dummyproject(cls, **kwargs):
         _kwargs = dict(
