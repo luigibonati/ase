@@ -299,6 +299,8 @@ def row2dct(row,
             set(key_descriptions) |
             set(row.key_value_pairs))
     dct['table'] = []
+
+    from ase.db.project import KeyDescription
     for key in keys:
         if key == 'age':
             age = float_to_time_string(now() - row.ctime, True)
@@ -310,9 +312,13 @@ def row2dct(row,
                 value = '{:.3f}'.format(value)
             elif not isinstance(value, str):
                 value = str(value)
-            desc, unit = key_descriptions.get(key, ['', '', ''])[1:]
+
+            nokeydesc = KeyDescription(key, '', '', '')
+            keydesc = key_descriptions.get(key, nokeydesc)
+            unit = keydesc.unit
+            # desc, unit = key_descriptions.get(key, ['', '', ''])[1:]
             if unit:
                 value += ' ' + unit
-            dct['table'].append((key, desc, value))
+            dct['table'].append((key, keydesc.longdesc, value))
 
     return dct

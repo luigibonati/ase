@@ -62,7 +62,6 @@
     {%- for c in t.columns %}
       <th class="text-center">
 
-      <!-- set desc, longdesc, unit = p.key_descriptions[c] -->
       {% set keydesc = p.key_descriptions[c] %}
       {% set unit = keydesc.unit and ' [' + keydesc.unit + ']' %}
 
