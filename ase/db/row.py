@@ -316,7 +316,6 @@ def row2dct(row,
             nokeydesc = KeyDescription(key, '', '', '')
             keydesc = key_descriptions.get(key, nokeydesc)
             unit = keydesc.unit
-            # desc, unit = key_descriptions.get(key, ['', '', ''])[1:]
             if unit:
                 value += ' ' + unit
             dct['table'].append((key, keydesc.longdesc, value))

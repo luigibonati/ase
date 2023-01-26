@@ -77,7 +77,7 @@ def new_app(projects):
         project = projects[project_name]
         return render_template(str(project.get_search_template()),
                                q=request.args.get('query', ''),
-                               p=project,
+                               project=project,
                                session_id=session.id)
 
     @app.route('/update/<int:sid>/<what>/<x>/')
@@ -99,9 +99,9 @@ def new_app(projects):
                                      project.uid_key,
                                      keys=list(project.key_descriptions))
         return render_template(str(project.get_table_template()),
-                               t=table,
-                               p=project,
-                               s=session)
+                               table=table,
+                               project=project,
+                               session=session)
 
     @app.route('/<project_name>/row/<uid>')
     def row(project_name: str, uid: str):
@@ -112,7 +112,7 @@ def new_app(projects):
                                    .format(uid_key=uid_key, uid=uid))
         dct = project.row_to_dict(row)
         return render_template(str(project.get_row_template()),
-                               d=dct, row=row, p=project, uid=uid)
+                               d=dct, row=row, project=project, uid=uid)
 
     @app.route('/atoms/<project_name>/<int:id>/<type>')
     def atoms(project_name: str, id: int, type: str):
