@@ -1,7 +1,25 @@
+from collections.abc import Mapping
 from pathlib import Path
+import functools
 from typing import Set, Dict, Any
 from ase.db.row import row2dct
 from ase.formula import Formula
+
+
+@functools.total_ordering
+class KeyDescription:
+    def __init__(self, key, shortdesc, longdesc, unit):
+        self.key = key
+        self.shortdesc = shortdesc
+        self.longdesc = longdesc
+        self.unit = unit
+
+    # The templates like to sort key descriptions by shortdesc.
+    def __eq__(self, other):
+        return self.shortdesc == getattr(other, 'shortdesc', None)
+
+    def __lt__(self, other):
+        return self.shortdesc < getattr(other, 'shortdesc', self.shortdesc)
 
 
 class DatabaseProject:
@@ -18,7 +36,9 @@ class DatabaseProject:
         self.name = name
         self.title = title
         self.uid_key = 'id'
-        self.key_descriptions = key_descriptions
+        self.key_descriptions = {
+            key: KeyDescription(key, *desc)
+            for key, desc in key_descriptions.items()}
         self.database = database
         self.default_columns = default_columns
 

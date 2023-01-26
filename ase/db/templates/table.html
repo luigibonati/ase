@@ -28,7 +28,7 @@
               <li><a href="javascript:update_table({{ s.id }},
                                                    'toggle',
                                                    '{{ key }}')">
-              {{ value[1] }} ({{key}}) </a></li>
+              {{ value.longdesc }} ({{key}}) </a></li>
             {% endfor %}
             </ul>
           </div>
@@ -62,8 +62,9 @@
     {%- for c in t.columns %}
       <th class="text-center">
 
-      {% set desc, longdesc, unit = p.key_descriptions[c] %}
-      {% set unit = unit and ' [' + unit + ']' %}
+      <!-- set desc, longdesc, unit = p.key_descriptions[c] -->
+      {% set keydesc = p.key_descriptions[c] %}
+      {% set unit = keydesc.unit and ' [' + keydesc.unit + ']' %}
 
       {% if s.sort == c %}&#x2193;
       {% elif s.sort == '-' + c %}&#x2191;
@@ -73,7 +74,8 @@
         <span data-toggle="tooltip" title="key: formul">Formula</span>
       {% else %}
         <a href="javascript:update_table({{ s.id }}, 'sort', '{{ c }}')"
-           data-toggle="tooltip" title="key: {{c}}{{unit}}">{{ desc }}</a>
+           data-toggle="tooltip" title="key: {{c}}{{unit}}">
+          {{ keydesc.shortdesc }}</a>
       {% endif %}
       <a href="javascript:update_table({{ s.id }}, 'toggle', '{{ c }}')"
          data-toggle="tooltip" title="Remove column">&#x2715;</a>
