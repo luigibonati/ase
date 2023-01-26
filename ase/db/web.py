@@ -55,7 +55,7 @@ class Session:
             self.columns = project.default_columns[:]
 
         if what == 'query':
-            self.query = project.handle_query_function(args)
+            self.query = project.handle_query(args)
             self.nrows = None
             self.page = 0
 

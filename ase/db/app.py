@@ -29,23 +29,10 @@ from pathlib import Path
 
 from ase.db import connect
 from ase.db.core import Database
-from ase.formula import Formula
 from ase.db.web import create_key_descriptions, Session
-from ase.db.row import row2dct, AtomsRow
+from ase.db.row import AtomsRow
 from ase.db.table import all_columns
-
-
-def request2string(args) -> str:
-    """Converts request args to ase.db query string."""
-    return args['query']
-
-
-def row_to_dict(row: AtomsRow,
-                project: Dict[str, Any]) -> Dict[str, Any]:
-    """Convert row to dict for use in html template."""
-    dct = row2dct(row, project.key_descriptions)
-    dct['formula'] = Formula(Formula(row.formula).format('abc')).format('html')
-    return dct
+from ase.db.project import DatabaseProject
 
 
 class DBApp:
@@ -90,42 +77,6 @@ class DBApp:
         app = cls()
         app.add_project('default', db)
         app.flask.run(host='0.0.0.0', debug=True)
-
-
-class DatabaseProject:
-    """Settings for web view of a database.
-
-    For historical reasons called a "Project".
-    """
-
-    def __init__(self, name, title, *,
-                 key_descriptions,
-                 database,
-                 default_columns):
-        self.name = name
-        self.title = title
-        self.uid_key = 'id'
-        self.key_descriptions = key_descriptions
-        self.database = database
-        self.row_to_dict_function = row_to_dict
-        self.handle_query_function = request2string
-        self.default_columns = default_columns
-
-        templates = Path('ase/db/templates')
-        self.search_template = str(templates / 'search.html')
-        self.row_template = str(templates / 'row.html')
-        self.table_template = str(templates / 'table.html')
-
-    @classmethod
-    def dummyproject(cls, **kwargs):
-        _kwargs = dict(
-            name='test',
-            title='test',
-            key_descriptions={},
-            database=None,  # XXX
-            default_columns=[])
-        _kwargs.update(kwargs)
-        return cls(**_kwargs)
 
 
 def new_app(projects):
@@ -178,7 +129,7 @@ def new_app(projects):
         uid_key = project.uid_key
         row = project.database.get('{uid_key}={uid}'
                                    .format(uid_key=uid_key, uid=uid))
-        dct = project.row_to_dict_function(row, project)
+        dct = project.row_to_dict(row)
         return render_template(project.row_template,
                                d=dct, row=row, p=project, uid=uid)
 
@@ -237,9 +188,6 @@ def new_app(projects):
                 200)
 
     return app
-
-
-handle_query = request2string
 
 
 def main():
