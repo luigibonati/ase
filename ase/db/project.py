@@ -32,8 +32,7 @@ class DatabaseProject:
     def row_to_dict(self, row):
         """Convert row to dict for use in html template."""
         dct = row2dct(row, self.key_descriptions)
-        dct['formula'] = Formula(Formula(
-            row.formula).format('abc')).format('html')
+        dct['formula'] = Formula(row.formula).convert('abc').format('html')
         return dct
 
     @classmethod
