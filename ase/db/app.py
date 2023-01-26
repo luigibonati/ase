@@ -41,6 +41,9 @@ class DBApp:
         flask = new_app(self.projects)
         self.flask = flask
 
+        # Other projects will want to control the routing of the front
+        # page, for which reasons we route it here in DBApp instead of
+        # already in new_app().
         @flask.route('/')
         def frontpage():
             projectname = next(iter(self.projects))
