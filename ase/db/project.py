@@ -75,27 +75,16 @@ class DatabaseProject:
         _kwargs.update(kwargs)
         return cls(**_kwargs)
 
+    # If we make this a classmethod, and try to instantiate the class,
+    # it would fail on subclasses.  So we use staticmethod
     @staticmethod
     def load_db_as_ase_project(name, database):
         from ase.db.table import all_columns
         from ase.db.web import create_key_descriptions
-        # If we make this a classmethod, and try to instantiate the class,
-        # it would fail on subclasses.  So we use staticmethod
-        all_keys: Set[str] = set()
-        for row in database.select(columns=['key_value_pairs'],
-                                   include_data=False):
-            all_keys.update(row._keys)
-
-        key_descriptions = {key: (key, '', '') for key in all_keys}
-
-        meta: Dict[str, Any] = database.metadata
-
-        if 'key_descriptions' in meta:
-            key_descriptions.update(meta['key_descriptions'])
 
         return DatabaseProject(
             name=name,
-            title=meta.get('title', ''),
-            key_descriptions=create_key_descriptions(key_descriptions),
+            title=database.metadata.get('title', ''),
+            key_descriptions=create_key_descriptions({}),
             database=database,
             default_columns=all_columns)
