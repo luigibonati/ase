@@ -59,24 +59,24 @@
     <table id="rows" class="table table-striped">
 
     <tr>
-    {%- for c in table.columns %}
+    {%- for column in table.columns %}
       <th class="text-center">
 
-      {% set keydesc = project.key_descriptions[c] %}
+      {% set keydesc = project.key_descriptions[column] %}
       {% set unit = keydesc.unit and ' [' + keydesc.unit + ']' %}
 
-      {% if session.sort == c %}&#x2193;
-      {% elif session.sort == '-' + c %}&#x2191;
+      {% if session.sort == column %}&#x2193;
+      {% elif session.sort == '-' + column %}&#x2191;
       {% endif -%}
 
-      {% if c == 'formula' %}
+      {% if column == 'formula' %}
         <span data-toggle="tooltip" title="key: formul">Formula</span>
       {% else %}
-        <a href="javascript:update_table({{ session.id }}, 'sort', '{{ c }}')"
-           data-toggle="tooltip" title="key: {{c}}{{unit}}">
+        <a href="javascript:update_table({{ session.id }}, 'sort', '{{ column }}')"
+           data-toggle="tooltip" title="key: {{column}}{{unit}}">
           {{ keydesc.shortdesc }}</a>
       {% endif %}
-      <a href="javascript:update_table({{ session.id }}, 'toggle', '{{ c }}')"
+      <a href="javascript:update_table({{ session.id }}, 'toggle', '{{ column }}')"
          data-toggle="tooltip" title="Remove column">&#x2715;</a>
       </th>
     {%- endfor %}

@@ -48,7 +48,7 @@
     </tr>
   </thead>
   <tbody>
-  {% for axis in d.cell %}
+  {% for axis in dct.cell %}
     <tr>
       <td>{{ loop.index }}</td>
       {% for a in axis %} <td>{{ a }}</td>{% endfor %}
@@ -61,11 +61,11 @@
   <tbody>
     <tr>
       <td>Lengths:</td>
-      {% for L in d.lengths %}<td>{{ L }}</td>{% endfor %}
+      {% for L in dct.lengths %}<td>{{ L }}</td>{% endfor %}
     </tr>
     <tr>
       <td>Angles:</td>
-      {% for a in d.angles %}<td>{{ a }}</td>{% endfor %}
+      {% for a in dct.angles %}<td>{{ a }}</td>{% endfor %}
     </tr>
   </tbody>
 </table>
@@ -76,7 +76,7 @@
 Summary
 {% endblock %}
 
-{% set n1, n2, n3 = d.size %}
+{% set n1, n2, n3 = dct.size %}
 
 {% block head %}
 <script src="{{ url_for('static', filename='jsmol/JSmol.min.js') }}"></script>
@@ -103,7 +103,7 @@ jmol_isReady = function(applet)
 {% block content %}
 
 <div class="container">
-  <h1>{{ d.formula|safe }}</h1>
+  <h1>{{ dct.formula|safe }}</h1>
 
   <div class="panel-group">
 
@@ -146,7 +146,7 @@ jmol_isReady = function(applet)
               </tr>
             </thead>
             <tbody>
-            {% for key, desc, val in d.table %}
+            {% for key, desc, val in dct.table %}
               <tr>
                 <td> {{ key }} </td>
                 <td> {{ desc }} </td>

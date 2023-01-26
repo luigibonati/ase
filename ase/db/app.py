@@ -112,7 +112,7 @@ def new_app(projects):
                                    .format(uid_key=uid_key, uid=uid))
         dct = project.row_to_dict(row)
         return render_template(str(project.get_row_template()),
-                               d=dct, row=row, project=project, uid=uid)
+                               dct=dct, row=row, project=project, uid=uid)
 
     @app.route('/atoms/<project_name>/<int:id>/<type>')
     def atoms(project_name: str, id: int, type: str):
