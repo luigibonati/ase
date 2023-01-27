@@ -24,24 +24,59 @@ T2000 = 946681200.0  # January 1. 2000
 YEAR = 31557600.0  # 365.25 days
 
 
-# Format of key description: ('short', 'long', 'unit')
-default_key_descriptions = {
-    'id': ('ID', 'Uniqe row ID', ''),
-    'age': ('Age', 'Time since creation', ''),
-    'formula': ('Formula', 'Chemical formula', ''),
-    'pbc': ('PBC', 'Periodic boundary conditions', ''),
-    'user': ('Username', '', ''),
-    'calculator': ('Calculator', 'ASE-calculator name', ''),
-    'energy': ('Energy', 'Total energy', 'eV'),
-    'natoms': ('Number of atoms', '', ''),
-    'fmax': ('Maximum force', '', 'eV/Ang'),
-    'smax': ('Maximum stress', 'Maximum stress on unit cell',
-             '`\\text{eV/Ang}^3`'),
-    'charge': ('Charge', 'Net charge in unit cell', '|e|'),
-    'mass': ('Mass', 'Sum of atomic masses in unit cell', 'au'),
-    'magmom': ('Magnetic moment', '', 'μ_B'),
-    'unique_id': ('Unique ID', 'Random (unique) ID', ''),
-    'volume': ('Volume', 'Volume of unit cell', '`\\text{Ang}^3`')}
+@functools.total_ordering
+class KeyDescription:
+    _subscript = re.compile(r'`(.)_(.)`')
+    _superscript = re.compile(r'`(.*)\^\{?(.*?)\}?`')
+
+    def __init__(self, key, shortdesc=None, longdesc=None, unit=''):
+        self.key = key
+
+        if shortdesc is None:
+            shortdesc = key
+
+        if longdesc is None:
+            longdesc = shortdesc
+
+        self.shortdesc = shortdesc
+        self.longdesc = longdesc
+
+        # Somewhat arbitrary that we do this conversion.  Can we avoid that?
+        # Previously done in create_key_descriptions().
+        unit = self._subscript.sub(r'\1<sub>\2</sub>', unit)
+        unit = self._superscript.sub(r'\1<sup>\2</sup>', unit)
+        unit = unit.replace(r'\text{', '').replace('}', '')
+
+        self.unit = unit
+
+    # The templates like to sort key descriptions by shortdesc.
+    def __eq__(self, other):
+        return self.shortdesc == getattr(other, 'shortdesc', None)
+
+    def __lt__(self, other):
+        return self.shortdesc < getattr(other, 'shortdesc', self.shortdesc)
+
+
+def get_key_descriptions():
+    KD = KeyDescription
+    return {
+        'id': KD('ID', 'Uniqe row ID'),
+        'age': KD('Age', 'Time since creation'),
+        'formula': KD('Formula', 'Chemical formula'),
+        'pbc': KD('PBC', 'Periodic boundary conditions'),
+        'user': KD('Username'),
+        'calculator': KD('Calculator', 'ASE-calculator name'),
+        'energy': KD('Energy', 'Total energy', unit='eV'),
+       'natoms': KD('Number of atoms'),
+        'fmax': KD('Maximum force', unit='eV/Ang'),
+        'smax': KD('Maximum stress', 'Maximum stress on unit cell',
+                   unit='eV/Å³'),
+        'charge': KD('Charge', 'Net charge in unit cell', unit='|e|'),
+        'mass': KD('Mass', 'Sum of atomic masses in unit cell', unit='au'),
+        'magmom': KD('Magnetic moment', unit='μ_B'),
+        'unique_id': KD('Unique ID', 'Random (unique) ID'),
+        'volume': KD('Volume', 'Volume of unit cell', unit='Å³')
+    }
 
 
 def now():

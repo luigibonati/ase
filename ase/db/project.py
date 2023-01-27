@@ -4,22 +4,7 @@ import functools
 from typing import Set, Dict, Any
 from ase.db.row import row2dct
 from ase.formula import Formula
-
-
-@functools.total_ordering
-class KeyDescription:
-    def __init__(self, key, shortdesc, longdesc, unit):
-        self.key = key
-        self.shortdesc = shortdesc
-        self.longdesc = longdesc
-        self.unit = unit
-
-    # The templates like to sort key descriptions by shortdesc.
-    def __eq__(self, other):
-        return self.shortdesc == getattr(other, 'shortdesc', None)
-
-    def __lt__(self, other):
-        return self.shortdesc < getattr(other, 'shortdesc', self.shortdesc)
+from ase.db.core import KeyDescription
 
 
 class DatabaseProject:
@@ -36,9 +21,12 @@ class DatabaseProject:
         self.name = name
         self.title = title
         self.uid_key = 'id'
-        self.key_descriptions = {
-            key: KeyDescription(key, *desc)
-            for key, desc in key_descriptions.items()}
+
+        for key, value in key_descriptions.items():
+            assert isinstance(key, str)
+            assert isinstance(value, KeyDescription)
+
+        self.key_descriptions = key_descriptions
         self.database = database
         self.default_columns = default_columns
 
@@ -80,11 +68,11 @@ class DatabaseProject:
     @staticmethod
     def load_db_as_ase_project(name, database):
         from ase.db.table import all_columns
-        from ase.db.web import create_key_descriptions
+        from ase.db.core import get_key_descriptions
 
         return DatabaseProject(
             name=name,
             title=database.metadata.get('title', ''),
-            key_descriptions=create_key_descriptions({}),
+            key_descriptions=get_key_descriptions(),
             database=database,
             default_columns=all_columns)

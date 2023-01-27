@@ -2,7 +2,7 @@
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from ase.db.core import Database, default_key_descriptions
+from ase.db.core import Database
 from ase.db.table import Table, all_columns
 
 
@@ -155,31 +155,3 @@ class Session:
                                   [*all_columns, *keys]
                                   if column not in self.columns)
         return table
-
-
-KeyDescriptions = Dict[str, Tuple[str, str, str]]  # type-hint shortcut
-
-
-def create_key_descriptions(kd: KeyDescriptions) -> KeyDescriptions:
-    kd = kd.copy()
-    kd.update(default_key_descriptions)
-
-    # Fill in missing descriptions:
-    for key, (short, long, unit) in kd.items():
-        if not short:
-            kd[key] = (key, key, unit)
-        elif not long:
-            kd[key] = (short, short, unit)
-
-    sub = re.compile(r'`(.)_(.)`')
-    sup = re.compile(r'`(.*)\^\{?(.*?)\}?`')
-
-    # Convert LaTeX to HTML:
-    for key, value in kd.items():
-        short, long, unit = value
-        unit = sub.sub(r'\1<sub>\2</sub>', unit)
-        unit = sup.sub(r'\1<sup>\2</sup>', unit)
-        unit = unit.replace(r'\text{', '').replace('}', '')
-        kd[key] = (short, long, unit)
-
-    return kd
