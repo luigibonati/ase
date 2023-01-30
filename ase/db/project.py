@@ -23,8 +23,8 @@ class DatabaseProject:
         self.uid_key = 'id'
 
         for key, value in key_descriptions.items():
-            assert isinstance(key, str)
-            assert isinstance(value, KeyDescription)
+            assert isinstance(key, str), type(key)
+            assert isinstance(value, KeyDescription), type(value)
 
         self.key_descriptions = key_descriptions
         self.database = database
