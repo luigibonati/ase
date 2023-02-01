@@ -22,6 +22,25 @@ class DatabaseProject:
         self.title = title
         self.uid_key = 'id'
 
+        # The templates loop over "key descriptions" when they want to
+        # loop over keys.
+        #
+        # Therefore, any key without description will not be rendered.
+        # Therefore, we need to make dummy key descriptions of everything
+        # in the database, ensuring that all keys are visible.
+        #
+        # This is a very bad select() which loops over things that should be
+        # available directly, and also, it uses
+        # private variables of the row:
+        all_keys = set()
+        for row in database.select(
+                columns=['key_value_pairs'], include_data=False):
+            all_keys |= set(row._keys)
+
+        key_descriptions = {
+            **{key: KeyDescription(key) for key in all_keys},
+            **key_descriptions}
+
         for key, value in key_descriptions.items():
             assert isinstance(key, str), type(key)
             assert isinstance(value, KeyDescription), type(value)
@@ -54,11 +73,15 @@ class DatabaseProject:
 
     @classmethod
     def dummyproject(cls, **kwargs):
+        class DummyDatabase:
+            def select(self, *args, **kwargs):
+                return iter([])
+
         _kwargs = dict(
             name='test',
             title='test',
             key_descriptions={},
-            database=None,  # XXX
+            database=DummyDatabase(),  # XXX
             default_columns=[])
         _kwargs.update(kwargs)
         return cls(**_kwargs)
