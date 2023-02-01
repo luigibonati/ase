@@ -49,6 +49,11 @@ class KeyDescription:
 
         self.unit = unit
 
+    def __repr__(self):
+        cls = type(self).__name__
+        return (f'{cls}({self.key!r}, {self.shortdesc!r}, {self.longdesc!r}, '
+                f'unit={self.unit!r})')
+
     # The templates like to sort key descriptions by shortdesc.
     def __eq__(self, other):
         return self.shortdesc == getattr(other, 'shortdesc', None)
@@ -59,24 +64,24 @@ class KeyDescription:
 
 def get_key_descriptions():
     KD = KeyDescription
-    return {
-        'id': KD('ID', 'Uniqe row ID'),
-        'age': KD('Age', 'Time since creation'),
-        'formula': KD('Formula', 'Chemical formula'),
-        'pbc': KD('PBC', 'Periodic boundary conditions'),
-        'user': KD('Username'),
-        'calculator': KD('Calculator', 'ASE-calculator name'),
-        'energy': KD('Energy', 'Total energy', unit='eV'),
-       'natoms': KD('Number of atoms'),
-        'fmax': KD('Maximum force', unit='eV/Ang'),
-        'smax': KD('Maximum stress', 'Maximum stress on unit cell',
-                   unit='eV/Å³'),
-        'charge': KD('Charge', 'Net charge in unit cell', unit='|e|'),
-        'mass': KD('Mass', 'Sum of atomic masses in unit cell', unit='au'),
-        'magmom': KD('Magnetic moment', unit='μ_B'),
-        'unique_id': KD('Unique ID', 'Random (unique) ID'),
-        'volume': KD('Volume', 'Volume of unit cell', unit='Å³')
-    }
+    return {keydesc.key: keydesc for keydesc in [
+        KD('id', 'ID', 'Uniqe row ID'),
+        KD('age', 'Age', 'Time since creation'),
+        KD('formula', 'Formula', 'Chemical formula'),
+        KD('pbc', 'PBC', 'Periodic boundary conditions'),
+        KD('user', 'Username'),
+        KD('calculator', 'Calculator', 'ASE-calculator name'),
+        KD('energy', 'Energy', 'Total energy', unit='eV'),
+        KD('natoms', 'Number of atoms'),
+        KD('fmax', 'Maximum force', unit='eV/Å'),
+        KD('smax', 'Maximum stress', 'Maximum stress on unit cell',
+           unit='eV/Å³'),
+        KD('charge', 'Charge', 'Net charge in unit cell', unit='|e|'),
+        KD('mass', 'Mass', 'Sum of atomic masses in unit cell', unit='au'),
+        KD('magmom', 'Magnetic moment', unit='μ_B'),
+        KD('unique_id', 'Unique ID', 'Random (unique) ID'),
+        KD('volume', 'Volume', 'Volume of unit cell', unit='Å³')
+    ]}
 
 
 def now():
