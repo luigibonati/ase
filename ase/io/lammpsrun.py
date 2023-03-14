@@ -202,6 +202,8 @@ def lammps_data_to_ase_atoms(
                                            forces=forces)
         out_atoms.calc = calculator
 
+
+
     # process the extra columns of fixes, variables and computes
     #    that can be dumped, add as additional arrays to atoms object
     for colname in colnames:
@@ -210,6 +212,11 @@ def lammps_data_to_ase_atoms(
                 (colname.startswith('c_') and not colname.startswith('c_q['))):
             out_atoms.new_array(colname, get_quantity([colname]),
                                 dtype='float')
+        
+        # LB READ periodic images as well
+        if colname=='ix' or colname =='iy' or colname =='iz':
+            out_atoms.new_array(colname, get_quantity([colname]),
+                                dtype='int')
 
     return out_atoms
 
