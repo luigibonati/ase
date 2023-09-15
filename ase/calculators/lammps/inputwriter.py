@@ -163,7 +163,7 @@ def write_lammps_in(lammps_in, parameters, atoms, prismobj,
             ).encode("utf-8")
         )
     fileobj.write("atom_modify sort 0 0.0 \n".encode("utf-8"))
-    for key in ("neighbor", "newton"):
+    for key in ("neighbor", "newton","comm_modify"): # LB: add comm_modify
         if key in parameters:
             fileobj.write(
                 "{0} {1} \n".format(key, parameters[key]).encode("utf-8")
