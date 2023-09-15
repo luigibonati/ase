@@ -1636,7 +1636,10 @@ def write_espresso_in(fd, atoms, input_data=None, pseudopotentials=None,
                 atomic_species[(atom.symbol, magmom)] = (sidx, tidx)
                 # Add magnetization to the input file
                 mag_str = 'starting_magnetization({0})'.format(sidx)
-                input_parameters['system'][mag_str] = fspin
+                # LB: set magnetization params only if not already specified
+                if mag_str not in input_parameters['system']:
+                    input_parameters['system'][mag_str] = fspin
+                # END 
                 atomic_species_str.append(
                     '{species}{tidx} {mass} {pseudo}\n'.format(
                         species=atom.symbol, tidx=tidx, mass=atom.mass,
